@@ -26,18 +26,30 @@ The band under the slingshot line is reserved for future powerups/upgrades.
 
 Static build is served by a Cloudflare Worker (`wrangler.jsonc` → `assets.directory = ./dist`).
 
-```bash
-npm run deploy
-```
+### Option A — GitHub Actions (configured in this repo)
 
-For automatic deploys from `main`, connect this repo in the Cloudflare dashboard:
+1. Create a Cloudflare API token with **Edit Cloudflare Workers**  
+   https://dash.cloudflare.com/profile/api-tokens
+2. In the GitHub repo → **Settings → Secrets and variables → Actions**, add:
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID` (from the Workers dashboard URL / account overview)
+3. Push to `main` (or run the **Deploy to Cloudflare Workers** workflow).
+
+### Option B — Cloudflare Workers Builds (dashboard)
 
 1. [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) → **Create** → **Import a repository**
-2. Select this GitHub repo, production branch `main`
+2. Select `Nfey/sling-climb`, production branch `main`
 3. Build command: `npm run build`
 4. Deploy command: `npx wrangler deploy`
 
 Worker name must stay `sling-climb` to match `wrangler.jsonc`.
+
+### Local deploy
+
+```bash
+npx wrangler login
+npm run deploy
+```
 
 ## Later: App Store & Google Play
 
