@@ -128,15 +128,14 @@ export class Game {
           const { pull } = this.slingshot.getPull(
             pointer.x,
             pointer.y,
-            (p) => this.camera.worldToScreen(p),
+            (sx, sy) => this.camera.screenToWorld(sx, sy),
           )
           const power = Math.hypot(pull.x, pull.y)
           if (power > 8) {
             const vel = this.slingshot.launchVelocity(pull)
-            // Place ball at pouch then launch
-            const pouch = Renderer.pouchFromPull(this.slingshot, pull)
-            this.ball.x = pouch.x
-            this.ball.y = pouch.y
+            // Launch from the rest point so a downward pull doesn't spawn below the kill line
+            this.ball.x = this.slingshot.x
+            this.ball.y = this.slingshot.y
             this.ball.launch(vel)
             this.state = "flying"
             this.slingshot.frozen = false
@@ -150,7 +149,7 @@ export class Game {
           const { power } = this.slingshot.getPull(
             pointer.x,
             pointer.y,
-            (p) => this.camera.worldToScreen(p),
+            (sx, sy) => this.camera.screenToWorld(sx, sy),
           )
           this.slingshot.stretch = power
         }
@@ -181,8 +180,13 @@ export class Game {
         this.state = "catchPending"
       }
 
-      // Game over: ball falls below kill line
-      if (!this.ball.inSlingshot && this.ball.y < this.camera.killWorldY - 10) {
+      // Game over only when falling past the kill line (not while launching upward
+      // through / from near it after a downward pull-back aim).
+      if (
+        !this.ball.inSlingshot &&
+        this.ball.vy <= 0 &&
+        this.ball.y < this.camera.killWorldY
+      ) {
         this.score.commitHighScore()
         this.state = "gameOver"
       }
@@ -220,12 +224,12 @@ export class Game {
       const { pull } = this.slingshot.getPull(
         this.input.pointer.x,
         this.input.pointer.y,
-        (p) => this.camera.worldToScreen(p),
+        (sx, sy) => this.camera.screenToWorld(sx, sy),
       )
       pouch = Renderer.pouchFromPull(this.slingshot, pull)
       this.ball.x = pouch.x
       this.ball.y = pouch.y
-      trajOrigin = pouch
+      trajOrigin = { x: this.slingshot.x, y: this.slingshot.y }
       trajVel = this.slingshot.launchVelocity(pull)
     }
 

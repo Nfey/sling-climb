@@ -11,8 +11,9 @@ export const SLINGSHOT_FORK_HEIGHT = 52
 /** Pixels of finger movement required before aiming starts after a catch/load. */
 export const AIM_DEADZONE = 10
 
-export const MAX_PULL = 120
-export const LAUNCH_POWER = 11.5
+export const MAX_PULL = 140
+/** ~3x the original 11.5 launch multiplier. */
+export const LAUNCH_POWER = 34.5
 
 export const PLATFORM_HEIGHT = 14
 export const PLATFORM_MIN_WIDTH = 70

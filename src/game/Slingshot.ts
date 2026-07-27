@@ -35,21 +35,23 @@ export class Slingshot {
   }
 
   /**
-   * Pull is finger relative to slingshot. Launch velocity is opposite the pull.
+   * Pull the pouch toward the finger in world space.
+   * Launch velocity is opposite the pull (classic slingshot).
    */
-  getPull(pointerX: number, pointerY: number, worldToScreen: (p: Vec2) => Vec2): {
+  getPull(
+    pointerX: number,
+    pointerY: number,
+    screenToWorld: (sx: number, sy: number) => Vec2,
+  ): {
     pull: Vec2
     power: number
   } {
-    const screen = worldToScreen({ x: this.x, y: this.y })
-    let dx = pointerX - screen.x
-    let dy = pointerY - screen.y
-    // Convert screen pull (Y down) to world pull (Y up): screen dy positive = down = negative world Y
-    let worldDx = dx
-    let worldDy = -dy
+    const finger = screenToWorld(pointerX, pointerY)
+    let worldDx = finger.x - this.x
+    let worldDy = finger.y - this.y
 
     const len = Math.hypot(worldDx, worldDy)
-    if (len > MAX_PULL) {
+    if (len > MAX_PULL && len > 0) {
       worldDx = (worldDx / len) * MAX_PULL
       worldDy = (worldDy / len) * MAX_PULL
     }

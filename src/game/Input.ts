@@ -85,13 +85,16 @@ export class Input {
     return { x: this.pointer.startX, y: this.pointer.startY }
   }
 
+  /**
+   * Return CSS-pixel coordinates to match Camera / game logic.
+   * Do not multiply by devicePixelRatio — canvas backing store is scaled
+   * separately in the renderer via ctx.setTransform(dpr, ...).
+   */
   private clientToCanvas(clientX: number, clientY: number): { x: number; y: number } {
     const rect = this.canvas.getBoundingClientRect()
-    const scaleX = this.canvas.width / rect.width
-    const scaleY = this.canvas.height / rect.height
     return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY,
+      x: clientX - rect.left,
+      y: clientY - rect.top,
     }
   }
 }
