@@ -27,6 +27,18 @@ export class Slingshot {
     this.x = Math.max(half + 8, Math.min(worldWidth - half - 8, x))
   }
 
+  /** Place the pouch at a world point, clamped horizontally and within a Y range. */
+  setPosition(
+    x: number,
+    y: number,
+    worldWidth: number,
+    minY: number,
+    maxY: number,
+  ): void {
+    this.setX(x, worldWidth)
+    this.y = Math.max(minY, Math.min(maxY, y))
+  }
+
   canCatch(ballX: number, ballY: number): boolean {
     const dx = ballX - this.x
     const dy = ballY - this.y

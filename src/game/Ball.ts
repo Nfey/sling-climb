@@ -20,7 +20,7 @@ export interface BallUpdateResult {
   /** Player ball landed on a purple bonus platform. */
   bonusCollected: boolean
   /** Player ball collected a pickup (kind set when true). */
-  upgradeCollected: "dual" | "bullets" | null
+  upgradeCollected: "dual" | "bullets" | "freeMove" | null
   /** Any platform landing this frame (used by purple bonus balls). */
   platformHit: boolean
 }
