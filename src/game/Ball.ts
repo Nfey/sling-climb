@@ -12,11 +12,13 @@ import type {
   CardinalDir,
   PlatformData,
   PortalPair,
+  UpgradePickupData,
   Vec2,
 } from "./types"
 
 export interface BallUpdateResult {
   bonusCollected: boolean
+  upgradeCollected: boolean
 }
 
 /** Unit vectors for 8 cardinal dirs in world space (Y up). */
@@ -137,8 +139,12 @@ export class Ball {
     portals: PortalPair[],
     bumpers: BumperData[],
     arrowPads: ArrowPadData[],
+    upgrades: UpgradePickupData[],
   ): BallUpdateResult {
-    const result: BallUpdateResult = { bonusCollected: false }
+    const result: BallUpdateResult = {
+      bonusCollected: false,
+      upgradeCollected: false,
+    }
     if (this.inSlingshot) {
       this.squash = Math.max(0, this.squash - dt * 3)
       return result
@@ -177,6 +183,16 @@ export class Ball {
 
     this.collideBumpers(bumpers)
     this.collideArrowPads(arrowPads)
+
+    // Pass-through upgrade pickups
+    for (let i = upgrades.length - 1; i >= 0; i--) {
+      const u = upgrades[i]!
+      const dist = Math.hypot(this.x - u.x, this.y - u.y)
+      if (dist < this.radius + u.radius) {
+        upgrades.splice(i, 1)
+        result.upgradeCollected = true
+      }
+    }
 
     // One-way platforms: boost upward on contact from above; keep horizontal velocity
     if (this.vy < 0) {

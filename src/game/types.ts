@@ -12,7 +12,7 @@ export interface PointerState {
   y: number
   startX: number
   startY: number
-  id: number | null
+  id: number
 }
 
 export interface PlatformData {
@@ -52,4 +52,21 @@ export interface ArrowPadData {
   y: number
   radius: number
   dir: CardinalDir
+}
+
+/** Pass-through collectible that fills the upgrades panel. */
+export interface UpgradePickupData {
+  x: number
+  y: number
+  radius: number
+  /** Currently only dual slingshot ("2x"). */
+  kind: "dual"
+}
+
+export type UpgradeKind = "dual"
+
+export interface UpgradePanelSlot {
+  kind: UpgradeKind
+  label: string
+  count: number
 }

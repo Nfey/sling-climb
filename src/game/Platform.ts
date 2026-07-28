@@ -21,8 +21,19 @@ import {
   PORTAL_MIN_GAP,
   PORTAL_PAIR_OFFSET_MAX,
   PORTAL_PAIR_OFFSET_MIN,
+  UPGRADE_PICKUP_CHANCE,
+  UPGRADE_PICKUP_MAX_GAP,
+  UPGRADE_PICKUP_MIN_GAP,
+  UPGRADE_PICKUP_RADIUS,
 } from "./constants"
-import type { ArrowPadData, BumperData, CardinalDir, PlatformData, PortalPair } from "./types"
+import type {
+  ArrowPadData,
+  BumperData,
+  CardinalDir,
+  PlatformData,
+  PortalPair,
+  UpgradePickupData,
+} from "./types"
 
 function rand(min: number, max: number): number {
   return min + Math.random() * (max - min)
@@ -33,10 +44,12 @@ export class PlatformManager {
   portals: PortalPair[] = []
   bumpers: BumperData[] = []
   arrowPads: ArrowPadData[] = []
+  upgrades: UpgradePickupData[] = []
   private nextY = 0
   private nextPortalY = 0
   private nextBumperY = 0
   private nextArrowY = 0
+  private nextUpgradeY = 0
   private worldWidth = 390
 
   reset(worldWidth: number, slingshotY: number): void {
@@ -45,10 +58,12 @@ export class PlatformManager {
     this.portals = []
     this.bumpers = []
     this.arrowPads = []
+    this.upgrades = []
     this.nextY = slingshotY + 80
     this.nextPortalY = slingshotY + 280
     this.nextBumperY = slingshotY + 200
     this.nextArrowY = slingshotY + 240
+    this.nextUpgradeY = slingshotY + 360
     this.spawnInitial(slingshotY)
   }
 
@@ -73,6 +88,9 @@ export class PlatformManager {
     }
     while (this.nextArrowY < slingshotY + 1400) {
       this.maybeSpawnArrowPad()
+    }
+    while (this.nextUpgradeY < slingshotY + 1400) {
+      this.maybeSpawnUpgrade()
     }
   }
 
@@ -141,6 +159,23 @@ export class PlatformManager {
     this.nextArrowY += rand(ARROW_PAD_MIN_GAP, ARROW_PAD_MAX_GAP)
   }
 
+  private maybeSpawnUpgrade(): void {
+    if (Math.random() < UPGRADE_PICKUP_CHANCE) {
+      const radius = UPGRADE_PICKUP_RADIUS
+      const x = rand(
+        PLATFORM_HORIZONTAL_MARGIN + radius,
+        this.worldWidth - PLATFORM_HORIZONTAL_MARGIN - radius,
+      )
+      this.upgrades.push({
+        x,
+        y: this.nextUpgradeY,
+        radius,
+        kind: "dual",
+      })
+    }
+    this.nextUpgradeY += rand(UPGRADE_PICKUP_MIN_GAP, UPGRADE_PICKUP_MAX_GAP)
+  }
+
   /**
    * Generate ahead of the camera and cull anything at/below the kill line
    * so platforms (and other props) never appear in the dead zone.
@@ -159,6 +194,9 @@ export class PlatformManager {
     while (this.nextArrowY < topNeeded) {
       this.maybeSpawnArrowPad()
     }
+    while (this.nextUpgradeY < topNeeded) {
+      this.maybeSpawnUpgrade()
+    }
 
     this.platforms = this.platforms.filter((p) => p.y + p.height > killWorldY)
     this.portals = this.portals.filter(
@@ -166,5 +204,6 @@ export class PlatformManager {
     )
     this.bumpers = this.bumpers.filter((b) => b.y + b.radius > killWorldY)
     this.arrowPads = this.arrowPads.filter((a) => a.y + a.radius > killWorldY)
+    this.upgrades = this.upgrades.filter((u) => u.y + u.radius > killWorldY)
   }
 }

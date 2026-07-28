@@ -1,14 +1,15 @@
 import type { PointerState } from "./types"
 
+/**
+ * Multi-touch pointer tracker. Supports simultaneous fingers for dual slingshots.
+ */
 export class Input {
-  pointer: PointerState = {
-    down: false,
-    x: 0,
-    y: 0,
-    startX: 0,
-    startY: 0,
-    id: null,
-  }
+  /** Active pointers keyed by pointerId. */
+  pointers = new Map<number, PointerState>()
+  /** Pointers that went down since last consumePresses(). */
+  private pressedQueue: PointerState[] = []
+  /** Pointer ids that went up since last consumeReleases(). */
+  private releasedQueue: number[] = []
 
   private canvas: HTMLCanvasElement
 
@@ -23,10 +24,9 @@ export class Input {
     el.addEventListener(
       "pointerdown",
       (e) => {
-        if (this.pointer.down) return
         el.setPointerCapture(e.pointerId)
         const { x, y } = this.clientToCanvas(e.clientX, e.clientY)
-        this.pointer = {
+        const state: PointerState = {
           down: true,
           x,
           y,
@@ -34,6 +34,8 @@ export class Input {
           startY: y,
           id: e.pointerId,
         }
+        this.pointers.set(e.pointerId, state)
+        this.pressedQueue.push({ ...state })
         e.preventDefault()
       },
       { passive: false },
@@ -42,27 +44,50 @@ export class Input {
     el.addEventListener(
       "pointermove",
       (e) => {
-        if (!this.pointer.down || e.pointerId !== this.pointer.id) return
+        const p = this.pointers.get(e.pointerId)
+        if (!p) return
         const { x, y } = this.clientToCanvas(e.clientX, e.clientY)
-        this.pointer.x = x
-        this.pointer.y = y
+        p.x = x
+        p.y = y
         e.preventDefault()
       },
       { passive: false },
     )
 
     const end = (e: PointerEvent) => {
-      if (!this.pointer.down || e.pointerId !== this.pointer.id) return
+      const p = this.pointers.get(e.pointerId)
+      if (!p) return
       const { x, y } = this.clientToCanvas(e.clientX, e.clientY)
-      this.pointer.x = x
-      this.pointer.y = y
-      this.pointer.down = false
-      this.pointer.id = null
+      p.x = x
+      p.y = y
+      p.down = false
+      this.pointers.delete(e.pointerId)
+      this.releasedQueue.push(e.pointerId)
       e.preventDefault()
     }
 
     el.addEventListener("pointerup", end, { passive: false })
     el.addEventListener("pointercancel", end, { passive: false })
+  }
+
+  consumePresses(): PointerState[] {
+    const presses = this.pressedQueue
+    this.pressedQueue = []
+    return presses
+  }
+
+  consumeReleases(): number[] {
+    const releases = this.releasedQueue
+    this.releasedQueue = []
+    return releases
+  }
+
+  getPointer(id: number): PointerState | undefined {
+    return this.pointers.get(id)
+  }
+
+  activePointers(): PointerState[] {
+    return [...this.pointers.values()]
   }
 
   /**

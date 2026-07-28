@@ -6,7 +6,7 @@ import {
 } from "./constants"
 import type { Ball } from "./Ball"
 import type { Camera } from "./Camera"
-import type { ArrowPadData, BumperData, PlatformData, PortalPair, Vec2 } from "./types"
+import type { ArrowPadData, BumperData, PlatformData, PortalPair, UpgradePickupData, Vec2 } from "./types"
 import type { Slingshot } from "./Slingshot"
 
 export class Renderer {
@@ -61,9 +61,9 @@ export class Renderer {
     ctx.stroke()
 
     ctx.fillStyle = COLORS.inkDim
-    ctx.font = "500 11px 'DM Sans', sans-serif"
+    ctx.font = "600 12px 'DM Sans', sans-serif"
     ctx.textAlign = "center"
-    ctx.fillText("upgrades coming soon", width / 2, killY + 28)
+    ctx.fillText("UPGRADES", width / 2, killY + 22)
   }
 
   drawPlatforms(camera: Camera, platforms: PlatformData[]): void {
@@ -245,6 +245,7 @@ export class Renderer {
     sling: Slingshot,
     pouch: Vec2 | null,
     pulse = 0,
+    alt = false,
   ): void {
     const ctx = this.ctx
     const base = camera.worldToScreen(sling.base)
@@ -252,12 +253,15 @@ export class Renderer {
     const right = camera.worldToScreen(sling.rightFork)
     const rest = camera.worldToScreen({ x: sling.x, y: sling.y })
     const pouchScreen = pouch ? camera.worldToScreen(pouch) : rest
+    const body = alt ? COLORS.slingshotAlt : COLORS.slingshot
+    const band = alt ? COLORS.bandAlt : COLORS.band
+    const glow = alt ? COLORS.slingshotAlt : COLORS.accent
 
     // Soft glow when ready to catch / holding
     if (pulse > 0) {
       ctx.save()
       ctx.globalAlpha = 0.25 + pulse * 0.25
-      ctx.fillStyle = COLORS.accent
+      ctx.fillStyle = glow
       ctx.beginPath()
       ctx.arc(rest.x, rest.y, 28 + pulse * 8, 0, Math.PI * 2)
       ctx.fill()
@@ -265,7 +269,7 @@ export class Renderer {
     }
 
     // Post
-    ctx.strokeStyle = COLORS.slingshot
+    ctx.strokeStyle = body
     ctx.lineWidth = 10
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
@@ -283,7 +287,7 @@ export class Renderer {
     ctx.stroke()
 
     // Rubber bands
-    ctx.strokeStyle = COLORS.band
+    ctx.strokeStyle = band
     ctx.lineWidth = 3.5
     ctx.beginPath()
     ctx.moveTo(left.x, left.y)
@@ -304,17 +308,19 @@ export class Renderer {
     )
     ctx.stroke()
 
-    // Movement guide line
-    ctx.save()
-    ctx.globalAlpha = 0.2
-    ctx.strokeStyle = COLORS.ink
-    ctx.lineWidth = 1
-    ctx.setLineDash([6, 8])
-    ctx.beginPath()
-    ctx.moveTo(12, camera.slingshotScreenY)
-    ctx.lineTo(camera.width - 12, camera.slingshotScreenY)
-    ctx.stroke()
-    ctx.restore()
+    // Movement guide line (only once from primary)
+    if (!alt) {
+      ctx.save()
+      ctx.globalAlpha = 0.2
+      ctx.strokeStyle = COLORS.ink
+      ctx.lineWidth = 1
+      ctx.setLineDash([6, 8])
+      ctx.beginPath()
+      ctx.moveTo(12, camera.slingshotScreenY)
+      ctx.lineTo(camera.width - 12, camera.slingshotScreenY)
+      ctx.stroke()
+      ctx.restore()
+    }
   }
 
   drawTrajectory(
@@ -398,6 +404,79 @@ export class Renderer {
       const y = camera.slingshotScreenY - 56
       ctx.fillText(tip, camera.width / 2, y)
     }
+  }
+
+  drawUpgradePickups(camera: Camera, pickups: UpgradePickupData[], anim: number): void {
+    const ctx = this.ctx
+    const killY = camera.killScreenY
+    const bob = Math.sin(anim * 4) * 3
+    for (const u of pickups) {
+      const s = camera.worldToScreen({ x: u.x, y: u.y })
+      s.y += bob
+      if (s.y - u.radius >= killY || s.y + u.radius < -20) continue
+
+      ctx.save()
+      ctx.fillStyle = COLORS.upgradePickupCore
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, u.radius, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = COLORS.upgradePickup
+      ctx.lineWidth = 3
+      ctx.stroke()
+      ctx.fillStyle = COLORS.upgradePickup
+      ctx.font = "800 16px 'Bricolage Grotesque', sans-serif"
+      ctx.textAlign = "center"
+      ctx.textBaseline = "middle"
+      ctx.fillText("2x", s.x, s.y + 1)
+      ctx.textBaseline = "alphabetic"
+      ctx.restore()
+    }
+  }
+
+  drawUpgradePanel(
+    camera: Camera,
+    slot: { x: number; y: number; w: number; h: number },
+    dualCount: number,
+    dualRemaining: number,
+  ): void {
+    const ctx = this.ctx
+    const active = dualRemaining > 0
+    const has = dualCount > 0 || active
+
+    ctx.save()
+    ctx.fillStyle = active ? COLORS.upgradeSlotActive : COLORS.upgradeSlot
+    ctx.strokeStyle = COLORS.upgradeSlotBorder
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    roundRect(ctx, slot.x, slot.y, slot.w, slot.h, 12)
+    ctx.fill()
+    ctx.stroke()
+
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    if (active) {
+      ctx.fillStyle = COLORS.upgradePickup
+      ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText("2x", slot.x + slot.w / 2, slot.y + slot.h / 2 - 8)
+      ctx.fillStyle = COLORS.inkDim
+      ctx.font = "600 12px 'DM Sans', sans-serif"
+      ctx.fillText(`${Math.ceil(dualRemaining)}s`, slot.x + slot.w / 2, slot.y + slot.h / 2 + 12)
+    } else if (has) {
+      ctx.fillStyle = COLORS.upgradePickup
+      ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText("2x", slot.x + slot.w / 2, slot.y + slot.h / 2 - 6)
+      ctx.fillStyle = COLORS.inkDim
+      ctx.font = "600 11px 'DM Sans', sans-serif"
+      ctx.fillText(dualCount > 1 ? `×${dualCount} tap` : "tap", slot.x + slot.w / 2, slot.y + slot.h / 2 + 14)
+    } else {
+      ctx.fillStyle = COLORS.inkDim
+      ctx.font = "600 12px 'DM Sans', sans-serif"
+      ctx.fillText("—", slot.x + slot.w / 2, slot.y + slot.h / 2)
+    }
+    ctx.textBaseline = "alphabetic"
+    ctx.restore()
+
+    void camera
   }
 
   drawTitle(camera: Camera): void {
