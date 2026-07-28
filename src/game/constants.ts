@@ -62,10 +62,10 @@ export const UPGRADE_PICKUP_CHANCE = 0.2
 export const UPGRADE_PICKUP_RADIUS = 22
 export const UPGRADE_PICKUP_MIN_GAP = 260
 export const UPGRADE_PICKUP_MAX_GAP = 480
-/** Chance a pickup is the bullet volley. */
-export const BULLET_PICKUP_SHARE = 0.33
+/** Chance a pickup is the bullet volley. 0 = disabled (code kept). */
+export const BULLET_PICKUP_SHARE = 0
 /** Chance a pickup is free-move (after bullets are ruled out). */
-export const FREE_MOVE_PICKUP_SHARE = 0.33
+export const FREE_MOVE_PICKUP_SHARE = 0.4
 /** Seconds the slingshot can be dragged freely in X and Y. */
 export const FREE_MOVE_DURATION = 30
 
