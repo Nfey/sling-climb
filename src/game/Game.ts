@@ -123,21 +123,15 @@ export class Game {
     }
 
     if (this.state === "gameOver") {
-      if (presses.some((p) => p.y < this.camera.killScreenY)) {
+      if (presses.length > 0) {
         this.resetRun()
       }
       return
     }
 
-    // Bind a play-area press to aiming / moving
+    // Bind any press to aiming / moving
     for (const p of presses) {
-      if (p.y >= this.camera.killScreenY) continue
       if (this.aimPointerId == null) this.aimPointerId = p.id
-    }
-    for (const id of releases) {
-      if (id === this.aimPointerId) {
-        // release handled in state machine via missing pointer
-      }
     }
 
     const pointer = this.primaryPointer()
@@ -148,7 +142,7 @@ export class Game {
       this.ball.y = this.slingshot.y
 
       if (this.state === "ready") {
-        if (pointer && pointer.y < this.camera.killScreenY) {
+        if (pointer) {
           this.state = "aiming"
           this.started = true
           this.aimPointerId = pointer.id
@@ -190,10 +184,10 @@ export class Game {
       this.state = "flying"
       this.slingshot.frozen = false
 
-      if (pointer && pointer.y < this.camera.killScreenY) {
+      if (pointer) {
         this.slingshot.setX(pointer.x, this.camera.width)
         this.aimPointerId = pointer.id
-      } else if (!pointer) {
+      } else {
         this.aimPointerId = null
       }
 
@@ -214,7 +208,6 @@ export class Game {
 
       if (
         pointer &&
-        pointer.y < this.camera.killScreenY &&
         this.ball.vy <= 0 &&
         this.slingshot.canCatch(this.ball.x, this.ball.y)
       ) {
@@ -301,9 +294,7 @@ export class Game {
       }
     }
 
-    const holding =
-      this.primaryPointer() != null &&
-      (this.primaryPointer()?.y ?? 0) < this.camera.killScreenY
+    const holding = this.primaryPointer() != null
     const pulse =
       !this.ball.inSlingshot && holding
         ? 0.55 + Math.sin(this.anim * 6) * 0.25
