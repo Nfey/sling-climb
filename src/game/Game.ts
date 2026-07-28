@@ -158,11 +158,14 @@ export class Game {
       this.ball.x = this.slingshot.x
       this.ball.y = this.slingshot.y
 
+      // Only a fresh press starts aiming — a held finger after
+      // "tap to play again" must not immediately pull the slingshot.
       if (this.state === "ready") {
-        if (pointer) {
+        const press = presses[0]
+        if (press) {
           this.state = "aiming"
           this.started = true
-          this.aimPointerId = pointer.id
+          this.aimPointerId = press.id
         }
       }
 
