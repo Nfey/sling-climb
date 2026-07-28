@@ -283,17 +283,19 @@ export class Game {
 
       this.advanceWorld()
 
-      if (
-        pointer &&
-        this.ball.vy <= 0 &&
-        this.slingshot.canCatch(this.ball.x, this.ball.y)
-      ) {
+      if (this.ball.vy <= 0 && this.slingshot.canCatch(this.ball.x, this.ball.y)) {
         this.ball.catchAt(this.slingshot.x, this.slingshot.y)
         this.slingshot.frozen = true
-        this.state = "aiming"
         this.started = true
         this.lastAimPull = null
-        this.aimPointerId = pointer.id
+        // Catch even without a held finger; only enter aim if already holding.
+        if (pointer) {
+          this.state = "aiming"
+          this.aimPointerId = pointer.id
+        } else {
+          this.state = "ready"
+          this.aimPointerId = null
+        }
       }
 
       if (
