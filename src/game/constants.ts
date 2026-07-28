@@ -47,6 +47,13 @@ export const BUMPER_MAX_GAP = 320
 /** Extra outward speed added on bumper contact (px/s). */
 export const BUMPER_KNOCK = 520
 
+export const ARROW_PAD_CHANCE = 0.24
+export const ARROW_PAD_RADIUS = 26
+export const ARROW_PAD_MIN_GAP = 180
+export const ARROW_PAD_MAX_GAP = 340
+/** Speed applied when the ball enters an arrow pad (px/s). */
+export const ARROW_PAD_SPEED = 980
+
 export const HIGH_SCORE_KEY = "sling-climb-high-score"
 
 export const COLORS = {
@@ -75,4 +82,8 @@ export const COLORS = {
   bumper: "#ef4444",
   bumperRim: "#b91c1c",
   bumperCore: "#fecaca",
+  arrowPad: "#f59e0b",
+  arrowPadRim: "#b45309",
+  arrowPadCore: "#fef3c7",
+  arrow: "#7c2d12",
 }

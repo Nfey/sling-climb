@@ -1,4 +1,8 @@
 import {
+  ARROW_PAD_CHANCE,
+  ARROW_PAD_MAX_GAP,
+  ARROW_PAD_MIN_GAP,
+  ARROW_PAD_RADIUS,
   BONUS_PLATFORM_CHANCE,
   BUMPER_CHANCE,
   BUMPER_MAX_GAP,
@@ -18,7 +22,7 @@ import {
   PORTAL_PAIR_OFFSET_MAX,
   PORTAL_PAIR_OFFSET_MIN,
 } from "./constants"
-import type { BumperData, PlatformData, PortalPair } from "./types"
+import type { ArrowPadData, BumperData, CardinalDir, PlatformData, PortalPair } from "./types"
 
 function rand(min: number, max: number): number {
   return min + Math.random() * (max - min)
@@ -28,9 +32,11 @@ export class PlatformManager {
   platforms: PlatformData[] = []
   portals: PortalPair[] = []
   bumpers: BumperData[] = []
+  arrowPads: ArrowPadData[] = []
   private nextY = 0
   private nextPortalY = 0
   private nextBumperY = 0
+  private nextArrowY = 0
   private worldWidth = 390
 
   reset(worldWidth: number, slingshotY: number): void {
@@ -38,9 +44,11 @@ export class PlatformManager {
     this.platforms = []
     this.portals = []
     this.bumpers = []
+    this.arrowPads = []
     this.nextY = slingshotY + 80
     this.nextPortalY = slingshotY + 280
     this.nextBumperY = slingshotY + 200
+    this.nextArrowY = slingshotY + 240
     this.spawnInitial(slingshotY)
   }
 
@@ -62,6 +70,9 @@ export class PlatformManager {
     }
     while (this.nextBumperY < slingshotY + 1400) {
       this.maybeSpawnBumper()
+    }
+    while (this.nextArrowY < slingshotY + 1400) {
+      this.maybeSpawnArrowPad()
     }
   }
 
@@ -112,6 +123,24 @@ export class PlatformManager {
     this.nextBumperY += rand(BUMPER_MIN_GAP, BUMPER_MAX_GAP)
   }
 
+  private maybeSpawnArrowPad(): void {
+    if (Math.random() < ARROW_PAD_CHANCE) {
+      const radius = ARROW_PAD_RADIUS
+      const x = rand(
+        PLATFORM_HORIZONTAL_MARGIN + radius,
+        this.worldWidth - PLATFORM_HORIZONTAL_MARGIN - radius,
+      )
+      const dir = Math.floor(Math.random() * 8) as CardinalDir
+      this.arrowPads.push({
+        x,
+        y: this.nextArrowY,
+        radius,
+        dir,
+      })
+    }
+    this.nextArrowY += rand(ARROW_PAD_MIN_GAP, ARROW_PAD_MAX_GAP)
+  }
+
   /**
    * Generate ahead of the camera and cull anything at/below the kill line
    * so platforms (and other props) never appear in the dead zone.
@@ -127,11 +156,15 @@ export class PlatformManager {
     while (this.nextBumperY < topNeeded) {
       this.maybeSpawnBumper()
     }
+    while (this.nextArrowY < topNeeded) {
+      this.maybeSpawnArrowPad()
+    }
 
     this.platforms = this.platforms.filter((p) => p.y + p.height > killWorldY)
     this.portals = this.portals.filter(
       (p) => Math.max(p.leftY, p.rightY) + p.height > killWorldY,
     )
     this.bumpers = this.bumpers.filter((b) => b.y + b.radius > killWorldY)
+    this.arrowPads = this.arrowPads.filter((a) => a.y + a.radius > killWorldY)
   }
 }

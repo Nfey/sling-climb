@@ -159,6 +159,7 @@ export class Game {
         this.platforms.platforms,
         this.platforms.portals,
         this.platforms.bumpers,
+        this.platforms.arrowPads,
       )
       if (hit.bonusCollected) {
         this.score.collectBonus()
@@ -217,6 +218,7 @@ export class Game {
     this.renderer.begin(cam, dt)
     this.renderer.drawPlatforms(cam, this.platforms.platforms)
     this.renderer.drawBumpers(cam, this.platforms.bumpers, this.anim)
+    this.renderer.drawArrowPads(cam, this.platforms.arrowPads, this.anim)
     this.renderer.drawPortals(cam, this.platforms.portals, this.anim)
 
     let pouch: Vec2 | null = null

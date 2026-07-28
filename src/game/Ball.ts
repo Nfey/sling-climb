@@ -1,14 +1,34 @@
 import {
+  ARROW_PAD_SPEED,
   BALL_RADIUS,
   BUMPER_KNOCK,
   GRAVITY,
   PLATFORM_BOOST,
   WALL_BOUNCE,
 } from "./constants"
-import type { BumperData, PlatformData, PortalPair, Vec2 } from "./types"
+import type {
+  ArrowPadData,
+  BumperData,
+  CardinalDir,
+  PlatformData,
+  PortalPair,
+  Vec2,
+} from "./types"
 
 export interface BallUpdateResult {
   bonusCollected: boolean
+}
+
+/** Unit vectors for 8 cardinal dirs in world space (Y up). */
+const DIR_VECTORS: Record<CardinalDir, Vec2> = {
+  0: { x: 0, y: 1 },
+  1: { x: Math.SQRT1_2, y: Math.SQRT1_2 },
+  2: { x: 1, y: 0 },
+  3: { x: Math.SQRT1_2, y: -Math.SQRT1_2 },
+  4: { x: 0, y: -1 },
+  5: { x: -Math.SQRT1_2, y: -Math.SQRT1_2 },
+  6: { x: -1, y: 0 },
+  7: { x: -Math.SQRT1_2, y: Math.SQRT1_2 },
 }
 
 export class Ball {
@@ -20,6 +40,8 @@ export class Ball {
   inSlingshot = true
   /** Brief squash after launch / bounce for juice. */
   squash = 0
+  /** Arrow pads currently overlapped — launch only on enter. */
+  private arrowOverlaps = new Set<number>()
 
   reset(x: number, y: number): void {
     this.x = x
@@ -28,6 +50,7 @@ export class Ball {
     this.vy = 0
     this.inSlingshot = true
     this.squash = 0
+    this.arrowOverlaps.clear()
   }
 
   launch(velocity: Vec2): void {
@@ -35,6 +58,7 @@ export class Ball {
     this.vy = velocity.y
     this.inSlingshot = false
     this.squash = 1
+    this.arrowOverlaps.clear()
   }
 
   catchAt(x: number, y: number): void {
@@ -44,6 +68,7 @@ export class Ball {
     this.vy = 0
     this.inSlingshot = true
     this.squash = 0.4
+    this.arrowOverlaps.clear()
   }
 
   private findLeftPortal(portals: PortalPair[]): PortalPair | null {
@@ -84,6 +109,23 @@ export class Ball {
     }
   }
 
+  private collideArrowPads(pads: ArrowPadData[]): void {
+    const now = new Set<number>()
+    for (let i = 0; i < pads.length; i++) {
+      const pad = pads[i]!
+      const dist = Math.hypot(this.x - pad.x, this.y - pad.y)
+      if (dist >= this.radius + pad.radius) continue
+      now.add(i)
+      if (!this.arrowOverlaps.has(i)) {
+        const dir = DIR_VECTORS[pad.dir]
+        this.vx = dir.x * ARROW_PAD_SPEED
+        this.vy = dir.y * ARROW_PAD_SPEED
+        this.squash = 0.75
+      }
+    }
+    this.arrowOverlaps = now
+  }
+
   /**
    * World Y increases upward. Constant gravity only — no air drag —
    * so arcs stay parabolic and horizontal momentum is preserved.
@@ -94,6 +136,7 @@ export class Ball {
     platforms: PlatformData[],
     portals: PortalPair[],
     bumpers: BumperData[],
+    arrowPads: ArrowPadData[],
   ): BallUpdateResult {
     const result: BallUpdateResult = { bonusCollected: false }
     if (this.inSlingshot) {
@@ -133,6 +176,7 @@ export class Ball {
     }
 
     this.collideBumpers(bumpers)
+    this.collideArrowPads(arrowPads)
 
     // One-way platforms: boost upward on contact from above; keep horizontal velocity
     if (this.vy < 0) {

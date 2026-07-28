@@ -6,7 +6,7 @@ import {
 } from "./constants"
 import type { Ball } from "./Ball"
 import type { Camera } from "./Camera"
-import type { BumperData, PlatformData, PortalPair, Vec2 } from "./types"
+import type { ArrowPadData, BumperData, PlatformData, PortalPair, Vec2 } from "./types"
 import type { Slingshot } from "./Slingshot"
 
 export class Renderer {
@@ -124,6 +124,64 @@ export class Renderer {
       ctx.strokeStyle = COLORS.bumperRim
       ctx.lineWidth = 3
       ctx.stroke()
+      ctx.restore()
+    }
+  }
+
+  drawArrowPads(camera: Camera, pads: ArrowPadData[], anim: number): void {
+    const ctx = this.ctx
+    const killY = camera.killScreenY
+    const pulse = 0.9 + Math.sin(anim * 6) * 0.1
+    for (const pad of pads) {
+      const s = camera.worldToScreen({ x: pad.x, y: pad.y })
+      if (s.y - pad.radius >= killY || s.y + pad.radius < -20 || s.y - pad.radius > camera.height + 20) {
+        continue
+      }
+
+      ctx.save()
+      ctx.globalAlpha = 0.2 * pulse
+      ctx.fillStyle = COLORS.arrowPad
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, pad.radius + 5, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = 1
+
+      const grd = ctx.createRadialGradient(
+        s.x - pad.radius * 0.25,
+        s.y - pad.radius * 0.3,
+        pad.radius * 0.1,
+        s.x,
+        s.y,
+        pad.radius,
+      )
+      grd.addColorStop(0, COLORS.arrowPadCore)
+      grd.addColorStop(0.65, COLORS.arrowPad)
+      grd.addColorStop(1, COLORS.arrowPadRim)
+      ctx.fillStyle = grd
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, pad.radius, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = COLORS.arrowPadRim
+      ctx.lineWidth = 3
+      ctx.stroke()
+
+      // Arrow: dir 0 = world up = screen up (-Y). Each step is +45° clockwise in world,
+      // which is also clockwise on screen after the Y flip for horizontal components.
+      const angle = (pad.dir * Math.PI) / 4
+      ctx.translate(s.x, s.y)
+      ctx.rotate(angle)
+      ctx.fillStyle = COLORS.arrow
+      ctx.beginPath()
+      const r = pad.radius
+      ctx.moveTo(0, -r * 0.55)
+      ctx.lineTo(r * 0.32, -r * 0.05)
+      ctx.lineTo(r * 0.12, -r * 0.05)
+      ctx.lineTo(r * 0.12, r * 0.45)
+      ctx.lineTo(-r * 0.12, r * 0.45)
+      ctx.lineTo(-r * 0.12, -r * 0.05)
+      ctx.lineTo(-r * 0.32, -r * 0.05)
+      ctx.closePath()
+      ctx.fill()
       ctx.restore()
     }
   }

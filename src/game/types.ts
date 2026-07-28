@@ -39,3 +39,17 @@ export interface BumperData {
   y: number
   radius: number
 }
+
+/**
+ * 8 cardinal directions in world space (Y up):
+ * 0 N, 1 NE, 2 E, 3 SE, 4 S, 5 SW, 6 W, 7 NW
+ */
+export type CardinalDir = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+
+/** Circle with an arrow that launches the ball in a fixed direction. */
+export interface ArrowPadData {
+  x: number
+  y: number
+  radius: number
+  dir: CardinalDir
+}
