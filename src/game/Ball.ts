@@ -48,8 +48,6 @@ export class Ball {
   isBonus = false
   /** Brief squash after launch / bounce for juice. */
   squash = 0
-  /** Arrow pads currently overlapped — launch only on enter. */
-  private arrowOverlaps = new Set<number>()
 
   reset(x: number, y: number): void {
     this.x = x
@@ -59,7 +57,6 @@ export class Ball {
     this.inSlingshot = true
     this.isBonus = false
     this.squash = 0
-    this.arrowOverlaps.clear()
   }
 
   /** Spawn as a flying purple bonus ball. */
@@ -71,7 +68,6 @@ export class Ball {
     this.inSlingshot = false
     this.isBonus = true
     this.squash = 1
-    this.arrowOverlaps.clear()
   }
 
   launch(velocity: Vec2): void {
@@ -79,7 +75,6 @@ export class Ball {
     this.vy = velocity.y
     this.inSlingshot = false
     this.squash = 1
-    this.arrowOverlaps.clear()
   }
 
   catchAt(x: number, y: number): void {
@@ -89,7 +84,6 @@ export class Ball {
     this.vy = 0
     this.inSlingshot = true
     this.squash = 0.4
-    this.arrowOverlaps.clear()
   }
 
   private findLeftPortal(portals: PortalPair[]): PortalPair | null {
@@ -131,20 +125,16 @@ export class Ball {
   }
 
   private collideArrowPads(pads: ArrowPadData[]): void {
-    const now = new Set<number>()
-    for (let i = 0; i < pads.length; i++) {
+    for (let i = pads.length - 1; i >= 0; i--) {
       const pad = pads[i]!
       const dist = Math.hypot(this.x - pad.x, this.y - pad.y)
       if (dist >= this.radius + pad.radius) continue
-      now.add(i)
-      if (!this.arrowOverlaps.has(i)) {
-        const dir = DIR_VECTORS[pad.dir]
-        this.vx = dir.x * ARROW_PAD_SPEED * 0.5
-        this.vy = dir.y * ARROW_PAD_SPEED
-        this.squash = 0.75
-      }
+      const dir = DIR_VECTORS[pad.dir]
+      this.vx = dir.x * ARROW_PAD_SPEED * 0.5
+      this.vy = dir.y * ARROW_PAD_SPEED
+      this.squash = 0.75
+      pads.splice(i, 1)
     }
-    this.arrowOverlaps = now
   }
 
   /**
