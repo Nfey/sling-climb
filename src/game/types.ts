@@ -24,9 +24,11 @@ export interface PlatformData {
   bonus: boolean
 }
 
-/** Matched left/right wall portals at the same world Y band. */
+/** Matched left/right wall portals (often at different heights). */
 export interface PortalPair {
-  /** World Y of the portal band bottom. */
-  y: number
+  /** World Y of the left portal band bottom. */
+  leftY: number
+  /** World Y of the right portal band bottom. */
+  rightY: number
   height: number
 }

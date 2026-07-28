@@ -20,7 +20,7 @@ export const PLATFORM_VERTICAL_GAP_MAX = 115
 export const PLATFORM_HORIZONTAL_MARGIN = 16
 
 /** Fraction of screen height from the top where the slingshot sits. */
-export const SLINGSHOT_SCREEN_FRAC = 1 / 3
+export const SLINGSHOT_SCREEN_FRAC = 2 / 3
 
 /**
  * Kill line sits slightly below the slingshot line.
@@ -35,6 +35,9 @@ export const PORTAL_CHANCE = 0.22
 export const PORTAL_HEIGHT = 96
 export const PORTAL_MIN_GAP = 220
 export const PORTAL_MAX_GAP = 420
+/** Vertical offset range between matched left/right portals. */
+export const PORTAL_PAIR_OFFSET_MIN = 40
+export const PORTAL_PAIR_OFFSET_MAX = 140
 
 export const HIGH_SCORE_KEY = "sling-climb-high-score"
 

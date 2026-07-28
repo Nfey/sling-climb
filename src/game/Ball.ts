@@ -45,11 +45,18 @@ export class Ball {
     this.squash = 0.4
   }
 
-  private inPortalBand(portals: PortalPair[]): boolean {
+  private findLeftPortal(portals: PortalPair[]): PortalPair | null {
     for (const p of portals) {
-      if (this.y >= p.y && this.y <= p.y + p.height) return true
+      if (this.y >= p.leftY && this.y <= p.leftY + p.height) return p
     }
-    return false
+    return null
+  }
+
+  private findRightPortal(portals: PortalPair[]): PortalPair | null {
+    for (const p of portals) {
+      if (this.y >= p.rightY && this.y <= p.rightY + p.height) return p
+    }
+    return null
   }
 
   /**
@@ -72,12 +79,13 @@ export class Ball {
     this.x += this.vx * dt
     this.y += this.vy * dt
 
-    const portalTravel = this.inPortalBand(portals)
-
-    // Walls or matched portals
+    // Walls or matched portals (exit at the paired portal's height)
     if (this.x - this.radius < 0) {
-      if (portalTravel && this.vx <= 0) {
+      const portal = this.vx <= 0 ? this.findLeftPortal(portals) : null
+      if (portal) {
+        const offsetInPortal = this.y - portal.leftY
         this.x = worldWidth - this.radius - 0.5
+        this.y = portal.rightY + offsetInPortal
         this.squash = 0.35
       } else {
         this.x = this.radius
@@ -85,8 +93,11 @@ export class Ball {
         this.squash = 0.6
       }
     } else if (this.x + this.radius > worldWidth) {
-      if (portalTravel && this.vx >= 0) {
+      const portal = this.vx >= 0 ? this.findRightPortal(portals) : null
+      if (portal) {
+        const offsetInPortal = this.y - portal.rightY
         this.x = this.radius + 0.5
+        this.y = portal.leftY + offsetInPortal
         this.squash = 0.35
       } else {
         this.x = worldWidth - this.radius

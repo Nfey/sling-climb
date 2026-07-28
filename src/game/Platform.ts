@@ -10,6 +10,8 @@ import {
   PORTAL_HEIGHT,
   PORTAL_MAX_GAP,
   PORTAL_MIN_GAP,
+  PORTAL_PAIR_OFFSET_MAX,
+  PORTAL_PAIR_OFFSET_MIN,
 } from "./constants"
 import type { PlatformData, PortalPair } from "./types"
 
@@ -70,8 +72,12 @@ export class PlatformManager {
 
   private maybeSpawnPortal(): void {
     if (Math.random() < PORTAL_CHANCE) {
+      const offset =
+        rand(PORTAL_PAIR_OFFSET_MIN, PORTAL_PAIR_OFFSET_MAX) *
+        (Math.random() < 0.5 ? -1 : 1)
       this.portals.push({
-        y: this.nextPortalY,
+        leftY: this.nextPortalY,
+        rightY: this.nextPortalY + offset,
         height: PORTAL_HEIGHT,
       })
     }
@@ -90,6 +96,8 @@ export class PlatformManager {
 
     const cullBelow = cameraY - viewHeight
     this.platforms = this.platforms.filter((p) => p.y + p.height > cullBelow)
-    this.portals = this.portals.filter((p) => p.y + p.height > cullBelow)
+    this.portals = this.portals.filter(
+      (p) => Math.max(p.leftY, p.rightY) + p.height > cullBelow,
+    )
   }
 }
