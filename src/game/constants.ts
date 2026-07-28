@@ -12,8 +12,8 @@ export const SLINGSHOT_FORK_HEIGHT = 52
 export const AIM_DEADZONE = 10
 
 export const MAX_PULL = 140
-/** ~3x the original 11.5 launch multiplier. */
-export const LAUNCH_POWER = 34.5
+/** ~1/4 of the previous 34.5 launch multiplier. */
+export const LAUNCH_POWER = 8.625
 
 export const PLATFORM_HEIGHT = 14
 export const PLATFORM_MIN_WIDTH = 70
