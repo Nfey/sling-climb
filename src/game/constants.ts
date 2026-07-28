@@ -45,7 +45,7 @@ export const BUMPER_RADIUS_MAX = 28
 export const BUMPER_MIN_GAP = 160
 export const BUMPER_MAX_GAP = 320
 /** Extra outward speed added on bumper contact (px/s). */
-export const BUMPER_KNOCK = 520
+export const BUMPER_KNOCK = 130
 
 export const ARROW_PAD_CHANCE = 0.24
 export const ARROW_PAD_RADIUS = 26
