@@ -7,6 +7,8 @@ export const PLATFORM_BOOST = 1100
 export const SLINGSHOT_CATCH_RADIUS = 36
 export const SLINGSHOT_FORK_WIDTH = 44
 export const SLINGSHOT_FORK_HEIGHT = 52
+/** How long the catch burst / "Caught!" cue lasts (seconds). */
+export const CATCH_BURST_DURATION = 0.55
 
 export const MAX_PULL = 140
 /** ~1/4 of the previous 34.5 launch multiplier. */
@@ -18,6 +20,12 @@ export const PLATFORM_MAX_WIDTH = 140
 export const PLATFORM_VERTICAL_GAP_MIN = 70
 export const PLATFORM_VERTICAL_GAP_MAX = 115
 export const PLATFORM_HORIZONTAL_MARGIN = 16
+/** |vx| below this on repeated same-platform bounces counts as stuck. */
+export const PLATFORM_STUCK_VX = 14
+/** Horizontal nudge applied when a vertical bounce loop is detected (px/s). */
+export const PLATFORM_STUCK_NUDGE = 55
+/** Same-platform near-vertical hits before applying the nudge. */
+export const PLATFORM_STUCK_HITS = 2
 
 /** Fraction of screen height from the top where the slingshot sits. */
 export const SLINGSHOT_SCREEN_FRAC = 2 / 3
