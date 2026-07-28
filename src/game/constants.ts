@@ -70,16 +70,15 @@ export const FREE_MOVE_PICKUP_SHARE = 0.33
 export const FREE_MOVE_DURATION = 30
 
 export const BULLET_POWER_DURATION = 8
-export const BULLET_FIRE_INTERVAL = 0.09
-export const BULLET_SPEED = 900
-export const BULLET_RADIUS = 4.5
-export const BULLET_LIFETIME = 2.4
-export const BULLET_PUSH = 820
-/** Extra upward velocity added on bullet contact (world Y up). */
-export const BULLET_PUSH_UP = 320
-export const BULLET_WALL_BOUNCE = 0.92
-/** Remove a bullet after this many side-wall contacts. */
-export const BULLET_MAX_WALL_HITS = 2
+/** Dense enough that a falling ball can't slip through the volley. */
+export const BULLET_FIRE_INTERVAL = 0.048
+export const BULLET_SPEED = 880
+export const BULLET_RADIUS = 5.5
+export const BULLET_LIFETIME = 2.2
+/** Gentle sideways knock per second while overlapping a bullet. */
+export const BULLET_PUSH = 260
+/** Upward lift per second while overlapping a bullet (counters gravity). */
+export const BULLET_PUSH_UP = 980
 
 export const HIGH_SCORE_KEY = "sling-climb-high-score"
 

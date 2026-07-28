@@ -3,13 +3,11 @@ import { Camera } from "./Camera"
 import {
   BULLET_FIRE_INTERVAL,
   BULLET_LIFETIME,
-  BULLET_MAX_WALL_HITS,
   BULLET_POWER_DURATION,
   BULLET_PUSH,
   BULLET_PUSH_UP,
   BULLET_RADIUS,
   BULLET_SPEED,
-  BULLET_WALL_BOUNCE,
   FREE_MOVE_DURATION,
   PURPLE_BALL_PLATFORM_POINTS,
   SLINGSHOT_FORK_WIDTH,
@@ -359,7 +357,6 @@ export class Game {
       vy: left.y * BULLET_SPEED,
       radius: BULLET_RADIUS,
       life: BULLET_LIFETIME,
-      wallHits: 0,
     })
     this.bullets.push({
       x: rightFork.x,
@@ -368,21 +365,29 @@ export class Game {
       vy: right.y * BULLET_SPEED,
       radius: BULLET_RADIUS,
       life: BULLET_LIFETIME,
-      wallHits: 0,
     })
   }
 
-  private pushBallWithBullet(ball: Ball, bullet: BulletData): void {
+  private pushBallWithBullet(ball: Ball, bullet: BulletData, dt: number): void {
     const dx = ball.x - bullet.x
     const dy = ball.y - bullet.y
     const dist = Math.hypot(dx, dy) || 1
     const nx = dx / dist
     const ny = dy / dist
-    ball.x = bullet.x + nx * (ball.radius + bullet.radius)
-    ball.y = bullet.y + ny * (ball.radius + bullet.radius)
-    ball.vx += nx * BULLET_PUSH
-    ball.vy += ny * BULLET_PUSH + BULLET_PUSH_UP
-    ball.squash = Math.max(ball.squash, 0.55)
+    const overlap = ball.radius + bullet.radius - dist
+    if (overlap > 0) {
+      // Soft separation — avoid hard teleports
+      ball.x += nx * overlap * 0.4
+      ball.y += ny * overlap * 0.4
+    }
+    // Gentle continuous shove while inside the stream
+    ball.vx += nx * BULLET_PUSH * dt
+    if (ball.vy < 0) {
+      ball.vy *= Math.exp(-12 * dt)
+    }
+    // Prefer upward support from the volley (still a bit of radial Y)
+    ball.vy += (Math.max(0, ny) * BULLET_PUSH + BULLET_PUSH_UP) * dt
+    ball.squash = Math.max(ball.squash, 0.35)
   }
 
   private updateBulletPower(dt: number): void {
@@ -403,41 +408,26 @@ export class Game {
       b.x += b.vx * dt
       b.y += b.vy * dt
 
-      if (b.x - b.radius < 0) {
-        b.x = b.radius
-        b.vx = Math.abs(b.vx) * BULLET_WALL_BOUNCE
-        b.wallHits += 1
-      } else if (b.x + b.radius > width) {
-        b.x = width - b.radius
-        b.vx = -Math.abs(b.vx) * BULLET_WALL_BOUNCE
-        b.wallHits += 1
+      // First side-wall touch removes the bullet (no bounce)
+      if (b.x - b.radius < 0 || b.x + b.radius > width) {
+        this.bullets.splice(i, 1)
+        continue
       }
 
-      let hitSomething = false
       if (!this.ball.inSlingshot) {
         const dist = Math.hypot(this.ball.x - b.x, this.ball.y - b.y)
         if (dist < this.ball.radius + b.radius) {
-          this.pushBallWithBullet(this.ball, b)
-          hitSomething = true
+          this.pushBallWithBullet(this.ball, b, dt)
         }
       }
-      if (!hitSomething) {
-        for (const bonus of this.bonusBalls) {
-          const dist = Math.hypot(bonus.x - b.x, bonus.y - b.y)
-          if (dist < bonus.radius + b.radius) {
-            this.pushBallWithBullet(bonus, b)
-            hitSomething = true
-            break
-          }
+      for (const bonus of this.bonusBalls) {
+        const dist = Math.hypot(bonus.x - b.x, bonus.y - b.y)
+        if (dist < bonus.radius + b.radius) {
+          this.pushBallWithBullet(bonus, b, dt)
         }
       }
 
-      if (
-        hitSomething ||
-        b.life <= 0 ||
-        b.wallHits >= BULLET_MAX_WALL_HITS ||
-        b.y < killY - 40
-      ) {
+      if (b.life <= 0 || b.y < killY - 40) {
         this.bullets.splice(i, 1)
       }
     }
