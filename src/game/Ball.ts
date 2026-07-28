@@ -1,5 +1,4 @@
 import {
-  AIR_DRAG,
   BALL_RADIUS,
   GRAVITY,
   PLATFORM_BOOST,
@@ -43,7 +42,8 @@ export class Ball {
   }
 
   /**
-   * World Y increases upward. Gravity pulls down (negative Y).
+   * World Y increases upward. Constant gravity only — no air drag —
+   * so arcs stay parabolic and horizontal momentum is preserved.
    */
   update(dt: number, worldWidth: number, platforms: PlatformData[]): void {
     if (this.inSlingshot) {
@@ -52,13 +52,6 @@ export class Ball {
     }
 
     this.vy -= GRAVITY * dt
-    const speed = Math.hypot(this.vx, this.vy)
-    if (speed > 0) {
-      const drag = Math.min(0.2, AIR_DRAG * speed * speed * dt)
-      this.vx *= 1 - drag
-      this.vy *= 1 - drag
-    }
-
     this.x += this.vx * dt
     this.y += this.vy * dt
 
