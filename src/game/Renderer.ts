@@ -314,7 +314,7 @@ export class Renderer {
     ctx.restore()
   }
 
-  drawHud(camera: Camera, score: number, tip: string | null): void {
+  drawHud(camera: Camera, score: number, elapsed: number, tip: string | null): void {
     const ctx = this.ctx
     ctx.textAlign = "left"
     ctx.fillStyle = COLORS.ink
@@ -324,6 +324,14 @@ export class Renderer {
     ctx.fillStyle = COLORS.inkDim
     ctx.font = "500 12px 'DM Sans', sans-serif"
     ctx.fillText("SCORE", 20, 22)
+
+    ctx.textAlign = "right"
+    ctx.fillStyle = COLORS.inkDim
+    ctx.font = "500 12px 'DM Sans', sans-serif"
+    ctx.fillText("TIME", camera.width - 20, 22)
+    ctx.fillStyle = COLORS.ink
+    ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText(formatTime(elapsed), camera.width - 20, 36 + 8)
 
     if (tip) {
       ctx.textAlign = "center"
@@ -383,6 +391,14 @@ export class Renderer {
       y: sling.y + (pull.y / len) * clamped,
     }
   }
+}
+
+function formatTime(seconds: number): string {
+  const total = Math.max(0, seconds)
+  const m = Math.floor(total / 60)
+  const s = Math.floor(total % 60)
+  const cs = Math.floor((total % 1) * 100)
+  return `${m}:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`
 }
 
 function roundRect(

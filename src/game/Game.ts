@@ -21,6 +21,7 @@ export class Game {
   private started = false
   private wasPointerDown = false
   private anim = 0
+  private elapsed = 0
   private lastTime = 0
   private running = false
 
@@ -69,6 +70,7 @@ export class Game {
     this.state = "ready"
     this.started = false
     this.wasPointerDown = false
+    this.elapsed = 0
   }
 
   private frame(now: number): void {
@@ -78,6 +80,9 @@ export class Game {
     this.anim += dt
 
     this.update(dt)
+    if (this.started && this.state !== "gameOver") {
+      this.elapsed += dt
+    }
     this.draw(dt)
 
     requestAnimationFrame((t) => this.frame(t))
@@ -251,7 +256,7 @@ export class Game {
     }
 
     const tip = this.tipForState()
-    this.renderer.drawHud(cam, this.score.current, tip)
+    this.renderer.drawHud(cam, this.score.current, this.elapsed, tip)
 
     if (this.state === "gameOver") {
       this.renderer.drawGameOver(cam, this.score.current, this.score.highScore)
