@@ -32,6 +32,10 @@ export const BONUS_PLATFORM_CHANCE = 0.18
 export const BONUS_PLATFORM_POINTS = 50
 /** Points awarded when a purple 2x ball lands on any platform. */
 export const PURPLE_BALL_PLATFORM_POINTS = 100
+/** Initial upward speed when a 2x purple ball spawns (px/s). */
+export const PURPLE_BALL_SPAWN_UP = 920
+/** Initial horizontal speed magnitude on 2x spawn; sign is random (px/s). */
+export const PURPLE_BALL_SPAWN_SIDE = 480
 
 export const PORTAL_CHANCE = 0.22
 export const PORTAL_HEIGHT = 96
