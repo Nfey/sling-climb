@@ -23,6 +23,8 @@ export interface BallUpdateResult {
   upgradeCollected: "dual" | "bullets" | "freeMove" | null
   /** Any platform landing this frame (used by purple bonus balls). */
   platformHit: boolean
+  /** World-Y change from a portal teleport this frame (0 if none). */
+  portalDeltaY: number
 }
 
 /** Unit vectors for 8 cardinal dirs in world space (Y up). */
@@ -154,6 +156,7 @@ export class Ball {
       bonusCollected: false,
       upgradeCollected: null,
       platformHit: false,
+      portalDeltaY: 0,
     }
     if (this.inSlingshot) {
       this.squash = Math.max(0, this.squash - dt * 3)
@@ -169,8 +172,10 @@ export class Ball {
       const portal = this.vx <= 0 ? this.findLeftPortal(portals) : null
       if (portal) {
         const offsetInPortal = this.y - portal.leftY
+        const prevY = this.y
         this.x = worldWidth - this.radius - 0.5
         this.y = portal.rightY + offsetInPortal
+        result.portalDeltaY = this.y - prevY
         this.squash = 0.35
       } else {
         this.x = this.radius
@@ -181,8 +186,10 @@ export class Ball {
       const portal = this.vx >= 0 ? this.findRightPortal(portals) : null
       if (portal) {
         const offsetInPortal = this.y - portal.rightY
+        const prevY = this.y
         this.x = this.radius + 0.5
         this.y = portal.leftY + offsetInPortal
+        result.portalDeltaY = this.y - prevY
         this.squash = 0.35
       } else {
         this.x = worldWidth - this.radius
