@@ -245,7 +245,7 @@ export class Renderer {
     sling: Slingshot,
     pouch: Vec2 | null,
     pulse = 0,
-    _alt = false,
+    freeMove = false,
   ): void {
     const ctx = this.ctx
     const base = camera.worldToScreen(sling.base)
@@ -255,15 +255,17 @@ export class Renderer {
     const pouchScreen = pouch ? camera.worldToScreen(pouch) : rest
     const body = COLORS.slingshot
     const band = COLORS.band
-    const glow = COLORS.accent
+    const glow = freeMove ? COLORS.freeMovePickup : COLORS.accent
 
     // Soft glow when ready to catch / holding
-    if (pulse > 0) {
+    if (pulse > 0 || freeMove) {
       ctx.save()
-      ctx.globalAlpha = 0.25 + pulse * 0.25
+      ctx.globalAlpha = freeMove
+        ? 0.22 + Math.sin(this.time * 5) * 0.08
+        : 0.25 + pulse * 0.25
       ctx.fillStyle = glow
       ctx.beginPath()
-      ctx.arc(rest.x, rest.y, 28 + pulse * 8, 0, Math.PI * 2)
+      ctx.arc(rest.x, rest.y, 28 + (freeMove ? 6 : pulse * 8), 0, Math.PI * 2)
       ctx.fill()
       ctx.restore()
     }
@@ -308,15 +310,15 @@ export class Renderer {
     )
     ctx.stroke()
 
-    // Movement guide line
+    // Movement guide — follows the slingshot (important during free-move)
     ctx.save()
-    ctx.globalAlpha = 0.2
-    ctx.strokeStyle = COLORS.ink
+    ctx.globalAlpha = freeMove ? 0.28 : 0.2
+    ctx.strokeStyle = freeMove ? COLORS.freeMovePickup : COLORS.ink
     ctx.lineWidth = 1
-    ctx.setLineDash([6, 8])
+    ctx.setLineDash(freeMove ? [4, 6] : [6, 8])
     ctx.beginPath()
-    ctx.moveTo(12, camera.slingshotScreenY)
-    ctx.lineTo(camera.width - 12, camera.slingshotScreenY)
+    ctx.moveTo(12, rest.y)
+    ctx.lineTo(camera.width - 12, rest.y)
     ctx.stroke()
     ctx.restore()
   }
@@ -420,21 +422,35 @@ export class Renderer {
       if (s.y - u.radius >= killY || s.y + u.radius < -20) continue
 
       const isBullets = u.kind === "bullets"
+      const isFreeMove = u.kind === "freeMove"
       ctx.save()
-      ctx.fillStyle = isBullets ? COLORS.bulletPickupCore : COLORS.upgradePickupCore
+      ctx.fillStyle = isBullets
+        ? COLORS.bulletPickupCore
+        : isFreeMove
+          ? COLORS.freeMovePickupCore
+          : COLORS.upgradePickupCore
       ctx.beginPath()
       ctx.arc(s.x, s.y, u.radius, 0, Math.PI * 2)
       ctx.fill()
-      ctx.strokeStyle = isBullets ? COLORS.bulletPickup : COLORS.upgradePickup
+      ctx.strokeStyle = isBullets
+        ? COLORS.bulletPickup
+        : isFreeMove
+          ? COLORS.freeMovePickup
+          : COLORS.upgradePickup
       ctx.lineWidth = 3
       ctx.stroke()
-      ctx.fillStyle = isBullets ? COLORS.bulletPickup : COLORS.upgradePickup
-      ctx.font = isBullets
-        ? "800 13px 'Bricolage Grotesque', sans-serif"
-        : "800 16px 'Bricolage Grotesque', sans-serif"
+      ctx.fillStyle = isBullets
+        ? COLORS.bulletPickup
+        : isFreeMove
+          ? COLORS.freeMovePickup
+          : COLORS.upgradePickup
+      ctx.font =
+        isBullets || isFreeMove
+          ? "800 13px 'Bricolage Grotesque', sans-serif"
+          : "800 16px 'Bricolage Grotesque', sans-serif"
       ctx.textAlign = "center"
       ctx.textBaseline = "middle"
-      ctx.fillText(isBullets ? "•••" : "2x", s.x, s.y + (isBullets ? 1 : 1))
+      ctx.fillText(isBullets ? "•••" : isFreeMove ? "XY" : "2x", s.x, s.y + 1)
       ctx.textBaseline = "alphabetic"
       ctx.restore()
     }

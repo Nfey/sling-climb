@@ -10,6 +10,7 @@ import {
   BULLET_RADIUS,
   BULLET_SPEED,
   BULLET_WALL_BOUNCE,
+  FREE_MOVE_DURATION,
   PURPLE_BALL_PLATFORM_POINTS,
   SLINGSHOT_FORK_WIDTH,
 } from "./constants"
@@ -43,6 +44,8 @@ export class Game {
   /** Seconds remaining of fork-bullet volley powerup. */
   private bulletPowerRemaining = 0
   private bulletFireCooldown = 0
+  /** Seconds remaining of free XY slingshot movement. */
+  private freeMoveRemaining = 0
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -69,6 +72,10 @@ export class Game {
     return all[0] ?? null
   }
 
+  private get freeMoveActive(): boolean {
+    return this.freeMoveRemaining > 0
+  }
+
   private resize(): void {
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
     const width = window.innerWidth
@@ -84,7 +91,9 @@ export class Game {
       this.slingshot.y = 0
       this.ball.reset(this.slingshot.x, this.slingshot.y)
     }
-    this.camera.followSlingshot(this.slingshot.y)
+    if (!this.freeMoveActive) {
+      this.camera.followSlingshot(this.slingshot.y)
+    }
   }
 
   private resetRun(): void {
@@ -103,6 +112,7 @@ export class Game {
     this.aimPointerId = null
     this.bulletPowerRemaining = 0
     this.bulletFireCooldown = 0
+    this.freeMoveRemaining = 0
   }
 
   private frame(now: number): void {
@@ -133,6 +143,26 @@ export class Game {
     this.bonusBalls.push(b)
   }
 
+  private moveSlingshotToPointer(pointerX: number, pointerY: number): void {
+    if (this.freeMoveActive) {
+      const minScreenY = 56
+      const maxScreenY = this.camera.killScreenY - 28
+      const sy = Math.max(minScreenY, Math.min(maxScreenY, pointerY))
+      const world = this.camera.screenToWorld(pointerX, sy)
+      const minY = this.camera.screenToWorld(0, maxScreenY).y
+      const maxY = this.camera.screenToWorld(0, minScreenY).y
+      this.slingshot.setPosition(
+        world.x,
+        world.y,
+        this.camera.width,
+        minY,
+        maxY,
+      )
+    } else {
+      this.slingshot.setX(pointerX, this.camera.width)
+    }
+  }
+
   private update(dt: number): void {
     const presses = this.input.consumePresses()
     const releases = this.input.consumeReleases()
@@ -146,6 +176,13 @@ export class Game {
         this.resetRun()
       }
       return
+    }
+
+    if (this.freeMoveRemaining > 0) {
+      this.freeMoveRemaining = Math.max(0, this.freeMoveRemaining - dt)
+      if (this.freeMoveRemaining <= 0) {
+        this.camera.followSlingshot(this.slingshot.y)
+      }
     }
 
     // Bind any press to aiming / moving
@@ -207,7 +244,7 @@ export class Game {
       this.slingshot.frozen = false
 
       if (pointer) {
-        this.slingshot.setX(pointer.x, this.camera.width)
+        this.moveSlingshotToPointer(pointer.x, pointer.y)
         this.aimPointerId = pointer.id
       } else {
         this.aimPointerId = null
@@ -227,6 +264,9 @@ export class Game {
       if (hit.upgradeCollected === "bullets") {
         this.bulletPowerRemaining = BULLET_POWER_DURATION
         this.bulletFireCooldown = 0
+      }
+      if (hit.upgradeCollected === "freeMove") {
+        this.freeMoveRemaining = FREE_MOVE_DURATION
       }
       this.score.observe(this.ball.y)
 
@@ -280,7 +320,9 @@ export class Game {
     this.updateBulletPower(dt)
 
     this.platforms.update(this.camera.y, this.camera.height, this.camera.killWorldY)
-    this.camera.followSlingshot(this.slingshot.y)
+    if (!this.freeMoveActive) {
+      this.camera.followSlingshot(this.slingshot.y)
+    }
   }
 
   /** Unit directions along the Y-fork arms (world space, Y up). */
@@ -392,7 +434,11 @@ export class Game {
 
   private advanceWorld(): void {
     const maxAbove = this.camera.height * 0.32
-    if (this.ball.y > this.slingshot.y + maxAbove) {
+    if (this.freeMoveActive) {
+      if (this.ball.y > this.camera.y + maxAbove) {
+        this.camera.y = this.ball.y - maxAbove
+      }
+    } else if (this.ball.y > this.slingshot.y + maxAbove) {
       this.slingshot.y = this.ball.y - maxAbove
     }
   }
@@ -438,7 +484,7 @@ export class Game {
           ? 0.35 + Math.sin(this.anim * 3) * 0.1
           : 0
 
-    this.renderer.drawSlingshot(cam, this.slingshot, pouch, pulse, false)
+    this.renderer.drawSlingshot(cam, this.slingshot, pouch, pulse, this.freeMoveActive)
 
     if (trajOrigin && trajVel) {
       this.renderer.drawTrajectory(cam, trajOrigin, trajVel)
@@ -463,6 +509,9 @@ export class Game {
   private tipForState(): string | null {
     if (this.state === "gameOver") return null
     if (!this.started) return "Hold & drag to aim · release to fire"
+    if (this.freeMoveActive && this.state === "flying") {
+      return `Free move · ${Math.ceil(this.freeMoveRemaining)}s`
+    }
     if (this.state === "flying") return "Hold to move · catch the ball"
     if (this.state === "aiming") return "Release to launch"
     if (this.state === "ready") return "Drag to aim"

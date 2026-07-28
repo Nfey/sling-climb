@@ -59,7 +59,7 @@ export interface UpgradePickupData {
   x: number
   y: number
   radius: number
-  kind: "dual" | "bullets"
+  kind: "dual" | "bullets" | "freeMove"
 }
 
 /** Small projectile fired from the slingshot forks. */
