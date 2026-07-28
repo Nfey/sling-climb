@@ -62,12 +62,11 @@ export interface UpgradePickupData {
   kind: "dual" | "bullets" | "freeMove"
 }
 
-/** Small projectile fired from the slingshot forks. */
+/** Cosmetic pellet that travels along a fork beam (no physics). */
 export interface BulletData {
   x: number
   y: number
   vx: number
   vy: number
   radius: number
-  life: number
 }

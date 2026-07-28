@@ -1,13 +1,15 @@
 import { Ball } from "./Ball"
 import { Camera } from "./Camera"
 import {
+  BULLET_BEAM_HALF_WIDTH,
   BULLET_FIRE_INTERVAL,
-  BULLET_LIFETIME,
+  BULLET_MIN_UP,
   BULLET_POWER_DURATION,
   BULLET_PUSH,
   BULLET_PUSH_UP,
   BULLET_RADIUS,
   BULLET_SPEED,
+  BULLET_WEDGE_PAD,
   FREE_MOVE_DURATION,
   PURPLE_BALL_PLATFORM_POINTS,
   SLINGSHOT_FORK_WIDTH,
@@ -337,7 +339,6 @@ export class Game {
   /** Unit directions along the Y-fork arms (world space, Y up). */
   private forkDirections(): { left: Vec2; right: Vec2 } {
     const half = SLINGSHOT_FORK_WIDTH * 0.5
-    // From pouch toward each fork tip
     const leftLen = Math.hypot(-half, 8)
     const rightLen = Math.hypot(half, 8)
     return {
@@ -346,7 +347,8 @@ export class Game {
     }
   }
 
-  private fireForkBullets(): void {
+  /** Cosmetics only — gameplay is hitscan along the same rays. */
+  private spawnVisualPellets(): void {
     const { left, right } = this.forkDirections()
     const leftFork = this.slingshot.leftFork
     const rightFork = this.slingshot.rightFork
@@ -356,7 +358,6 @@ export class Game {
       vx: left.x * BULLET_SPEED,
       vy: left.y * BULLET_SPEED,
       radius: BULLET_RADIUS,
-      life: BULLET_LIFETIME,
     })
     this.bullets.push({
       x: rightFork.x,
@@ -364,29 +365,89 @@ export class Game {
       vx: right.x * BULLET_SPEED,
       vy: right.y * BULLET_SPEED,
       radius: BULLET_RADIUS,
-      life: BULLET_LIFETIME,
     })
   }
 
-  private pushBallWithBullet(ball: Ball, bullet: BulletData, dt: number): void {
-    const dx = ball.x - bullet.x
-    const dy = ball.y - bullet.y
-    const dist = Math.hypot(dx, dy) || 1
-    const nx = dx / dist
-    const ny = dy / dist
-    const overlap = ball.radius + bullet.radius - dist
-    if (overlap > 0) {
-      // Soft separation — avoid hard teleports
-      ball.x += nx * overlap * 0.4
-      ball.y += ny * overlap * 0.4
+  private rayHitDistance(
+    px: number,
+    py: number,
+    ox: number,
+    oy: number,
+    dx: number,
+    dy: number,
+    maxT: number,
+  ): number {
+    const wx = px - ox
+    const wy = py - oy
+    const t = Math.max(0, Math.min(maxT, wx * dx + wy * dy))
+    const cx = ox + dx * t
+    const cy = oy + dy * t
+    return Math.hypot(px - cx, py - cy)
+  }
+
+  private beamReach(ox: number, dx: number, worldWidth: number): number {
+    if (dx < -1e-6) return Math.max(0, (0 - ox) / dx)
+    if (dx > 1e-6) return Math.max(0, (worldWidth - ox) / dx)
+    return this.camera.height
+  }
+
+  /** True when the ball sits in the Y-wedge or near either fork beam. */
+  private ballInBulletBeam(ball: Ball): boolean {
+    const { left, right } = this.forkDirections()
+    const ox = this.slingshot.x
+    const oy = this.slingshot.y
+    const dx = ball.x - ox
+    const dy = ball.y - oy
+    const reach = Math.hypot(dx, dy)
+    if (reach < 1) return true
+
+    // Interior of the upward Y wedge (plus a little pad past each arm)
+    const aL = Math.atan2(left.y, left.x) + BULLET_WEDGE_PAD
+    const aR = Math.atan2(right.y, right.x) - BULLET_WEDGE_PAD
+    const a = Math.atan2(dy, dx)
+    const inWedge =
+      dy >= -ball.radius * 0.35 &&
+      a >= aR &&
+      a <= aL &&
+      reach < this.camera.width * 1.15
+
+    if (inWedge) return true
+
+    const width = this.camera.width
+    const leftFork = this.slingshot.leftFork
+    const rightFork = this.slingshot.rightFork
+    const leftReach = this.beamReach(leftFork.x, left.x, width)
+    const rightReach = this.beamReach(rightFork.x, right.x, width)
+    const threshold = BULLET_BEAM_HALF_WIDTH + ball.radius
+    if (
+      this.rayHitDistance(ball.x, ball.y, leftFork.x, leftFork.y, left.x, left.y, leftReach) <
+      threshold
+    ) {
+      return true
     }
-    // Gentle continuous shove while inside the stream
-    ball.vx += nx * BULLET_PUSH * dt
-    if (ball.vy < 0) {
-      ball.vy *= Math.exp(-12 * dt)
+    if (
+      this.rayHitDistance(
+        ball.x,
+        ball.y,
+        rightFork.x,
+        rightFork.y,
+        right.x,
+        right.y,
+        rightReach,
+      ) < threshold
+    ) {
+      return true
     }
-    // Prefer upward support from the volley (still a bit of radial Y)
-    ball.vy += (Math.max(0, ny) * BULLET_PUSH + BULLET_PUSH_UP) * dt
+    return false
+  }
+
+  private supportBallInBeam(ball: Ball, dt: number): void {
+    // Soft sideways drift away from the pouch centerline
+    const side = Math.sign(ball.x - this.slingshot.x)
+    ball.vx += (side === 0 ? (ball.vx >= 0 ? 1 : -1) : side) * BULLET_PUSH * dt
+    // Hard floor + lift — ball cannot fall through the hitscan volume
+    if (ball.vy < BULLET_MIN_UP) ball.vy = BULLET_MIN_UP
+    ball.vy += BULLET_PUSH_UP * dt
     ball.squash = Math.max(ball.squash, 0.35)
   }
 
@@ -395,39 +456,27 @@ export class Game {
       this.bulletPowerRemaining = Math.max(0, this.bulletPowerRemaining - dt)
       this.bulletFireCooldown -= dt
       while (this.bulletFireCooldown <= 0 && this.bulletPowerRemaining > 0) {
-        this.fireForkBullets()
+        this.spawnVisualPellets()
         this.bulletFireCooldown += BULLET_FIRE_INTERVAL
+      }
+
+      // Hitscan support every frame while the power is active
+      if (!this.ball.inSlingshot && this.ballInBulletBeam(this.ball)) {
+        this.supportBallInBeam(this.ball, dt)
+      }
+      for (const bonus of this.bonusBalls) {
+        if (this.ballInBulletBeam(bonus)) this.supportBallInBeam(bonus, dt)
       }
     }
 
+    // Advance cosmetic pellets only
     const width = this.camera.width
     const killY = this.camera.killWorldY
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       const b = this.bullets[i]!
-      b.life -= dt
       b.x += b.vx * dt
       b.y += b.vy * dt
-
-      // First side-wall touch removes the bullet (no bounce)
-      if (b.x - b.radius < 0 || b.x + b.radius > width) {
-        this.bullets.splice(i, 1)
-        continue
-      }
-
-      if (!this.ball.inSlingshot) {
-        const dist = Math.hypot(this.ball.x - b.x, this.ball.y - b.y)
-        if (dist < this.ball.radius + b.radius) {
-          this.pushBallWithBullet(this.ball, b, dt)
-        }
-      }
-      for (const bonus of this.bonusBalls) {
-        const dist = Math.hypot(bonus.x - b.x, bonus.y - b.y)
-        if (dist < bonus.radius + b.radius) {
-          this.pushBallWithBullet(bonus, b, dt)
-        }
-      }
-
-      if (b.life <= 0 || b.y < killY - 40) {
+      if (b.x < -10 || b.x > width + 10 || b.y < killY - 40) {
         this.bullets.splice(i, 1)
       }
     }

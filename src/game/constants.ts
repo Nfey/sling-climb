@@ -70,15 +70,20 @@ export const FREE_MOVE_PICKUP_SHARE = 0.33
 export const FREE_MOVE_DURATION = 30
 
 export const BULLET_POWER_DURATION = 8
-/** Dense enough that a falling ball can't slip through the volley. */
-export const BULLET_FIRE_INTERVAL = 0.048
-export const BULLET_SPEED = 880
-export const BULLET_RADIUS = 5.5
-export const BULLET_LIFETIME = 2.2
-/** Gentle sideways knock per second while overlapping a bullet. */
-export const BULLET_PUSH = 260
-/** Upward lift per second while overlapping a bullet (counters gravity). */
-export const BULLET_PUSH_UP = 980
+/** Visual pellet spawn rate (gameplay is hitscan, not projectile). */
+export const BULLET_FIRE_INTERVAL = 0.055
+export const BULLET_SPEED = 920
+export const BULLET_RADIUS = 4.5
+/** Half-width of each fork hitscan beam (world px). */
+export const BULLET_BEAM_HALF_WIDTH = 26
+/** Extra angular pad outside the Y-wedge (radians). */
+export const BULLET_WEDGE_PAD = 0.18
+/** Gentle sideways accel while inside the beam (px/s²). */
+export const BULLET_PUSH = 220
+/** Upward accel while inside the beam (px/s²). */
+export const BULLET_PUSH_UP = 1600
+/** Minimum upward speed enforced while overlapping the beam (px/s). */
+export const BULLET_MIN_UP = 620
 
 export const HIGH_SCORE_KEY = "sling-climb-high-score"
 
