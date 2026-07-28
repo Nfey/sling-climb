@@ -54,10 +54,20 @@ export interface ArrowPadData {
   dir: CardinalDir
 }
 
-/** Pass-through collectible that spawns a purple bonus ball. */
+/** Pass-through collectible powerups. */
 export interface UpgradePickupData {
   x: number
   y: number
   radius: number
-  kind: "dual"
+  kind: "dual" | "bullets"
+}
+
+/** Small projectile fired from the slingshot forks. */
+export interface BulletData {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  radius: number
+  life: number
 }

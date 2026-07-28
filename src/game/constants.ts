@@ -56,10 +56,20 @@ export const ARROW_PAD_MAX_GAP = 340
 /** Speed applied when the ball enters an arrow pad (px/s). */
 export const ARROW_PAD_SPEED = 980
 
-export const UPGRADE_PICKUP_CHANCE = 0.16
+export const UPGRADE_PICKUP_CHANCE = 0.2
 export const UPGRADE_PICKUP_RADIUS = 22
-export const UPGRADE_PICKUP_MIN_GAP = 280
-export const UPGRADE_PICKUP_MAX_GAP = 520
+export const UPGRADE_PICKUP_MIN_GAP = 260
+export const UPGRADE_PICKUP_MAX_GAP = 480
+/** Chance a pickup is the bullet volley instead of the purple 2x ball. */
+export const BULLET_PICKUP_SHARE = 0.45
+
+export const BULLET_POWER_DURATION = 8
+export const BULLET_FIRE_INTERVAL = 0.09
+export const BULLET_SPEED = 900
+export const BULLET_RADIUS = 4.5
+export const BULLET_LIFETIME = 2.4
+export const BULLET_PUSH = 380
+export const BULLET_WALL_BOUNCE = 0.92
 
 export const HIGH_SCORE_KEY = "sling-climb-high-score"
 
@@ -97,4 +107,8 @@ export const COLORS = {
   arrow: "#7c2d12",
   upgradePickup: "#7c3aed",
   upgradePickupCore: "#ede9fe",
+  bulletPickup: "#ea580c",
+  bulletPickupCore: "#ffedd5",
+  bullet: "#fb923c",
+  bulletCore: "#fff7ed",
 }

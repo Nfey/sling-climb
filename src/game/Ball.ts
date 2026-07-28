@@ -19,8 +19,8 @@ import type {
 export interface BallUpdateResult {
   /** Player ball landed on a purple bonus platform. */
   bonusCollected: boolean
-  /** Player ball collected a 2x pickup. */
-  upgradeCollected: boolean
+  /** Player ball collected a pickup (kind set when true). */
+  upgradeCollected: "dual" | "bullets" | null
   /** Any platform landing this frame (used by purple bonus balls). */
   platformHit: boolean
 }
@@ -152,7 +152,7 @@ export class Ball {
   ): BallUpdateResult {
     const result: BallUpdateResult = {
       bonusCollected: false,
-      upgradeCollected: false,
+      upgradeCollected: null,
       platformHit: false,
     }
     if (this.inSlingshot) {
@@ -194,14 +194,14 @@ export class Ball {
     this.collideBumpers(bumpers)
     this.collideArrowPads(arrowPads)
 
-    // Only the player ball collects 2x pickups
+    // Only the player ball collects pickups
     if (!this.isBonus) {
       for (let i = upgrades.length - 1; i >= 0; i--) {
         const u = upgrades[i]!
         const dist = Math.hypot(this.x - u.x, this.y - u.y)
         if (dist < this.radius + u.radius) {
+          result.upgradeCollected = u.kind
           upgrades.splice(i, 1)
-          result.upgradeCollected = true
         }
       }
     }

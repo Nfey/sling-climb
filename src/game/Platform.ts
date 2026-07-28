@@ -21,6 +21,7 @@ import {
   PORTAL_MIN_GAP,
   PORTAL_PAIR_OFFSET_MAX,
   PORTAL_PAIR_OFFSET_MIN,
+  BULLET_PICKUP_SHARE,
   UPGRADE_PICKUP_CHANCE,
   UPGRADE_PICKUP_MAX_GAP,
   UPGRADE_PICKUP_MIN_GAP,
@@ -170,7 +171,7 @@ export class PlatformManager {
         x,
         y: this.nextUpgradeY,
         radius,
-        kind: "dual",
+        kind: Math.random() < BULLET_PICKUP_SHARE ? "bullets" : "dual",
       })
     }
     this.nextUpgradeY += rand(UPGRADE_PICKUP_MIN_GAP, UPGRADE_PICKUP_MAX_GAP)
