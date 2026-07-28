@@ -105,6 +105,7 @@ export class Game {
     this.platforms.reset(width, this.slingshot.y)
     this.score.reset(this.slingshot.y)
     this.camera.followSlingshot(this.slingshot.y)
+    this.camera.reset()
     this.state = "ready"
     this.started = false
     this.elapsed = 0
@@ -268,6 +269,15 @@ export class Game {
       if (hit.upgradeCollected === "freeMove") {
         this.freeMoveRemaining = FREE_MOVE_DURATION
       }
+      if (hit.portalDeltaY !== 0) {
+        // Keep slingshot locked relative to the ball, cancel the screen pop,
+        // then ease the camera into the new height.
+        this.slingshot.y += hit.portalDeltaY
+        if (this.freeMoveActive) {
+          this.camera.y += hit.portalDeltaY
+        }
+        this.camera.applyPortalJump(hit.portalDeltaY)
+      }
       this.score.observe(this.ball.y)
 
       this.advanceWorld()
@@ -319,10 +329,11 @@ export class Game {
 
     this.updateBulletPower(dt)
 
-    this.platforms.update(this.camera.y, this.camera.height, this.camera.killWorldY)
+    this.platforms.update(this.camera.viewY, this.camera.height, this.camera.killWorldY)
     if (!this.freeMoveActive) {
       this.camera.followSlingshot(this.slingshot.y)
     }
+    this.camera.update(dt)
   }
 
   /** Unit directions along the Y-fork arms (world space, Y up). */

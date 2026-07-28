@@ -40,6 +40,8 @@ export const PORTAL_MAX_GAP = 420
 /** Vertical offset range between matched left/right portals. */
 export const PORTAL_PAIR_OFFSET_MIN = 40
 export const PORTAL_PAIR_OFFSET_MAX = 140
+/** How quickly the camera eases after a portal height jump (higher = snappier). */
+export const PORTAL_CAMERA_EASE = 5.5
 
 export const BUMPER_CHANCE = 0.2
 export const BUMPER_RADIUS_MIN = 18
