@@ -6,7 +6,7 @@ import {
 } from "./constants"
 import type { Ball } from "./Ball"
 import type { Camera } from "./Camera"
-import type { PlatformData, PortalPair, Vec2 } from "./types"
+import type { BumperData, PlatformData, PortalPair, Vec2 } from "./types"
 import type { Slingshot } from "./Slingshot"
 
 export class Renderer {
@@ -68,12 +68,14 @@ export class Renderer {
 
   drawPlatforms(camera: Camera, platforms: PlatformData[]): void {
     const ctx = this.ctx
+    const killY = camera.killScreenY
     for (const p of platforms) {
       const tl = camera.worldToScreen({ x: p.x, y: p.y + p.height })
       const br = camera.worldToScreen({ x: p.x + p.width, y: p.y })
       const w = br.x - tl.x
       const h = br.y - tl.y
-      if (br.y < -20 || tl.y > camera.height + 20) continue
+      // Hide anything at or below the kill line
+      if (tl.y >= killY || br.y < -20 || tl.y > camera.height + 20) continue
 
       ctx.fillStyle = p.bonus ? COLORS.platformBonus : COLORS.platform
       ctx.beginPath()
@@ -82,6 +84,47 @@ export class Renderer {
 
       ctx.fillStyle = p.bonus ? COLORS.platformBonusEdge : COLORS.platformEdge
       ctx.fillRect(tl.x + 4, tl.y + 3, w - 8, 3)
+    }
+  }
+
+  drawBumpers(camera: Camera, bumpers: BumperData[], anim: number): void {
+    const ctx = this.ctx
+    const killY = camera.killScreenY
+    const pulse = 0.85 + Math.sin(anim * 7) * 0.15
+    for (const b of bumpers) {
+      const s = camera.worldToScreen({ x: b.x, y: b.y })
+      if (s.y - b.radius >= killY || s.y + b.radius < -20 || s.y - b.radius > camera.height + 20) {
+        continue
+      }
+
+      ctx.save()
+      ctx.globalAlpha = 0.25 * pulse
+      ctx.fillStyle = COLORS.bumper
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, b.radius + 6, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = 1
+
+      const grd = ctx.createRadialGradient(
+        s.x - b.radius * 0.3,
+        s.y - b.radius * 0.35,
+        b.radius * 0.15,
+        s.x,
+        s.y,
+        b.radius,
+      )
+      grd.addColorStop(0, COLORS.bumperCore)
+      grd.addColorStop(0.55, COLORS.bumper)
+      grd.addColorStop(1, COLORS.bumperRim)
+      ctx.fillStyle = grd
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, b.radius, 0, Math.PI * 2)
+      ctx.fill()
+
+      ctx.strokeStyle = COLORS.bumperRim
+      ctx.lineWidth = 3
+      ctx.stroke()
+      ctx.restore()
     }
   }
 

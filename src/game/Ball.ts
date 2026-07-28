@@ -1,10 +1,11 @@
 import {
   BALL_RADIUS,
+  BUMPER_KNOCK,
   GRAVITY,
   PLATFORM_BOOST,
   WALL_BOUNCE,
 } from "./constants"
-import type { PlatformData, PortalPair, Vec2 } from "./types"
+import type { BumperData, PlatformData, PortalPair, Vec2 } from "./types"
 
 export interface BallUpdateResult {
   bonusCollected: boolean
@@ -59,6 +60,30 @@ export class Ball {
     return null
   }
 
+  private collideBumpers(bumpers: BumperData[]): void {
+    for (const b of bumpers) {
+      const dx = this.x - b.x
+      const dy = this.y - b.y
+      const dist = Math.hypot(dx, dy)
+      const minDist = this.radius + b.radius
+      if (dist >= minDist || dist < 0.0001) continue
+
+      const nx = dx / dist
+      const ny = dy / dist
+      this.x = b.x + nx * minDist
+      this.y = b.y + ny * minDist
+
+      const into = this.vx * nx + this.vy * ny
+      if (into < 0) {
+        this.vx -= 2 * into * nx
+        this.vy -= 2 * into * ny
+      }
+      this.vx += nx * BUMPER_KNOCK
+      this.vy += ny * BUMPER_KNOCK
+      this.squash = 0.9
+    }
+  }
+
   /**
    * World Y increases upward. Constant gravity only — no air drag —
    * so arcs stay parabolic and horizontal momentum is preserved.
@@ -68,6 +93,7 @@ export class Ball {
     worldWidth: number,
     platforms: PlatformData[],
     portals: PortalPair[],
+    bumpers: BumperData[],
   ): BallUpdateResult {
     const result: BallUpdateResult = { bonusCollected: false }
     if (this.inSlingshot) {
@@ -105,6 +131,8 @@ export class Ball {
         this.squash = 0.6
       }
     }
+
+    this.collideBumpers(bumpers)
 
     // One-way platforms: boost upward on contact from above; keep horizontal velocity
     if (this.vy < 0) {

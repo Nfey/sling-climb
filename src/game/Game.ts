@@ -153,6 +153,7 @@ export class Game {
         this.camera.width,
         this.platforms.platforms,
         this.platforms.portals,
+        this.platforms.bumpers,
       )
       if (hit.bonusCollected) {
         this.score.collectBonus()
@@ -187,7 +188,7 @@ export class Game {
       }
     }
 
-    this.platforms.update(this.camera.y, this.camera.height)
+    this.platforms.update(this.camera.y, this.camera.height, this.camera.killWorldY)
     this.camera.followSlingshot(this.slingshot.y)
     this.wasPointerDown = pointer.down
   }
@@ -210,6 +211,7 @@ export class Game {
     const cam = this.camera
     this.renderer.begin(cam, dt)
     this.renderer.drawPlatforms(cam, this.platforms.platforms)
+    this.renderer.drawBumpers(cam, this.platforms.bumpers, this.anim)
     this.renderer.drawPortals(cam, this.platforms.portals, this.anim)
 
     let pouch: Vec2 | null = null

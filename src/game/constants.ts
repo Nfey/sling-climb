@@ -39,6 +39,14 @@ export const PORTAL_MAX_GAP = 420
 export const PORTAL_PAIR_OFFSET_MIN = 40
 export const PORTAL_PAIR_OFFSET_MAX = 140
 
+export const BUMPER_CHANCE = 0.2
+export const BUMPER_RADIUS_MIN = 18
+export const BUMPER_RADIUS_MAX = 28
+export const BUMPER_MIN_GAP = 160
+export const BUMPER_MAX_GAP = 320
+/** Extra outward speed added on bumper contact (px/s). */
+export const BUMPER_KNOCK = 520
+
 export const HIGH_SCORE_KEY = "sling-climb-high-score"
 
 export const COLORS = {
@@ -64,4 +72,7 @@ export const COLORS = {
   portal: "#12b5a8",
   portalGlow: "rgba(18, 181, 168, 0.35)",
   portalCore: "#e6fffb",
+  bumper: "#ef4444",
+  bumperRim: "#b91c1c",
+  bumperCore: "#fecaca",
 }

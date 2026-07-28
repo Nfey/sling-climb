@@ -1,5 +1,10 @@
 import {
   BONUS_PLATFORM_CHANCE,
+  BUMPER_CHANCE,
+  BUMPER_MAX_GAP,
+  BUMPER_MIN_GAP,
+  BUMPER_RADIUS_MAX,
+  BUMPER_RADIUS_MIN,
   PLATFORM_HEIGHT,
   PLATFORM_HORIZONTAL_MARGIN,
   PLATFORM_MAX_WIDTH,
@@ -13,7 +18,7 @@ import {
   PORTAL_PAIR_OFFSET_MAX,
   PORTAL_PAIR_OFFSET_MIN,
 } from "./constants"
-import type { PlatformData, PortalPair } from "./types"
+import type { BumperData, PlatformData, PortalPair } from "./types"
 
 function rand(min: number, max: number): number {
   return min + Math.random() * (max - min)
@@ -22,16 +27,20 @@ function rand(min: number, max: number): number {
 export class PlatformManager {
   platforms: PlatformData[] = []
   portals: PortalPair[] = []
+  bumpers: BumperData[] = []
   private nextY = 0
   private nextPortalY = 0
+  private nextBumperY = 0
   private worldWidth = 390
 
   reset(worldWidth: number, slingshotY: number): void {
     this.worldWidth = worldWidth
     this.platforms = []
     this.portals = []
+    this.bumpers = []
     this.nextY = slingshotY + 80
     this.nextPortalY = slingshotY + 280
+    this.nextBumperY = slingshotY + 200
     this.spawnInitial(slingshotY)
   }
 
@@ -50,6 +59,9 @@ export class PlatformManager {
     }
     while (this.nextPortalY < slingshotY + 1400) {
       this.maybeSpawnPortal()
+    }
+    while (this.nextBumperY < slingshotY + 1400) {
+      this.maybeSpawnBumper()
     }
   }
 
@@ -84,8 +96,27 @@ export class PlatformManager {
     this.nextPortalY += rand(PORTAL_MIN_GAP, PORTAL_MAX_GAP)
   }
 
-  /** Generate platforms/portals ahead of the camera and cull far below. */
-  update(cameraY: number, viewHeight: number): void {
+  private maybeSpawnBumper(): void {
+    if (Math.random() < BUMPER_CHANCE) {
+      const radius = rand(BUMPER_RADIUS_MIN, BUMPER_RADIUS_MAX)
+      const x = rand(
+        PLATFORM_HORIZONTAL_MARGIN + radius,
+        this.worldWidth - PLATFORM_HORIZONTAL_MARGIN - radius,
+      )
+      this.bumpers.push({
+        x,
+        y: this.nextBumperY,
+        radius,
+      })
+    }
+    this.nextBumperY += rand(BUMPER_MIN_GAP, BUMPER_MAX_GAP)
+  }
+
+  /**
+   * Generate ahead of the camera and cull anything at/below the kill line
+   * so platforms (and other props) never appear in the dead zone.
+   */
+  update(cameraY: number, viewHeight: number, killWorldY: number): void {
     const topNeeded = cameraY + viewHeight * 1.5
     while (this.nextY < topNeeded) {
       this.spawnOne()
@@ -93,11 +124,14 @@ export class PlatformManager {
     while (this.nextPortalY < topNeeded) {
       this.maybeSpawnPortal()
     }
+    while (this.nextBumperY < topNeeded) {
+      this.maybeSpawnBumper()
+    }
 
-    const cullBelow = cameraY - viewHeight
-    this.platforms = this.platforms.filter((p) => p.y + p.height > cullBelow)
+    this.platforms = this.platforms.filter((p) => p.y + p.height > killWorldY)
     this.portals = this.portals.filter(
-      (p) => Math.max(p.leftY, p.rightY) + p.height > cullBelow,
+      (p) => Math.max(p.leftY, p.rightY) + p.height > killWorldY,
     )
+    this.bumpers = this.bumpers.filter((b) => b.y + b.radius > killWorldY)
   }
 }

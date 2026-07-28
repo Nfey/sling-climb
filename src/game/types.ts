@@ -32,3 +32,10 @@ export interface PortalPair {
   rightY: number
   height: number
 }
+
+/** Circular bumper that knocks the ball away on contact. */
+export interface BumperData {
+  x: number
+  y: number
+  radius: number
+}
