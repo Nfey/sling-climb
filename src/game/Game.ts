@@ -1,17 +1,28 @@
 import { Ball } from "./Ball"
 import { Camera } from "./Camera"
-import { PURPLE_BALL_PLATFORM_POINTS } from "./constants"
+import {
+  BULLET_FIRE_INTERVAL,
+  BULLET_LIFETIME,
+  BULLET_POWER_DURATION,
+  BULLET_PUSH,
+  BULLET_RADIUS,
+  BULLET_SPEED,
+  BULLET_WALL_BOUNCE,
+  PURPLE_BALL_PLATFORM_POINTS,
+  SLINGSHOT_FORK_WIDTH,
+} from "./constants"
 import { Input } from "./Input"
 import { PlatformManager } from "./Platform"
 import { Renderer } from "./Renderer"
 import { Score } from "./Score"
 import { Slingshot } from "./Slingshot"
-import type { GameState, Vec2 } from "./types"
+import type { BulletData, GameState, Vec2 } from "./types"
 
 export class Game {
   private camera = new Camera()
   private ball = new Ball()
   private bonusBalls: Ball[] = []
+  private bullets: BulletData[] = []
   private slingshot = new Slingshot()
   private platforms = new PlatformManager()
   private score = new Score()
@@ -27,6 +38,9 @@ export class Game {
   private running = false
   private lastAimPull: Vec2 | null = null
   private aimPointerId: number | null = null
+  /** Seconds remaining of fork-bullet volley powerup. */
+  private bulletPowerRemaining = 0
+  private bulletFireCooldown = 0
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -76,6 +90,7 @@ export class Game {
     this.slingshot.reset(width * 0.5, 0)
     this.ball.reset(this.slingshot.x, this.slingshot.y)
     this.bonusBalls = []
+    this.bullets = []
     this.platforms.reset(width, this.slingshot.y)
     this.score.reset(this.slingshot.y)
     this.camera.followSlingshot(this.slingshot.y)
@@ -84,6 +99,8 @@ export class Game {
     this.elapsed = 0
     this.lastAimPull = null
     this.aimPointerId = null
+    this.bulletPowerRemaining = 0
+    this.bulletFireCooldown = 0
   }
 
   private frame(now: number): void {
@@ -141,11 +158,14 @@ export class Game {
       this.ball.x = this.slingshot.x
       this.ball.y = this.slingshot.y
 
+      // Only a fresh press starts aiming — a held finger after
+      // "tap to play again" must not immediately pull the slingshot.
       if (this.state === "ready") {
-        if (pointer) {
+        const press = presses[0]
+        if (press) {
           this.state = "aiming"
           this.started = true
-          this.aimPointerId = pointer.id
+          this.aimPointerId = press.id
         }
       }
 
@@ -201,7 +221,11 @@ export class Game {
         this.platforms.upgrades,
       )
       if (hit.bonusCollected) this.score.collectBonus()
-      if (hit.upgradeCollected) this.spawnPurpleBall()
+      if (hit.upgradeCollected === "dual") this.spawnPurpleBall()
+      if (hit.upgradeCollected === "bullets") {
+        this.bulletPowerRemaining = BULLET_POWER_DURATION
+        this.bulletFireCooldown = 0
+      }
       this.score.observe(this.ball.y)
 
       this.advanceWorld()
@@ -251,8 +275,108 @@ export class Game {
       }
     }
 
+    this.updateBulletPower(dt)
+
     this.platforms.update(this.camera.y, this.camera.height, this.camera.killWorldY)
     this.camera.followSlingshot(this.slingshot.y)
+  }
+
+  /** Unit directions along the Y-fork arms (world space, Y up). */
+  private forkDirections(): { left: Vec2; right: Vec2 } {
+    const half = SLINGSHOT_FORK_WIDTH * 0.5
+    // From pouch toward each fork tip
+    const leftLen = Math.hypot(-half, 8)
+    const rightLen = Math.hypot(half, 8)
+    return {
+      left: { x: -half / leftLen, y: 8 / leftLen },
+      right: { x: half / rightLen, y: 8 / rightLen },
+    }
+  }
+
+  private fireForkBullets(): void {
+    const { left, right } = this.forkDirections()
+    const leftFork = this.slingshot.leftFork
+    const rightFork = this.slingshot.rightFork
+    this.bullets.push({
+      x: leftFork.x,
+      y: leftFork.y,
+      vx: left.x * BULLET_SPEED,
+      vy: left.y * BULLET_SPEED,
+      radius: BULLET_RADIUS,
+      life: BULLET_LIFETIME,
+    })
+    this.bullets.push({
+      x: rightFork.x,
+      y: rightFork.y,
+      vx: right.x * BULLET_SPEED,
+      vy: right.y * BULLET_SPEED,
+      radius: BULLET_RADIUS,
+      life: BULLET_LIFETIME,
+    })
+  }
+
+  private pushBallWithBullet(ball: Ball, bullet: BulletData): void {
+    const dx = ball.x - bullet.x
+    const dy = ball.y - bullet.y
+    const dist = Math.hypot(dx, dy) || 1
+    const nx = dx / dist
+    const ny = dy / dist
+    ball.x = bullet.x + nx * (ball.radius + bullet.radius)
+    ball.y = bullet.y + ny * (ball.radius + bullet.radius)
+    ball.vx += nx * BULLET_PUSH
+    ball.vy += ny * BULLET_PUSH
+    ball.squash = Math.max(ball.squash, 0.55)
+  }
+
+  private updateBulletPower(dt: number): void {
+    if (this.bulletPowerRemaining > 0 && this.state !== "gameOver") {
+      this.bulletPowerRemaining = Math.max(0, this.bulletPowerRemaining - dt)
+      this.bulletFireCooldown -= dt
+      while (this.bulletFireCooldown <= 0 && this.bulletPowerRemaining > 0) {
+        this.fireForkBullets()
+        this.bulletFireCooldown += BULLET_FIRE_INTERVAL
+      }
+    }
+
+    const width = this.camera.width
+    const killY = this.camera.killWorldY
+    for (let i = this.bullets.length - 1; i >= 0; i--) {
+      const b = this.bullets[i]!
+      b.life -= dt
+      b.x += b.vx * dt
+      b.y += b.vy * dt
+
+      if (b.x - b.radius < 0) {
+        b.x = b.radius
+        b.vx = Math.abs(b.vx) * BULLET_WALL_BOUNCE
+      } else if (b.x + b.radius > width) {
+        b.x = width - b.radius
+        b.vx = -Math.abs(b.vx) * BULLET_WALL_BOUNCE
+      }
+
+      let hitSomething = false
+      if (!this.ball.inSlingshot) {
+        const dist = Math.hypot(this.ball.x - b.x, this.ball.y - b.y)
+        if (dist < this.ball.radius + b.radius) {
+          this.pushBallWithBullet(this.ball, b)
+          hitSomething = true
+        }
+      }
+      if (!hitSomething) {
+        for (const bonus of this.bonusBalls) {
+          const dist = Math.hypot(bonus.x - b.x, bonus.y - b.y)
+          if (dist < bonus.radius + b.radius) {
+            this.pushBallWithBullet(bonus, b)
+            hitSomething = true
+            break
+          }
+        }
+      }
+
+      if (hitSomething || b.life <= 0 || b.y < killY - 40) {
+        this.bullets.splice(i, 1)
+      }
+    }
   }
 
   private advanceWorld(): void {
@@ -270,6 +394,7 @@ export class Game {
     this.renderer.drawArrowPads(cam, this.platforms.arrowPads, this.anim)
     this.renderer.drawUpgradePickups(cam, this.platforms.upgrades, this.anim)
     this.renderer.drawPortals(cam, this.platforms.portals, this.anim)
+    this.renderer.drawBullets(cam, this.bullets)
 
     let pouch: Vec2 | null = null
     let trajOrigin: Vec2 | null = null

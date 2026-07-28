@@ -6,7 +6,7 @@ import {
 } from "./constants"
 import type { Ball } from "./Ball"
 import type { Camera } from "./Camera"
-import type { ArrowPadData, BumperData, PlatformData, PortalPair, UpgradePickupData, Vec2 } from "./types"
+import type { ArrowPadData, BulletData, BumperData, PlatformData, PortalPair, UpgradePickupData, Vec2 } from "./types"
 import type { Slingshot } from "./Slingshot"
 
 export class Renderer {
@@ -419,20 +419,40 @@ export class Renderer {
       s.y += bob
       if (s.y - u.radius >= killY || s.y + u.radius < -20) continue
 
+      const isBullets = u.kind === "bullets"
       ctx.save()
-      ctx.fillStyle = COLORS.upgradePickupCore
+      ctx.fillStyle = isBullets ? COLORS.bulletPickupCore : COLORS.upgradePickupCore
       ctx.beginPath()
       ctx.arc(s.x, s.y, u.radius, 0, Math.PI * 2)
       ctx.fill()
-      ctx.strokeStyle = COLORS.upgradePickup
+      ctx.strokeStyle = isBullets ? COLORS.bulletPickup : COLORS.upgradePickup
       ctx.lineWidth = 3
       ctx.stroke()
-      ctx.fillStyle = COLORS.upgradePickup
-      ctx.font = "800 16px 'Bricolage Grotesque', sans-serif"
+      ctx.fillStyle = isBullets ? COLORS.bulletPickup : COLORS.upgradePickup
+      ctx.font = isBullets
+        ? "800 13px 'Bricolage Grotesque', sans-serif"
+        : "800 16px 'Bricolage Grotesque', sans-serif"
       ctx.textAlign = "center"
       ctx.textBaseline = "middle"
-      ctx.fillText("2x", s.x, s.y + 1)
+      ctx.fillText(isBullets ? "•••" : "2x", s.x, s.y + (isBullets ? 1 : 1))
       ctx.textBaseline = "alphabetic"
+      ctx.restore()
+    }
+  }
+
+  drawBullets(camera: Camera, bullets: BulletData[]): void {
+    const ctx = this.ctx
+    for (const b of bullets) {
+      const s = camera.worldToScreen({ x: b.x, y: b.y })
+      if (s.y < -20 || s.y > camera.height + 20) continue
+      ctx.save()
+      const grd = ctx.createRadialGradient(s.x - 1, s.y - 1, 0.5, s.x, s.y, b.radius)
+      grd.addColorStop(0, COLORS.bulletCore)
+      grd.addColorStop(1, COLORS.bullet)
+      ctx.fillStyle = grd
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, b.radius, 0, Math.PI * 2)
+      ctx.fill()
       ctx.restore()
     }
   }
