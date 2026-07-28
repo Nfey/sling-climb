@@ -19,14 +19,22 @@ export const PLATFORM_VERTICAL_GAP_MIN = 70
 export const PLATFORM_VERTICAL_GAP_MAX = 115
 export const PLATFORM_HORIZONTAL_MARGIN = 16
 
-/** Fraction of screen height where the slingshot midline sits. */
-export const SLINGSHOT_SCREEN_FRAC = 0.5
+/** Fraction of screen height from the top where the slingshot sits. */
+export const SLINGSHOT_SCREEN_FRAC = 1 / 3
 
 /**
  * Kill line sits slightly below the slingshot line.
  * Space below is reserved for future powerups/upgrades.
  */
 export const KILL_LINE_OFFSET = 28
+
+export const BONUS_PLATFORM_CHANCE = 0.18
+export const BONUS_PLATFORM_POINTS = 50
+
+export const PORTAL_CHANCE = 0.22
+export const PORTAL_HEIGHT = 96
+export const PORTAL_MIN_GAP = 220
+export const PORTAL_MAX_GAP = 420
 
 export const HIGH_SCORE_KEY = "sling-climb-high-score"
 
@@ -38,6 +46,8 @@ export const COLORS = {
   reservedLine: "rgba(0, 0, 0, 0.12)",
   platform: "#c4a574",
   platformEdge: "#8b6b3f",
+  platformBonus: "#8b5cf6",
+  platformBonusEdge: "#6d28d9",
   ball: "#f0d9a0",
   ballStroke: "#d4b06a",
   slingshot: "#2f6fed",
@@ -48,4 +58,7 @@ export const COLORS = {
   accent: "#2f6fed",
   wall: "rgba(0,0,0,0.03)",
   overlay: "rgba(255, 255, 255, 0.72)",
+  portal: "#12b5a8",
+  portalGlow: "rgba(18, 181, 168, 0.35)",
+  portalCore: "#e6fffb",
 }

@@ -6,7 +6,7 @@ import {
 } from "./constants"
 import type { Ball } from "./Ball"
 import type { Camera } from "./Camera"
-import type { PlatformData, Vec2 } from "./types"
+import type { PlatformData, PortalPair, Vec2 } from "./types"
 import type { Slingshot } from "./Slingshot"
 
 export class Renderer {
@@ -75,14 +75,62 @@ export class Renderer {
       const h = br.y - tl.y
       if (br.y < -20 || tl.y > camera.height + 20) continue
 
-      ctx.fillStyle = COLORS.platform
+      ctx.fillStyle = p.bonus ? COLORS.platformBonus : COLORS.platform
       ctx.beginPath()
       roundRect(ctx, tl.x, tl.y, w, Math.max(PLATFORM_HEIGHT, h), 6)
       ctx.fill()
 
-      ctx.fillStyle = COLORS.platformEdge
+      ctx.fillStyle = p.bonus ? COLORS.platformBonusEdge : COLORS.platformEdge
       ctx.fillRect(tl.x + 4, tl.y + 3, w - 8, 3)
     }
+  }
+
+  drawPortals(camera: Camera, portals: PortalPair[], anim: number): void {
+    const ctx = this.ctx
+    const pulse = 0.55 + Math.sin(anim * 5) * 0.2
+    for (const p of portals) {
+      const top = camera.worldToScreen({ x: 0, y: p.y + p.height })
+      const bottom = camera.worldToScreen({ x: 0, y: p.y })
+      const h = bottom.y - top.y
+      if (bottom.y < -20 || top.y > camera.height + 20) continue
+
+      this.drawPortalPillar(ctx, 0, top.y, 10, h, pulse, true)
+      this.drawPortalPillar(ctx, camera.width - 10, top.y, 10, h, pulse, false)
+    }
+  }
+
+  private drawPortalPillar(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    pulse: number,
+    left: boolean,
+  ): void {
+    ctx.save()
+    ctx.fillStyle = COLORS.portalGlow
+    ctx.globalAlpha = pulse
+    ctx.fillRect(left ? x : x - 6, y - 4, w + 6, h + 8)
+
+    ctx.globalAlpha = 1
+    const grd = ctx.createLinearGradient(x, y, x + w, y)
+    if (left) {
+      grd.addColorStop(0, COLORS.portal)
+      grd.addColorStop(1, COLORS.portalCore)
+    } else {
+      grd.addColorStop(0, COLORS.portalCore)
+      grd.addColorStop(1, COLORS.portal)
+    }
+    ctx.fillStyle = grd
+    ctx.beginPath()
+    roundRect(ctx, x, y, w, h, 8)
+    ctx.fill()
+
+    ctx.strokeStyle = COLORS.portal
+    ctx.lineWidth = 2
+    ctx.stroke()
+    ctx.restore()
   }
 
   drawSlingshot(

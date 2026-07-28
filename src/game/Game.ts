@@ -148,7 +148,15 @@ export class Game {
         this.slingshot.setX(pointer.x, this.camera.width)
       }
 
-      this.ball.update(dt, this.camera.width, this.platforms.platforms)
+      const hit = this.ball.update(
+        dt,
+        this.camera.width,
+        this.platforms.platforms,
+        this.platforms.portals,
+      )
+      if (hit.bonusCollected) {
+        this.score.collectBonus()
+      }
       this.score.observe(this.ball.y)
 
       // Camera / world: slingshot stays mid-screen; as peak climbs, raise slingshot world Y
@@ -202,6 +210,7 @@ export class Game {
     const cam = this.camera
     this.renderer.begin(cam, dt)
     this.renderer.drawPlatforms(cam, this.platforms.platforms)
+    this.renderer.drawPortals(cam, this.platforms.portals, this.anim)
 
     let pouch: Vec2 | null = null
     let trajOrigin: Vec2 | null = null

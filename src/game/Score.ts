@@ -1,9 +1,10 @@
-import { HIGH_SCORE_KEY } from "./constants"
+import { BONUS_PLATFORM_POINTS, HIGH_SCORE_KEY } from "./constants"
 
 export class Score {
   /** Peak world Y reached this run (world Y increases upward). */
   peakHeight = 0
   startHeight = 0
+  bonusPoints = 0
   highScore = 0
 
   constructor() {
@@ -13,15 +14,21 @@ export class Score {
   reset(startY: number): void {
     this.startHeight = startY
     this.peakHeight = startY
+    this.bonusPoints = 0
   }
 
   observe(ballY: number): void {
     if (ballY > this.peakHeight) this.peakHeight = ballY
   }
 
-  /** Integer meters-ish score from climb distance. */
+  collectBonus(): void {
+    this.bonusPoints += BONUS_PLATFORM_POINTS
+  }
+
+  /** Integer meters-ish score from climb distance plus bonuses. */
   get current(): number {
-    return Math.max(0, Math.floor((this.peakHeight - this.startHeight) / 10))
+    const heightScore = Math.max(0, Math.floor((this.peakHeight - this.startHeight) / 10))
+    return heightScore + this.bonusPoints
   }
 
   commitHighScore(): number {

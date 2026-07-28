@@ -20,4 +20,13 @@ export interface PlatformData {
   y: number
   width: number
   height: number
+  /** Purple bonus platform — awards points once, then turns normal. */
+  bonus: boolean
+}
+
+/** Matched left/right wall portals at the same world Y band. */
+export interface PortalPair {
+  /** World Y of the portal band bottom. */
+  y: number
+  height: number
 }

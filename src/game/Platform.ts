@@ -1,12 +1,17 @@
 import {
+  BONUS_PLATFORM_CHANCE,
   PLATFORM_HEIGHT,
   PLATFORM_HORIZONTAL_MARGIN,
   PLATFORM_MAX_WIDTH,
   PLATFORM_MIN_WIDTH,
   PLATFORM_VERTICAL_GAP_MAX,
   PLATFORM_VERTICAL_GAP_MIN,
+  PORTAL_CHANCE,
+  PORTAL_HEIGHT,
+  PORTAL_MAX_GAP,
+  PORTAL_MIN_GAP,
 } from "./constants"
-import type { PlatformData } from "./types"
+import type { PlatformData, PortalPair } from "./types"
 
 function rand(min: number, max: number): number {
   return min + Math.random() * (max - min)
@@ -14,29 +19,35 @@ function rand(min: number, max: number): number {
 
 export class PlatformManager {
   platforms: PlatformData[] = []
+  portals: PortalPair[] = []
   private nextY = 0
+  private nextPortalY = 0
   private worldWidth = 390
 
   reset(worldWidth: number, slingshotY: number): void {
     this.worldWidth = worldWidth
     this.platforms = []
-    // First platform near / just above starting area for an easy first bounce
+    this.portals = []
     this.nextY = slingshotY + 80
+    this.nextPortalY = slingshotY + 280
     this.spawnInitial(slingshotY)
   }
 
   private spawnInitial(slingshotY: number): void {
-    // A starter platform slightly above the slingshot so early shots can land
     this.platforms.push({
       x: this.worldWidth * 0.5 - 50,
       y: slingshotY + 100,
       width: 100,
       height: PLATFORM_HEIGHT,
+      bonus: false,
     })
     this.nextY = slingshotY + 100 + rand(PLATFORM_VERTICAL_GAP_MIN, PLATFORM_VERTICAL_GAP_MAX)
 
     while (this.nextY < slingshotY + 1400) {
       this.spawnOne()
+    }
+    while (this.nextPortalY < slingshotY + 1400) {
+      this.maybeSpawnPortal()
     }
   }
 
@@ -52,18 +63,33 @@ export class PlatformManager {
       y: this.nextY,
       width,
       height: PLATFORM_HEIGHT,
+      bonus: Math.random() < BONUS_PLATFORM_CHANCE,
     })
     this.nextY += rand(PLATFORM_VERTICAL_GAP_MIN, PLATFORM_VERTICAL_GAP_MAX)
   }
 
-  /** Generate platforms ahead of the camera and cull far below. */
+  private maybeSpawnPortal(): void {
+    if (Math.random() < PORTAL_CHANCE) {
+      this.portals.push({
+        y: this.nextPortalY,
+        height: PORTAL_HEIGHT,
+      })
+    }
+    this.nextPortalY += rand(PORTAL_MIN_GAP, PORTAL_MAX_GAP)
+  }
+
+  /** Generate platforms/portals ahead of the camera and cull far below. */
   update(cameraY: number, viewHeight: number): void {
     const topNeeded = cameraY + viewHeight * 1.5
     while (this.nextY < topNeeded) {
       this.spawnOne()
     }
+    while (this.nextPortalY < topNeeded) {
+      this.maybeSpawnPortal()
+    }
 
     const cullBelow = cameraY - viewHeight
     this.platforms = this.platforms.filter((p) => p.y + p.height > cullBelow)
+    this.portals = this.portals.filter((p) => p.y + p.height > cullBelow)
   }
 }
