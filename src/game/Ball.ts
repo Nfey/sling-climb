@@ -120,7 +120,7 @@ export class Ball {
       now.add(i)
       if (!this.arrowOverlaps.has(i)) {
         const dir = DIR_VECTORS[pad.dir]
-        this.vx = dir.x * ARROW_PAD_SPEED
+        this.vx = dir.x * ARROW_PAD_SPEED * 0.5
         this.vy = dir.y * ARROW_PAD_SPEED
         this.squash = 0.75
       }
