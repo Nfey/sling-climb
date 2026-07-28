@@ -86,7 +86,6 @@ export class Game {
   private update(dt: number): void {
     const pointer = this.input.pointer
     const justPressed = pointer.down && !this.wasPointerDown
-    const justReleased = !pointer.down && this.wasPointerDown
 
     if (this.state === "gameOver") {
       if (justPressed) {
@@ -102,23 +101,10 @@ export class Game {
       this.ball.x = this.slingshot.x
       this.ball.y = this.slingshot.y
 
-      if (this.state === "ready" || this.state === "catchPending") {
+      if (this.state === "ready") {
         if (pointer.down) {
-          const origin = this.input.aimOrigin()
-          if (
-            this.slingshot.pastAimDeadzone(
-              pointer.x,
-              pointer.y,
-              origin.x,
-              origin.y,
-            )
-          ) {
-            this.state = "aiming"
-            this.started = true
-          }
-        } else if (justReleased && this.state === "catchPending") {
-          // Caught but released without aiming — stay ready at this spot
-          this.state = "ready"
+          this.state = "aiming"
+          this.started = true
         }
       }
 
@@ -176,8 +162,9 @@ export class Game {
       ) {
         this.ball.catchAt(this.slingshot.x, this.slingshot.y)
         this.slingshot.frozen = true
-        this.input.markCatchAnchor()
-        this.state = "catchPending"
+        // Stay aiming while the finger is held — no deadzone required
+        this.state = "aiming"
+        this.started = true
       }
 
       // Game over only when falling past the kill line (not while launching upward
@@ -264,7 +251,6 @@ export class Game {
     if (this.state === "gameOver") return null
     if (!this.started) return "Hold & drag to aim · release to fire"
     if (this.state === "flying") return "Hold to move · catch the ball"
-    if (this.state === "catchPending") return "Drag a little to aim"
     if (this.state === "aiming") return "Release to launch"
     if (this.state === "ready") return "Drag to aim"
     return null

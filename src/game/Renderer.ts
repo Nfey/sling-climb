@@ -31,16 +31,12 @@ export class Renderer {
   private drawBackground(camera: Camera): void {
     const ctx = this.ctx
     const { width, height } = camera
-    const g = ctx.createLinearGradient(0, 0, 0, height)
-    g.addColorStop(0, COLORS.skyTop)
-    g.addColorStop(0.45, COLORS.skyMid)
-    g.addColorStop(1, COLORS.skyBottom)
-    ctx.fillStyle = g
+    ctx.fillStyle = COLORS.skyTop
     ctx.fillRect(0, 0, width, height)
 
-    // Soft vertical hash for atmosphere / depth
+    // Soft hash for a bit of depth on white
     ctx.save()
-    ctx.globalAlpha = 0.06
+    ctx.globalAlpha = 0.04
     ctx.strokeStyle = COLORS.ink
     ctx.lineWidth = 1
     const offset = (this.time * 12 + camera.y * 0.15) % 28
@@ -258,7 +254,7 @@ export class Renderer {
     const { width } = camera
     const cy = camera.slingshotScreenY - 40
 
-    ctx.fillStyle = "rgba(10, 16, 14, 0.55)"
+    ctx.fillStyle = COLORS.overlay
     ctx.fillRect(0, 0, width, camera.killScreenY)
 
     ctx.textAlign = "center"

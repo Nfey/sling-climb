@@ -10,11 +10,6 @@ export class Input {
     id: null,
   }
 
-  /** Set when a catch happens mid-hold so aiming uses a fresh deadzone origin. */
-  catchAnchorX = 0
-  catchAnchorY = 0
-  hasCatchAnchor = false
-
   private canvas: HTMLCanvasElement
 
   constructor(canvas: HTMLCanvasElement) {
@@ -39,7 +34,6 @@ export class Input {
           startY: y,
           id: e.pointerId,
         }
-        this.hasCatchAnchor = false
         e.preventDefault()
       },
       { passive: false },
@@ -64,25 +58,11 @@ export class Input {
       this.pointer.y = y
       this.pointer.down = false
       this.pointer.id = null
-      this.hasCatchAnchor = false
       e.preventDefault()
     }
 
     el.addEventListener("pointerup", end, { passive: false })
     el.addEventListener("pointercancel", end, { passive: false })
-  }
-
-  markCatchAnchor(): void {
-    this.catchAnchorX = this.pointer.x
-    this.catchAnchorY = this.pointer.y
-    this.hasCatchAnchor = true
-  }
-
-  aimOrigin(): { x: number; y: number } {
-    if (this.hasCatchAnchor) {
-      return { x: this.catchAnchorX, y: this.catchAnchorY }
-    }
-    return { x: this.pointer.startX, y: this.pointer.startY }
   }
 
   /**

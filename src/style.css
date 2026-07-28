@@ -1,8 +1,8 @@
 :root {
-  --bg-deep: #14241f;
-  --bg-mid: #1a2f28;
-  --ink: #f2efe6;
-  --accent: #e8a54b;
+  --bg-deep: #ffffff;
+  --bg-mid: #ffffff;
+  --ink: #111111;
+  --accent: #2f6fed;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }

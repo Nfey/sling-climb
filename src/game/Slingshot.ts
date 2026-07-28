@@ -1,5 +1,4 @@
 import {
-  AIM_DEADZONE,
   LAUNCH_POWER,
   MAX_PULL,
   SLINGSHOT_CATCH_RADIUS,
@@ -64,12 +63,6 @@ export class Slingshot {
       x: -pull.x * LAUNCH_POWER,
       y: -pull.y * LAUNCH_POWER,
     }
-  }
-
-  pastAimDeadzone(pointerX: number, pointerY: number, startX: number, startY: number): boolean {
-    const dx = pointerX - startX
-    const dy = pointerY - startY
-    return dx * dx + dy * dy >= AIM_DEADZONE * AIM_DEADZONE
   }
 
   get leftFork(): Vec2 {

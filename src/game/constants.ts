@@ -8,9 +8,6 @@ export const SLINGSHOT_CATCH_RADIUS = 36
 export const SLINGSHOT_FORK_WIDTH = 44
 export const SLINGSHOT_FORK_HEIGHT = 52
 
-/** Pixels of finger movement required before aiming starts after a catch/load. */
-export const AIM_DEADZONE = 10
-
 export const MAX_PULL = 140
 /** ~1/4 of the previous 34.5 launch multiplier. */
 export const LAUNCH_POWER = 8.625
@@ -34,20 +31,21 @@ export const KILL_LINE_OFFSET = 28
 export const HIGH_SCORE_KEY = "sling-climb-high-score"
 
 export const COLORS = {
-  skyTop: "#2d5a4a",
-  skyMid: "#1a2f28",
-  skyBottom: "#0f1a16",
-  reserved: "rgba(8, 14, 12, 0.55)",
-  reservedLine: "rgba(242, 239, 230, 0.12)",
+  skyTop: "#ffffff",
+  skyMid: "#ffffff",
+  skyBottom: "#ffffff",
+  reserved: "rgba(0, 0, 0, 0.04)",
+  reservedLine: "rgba(0, 0, 0, 0.12)",
   platform: "#c4a574",
   platformEdge: "#8b6b3f",
   ball: "#f0d9a0",
   ballStroke: "#d4b06a",
-  slingshot: "#5c4030",
-  band: "#e07a5f",
-  trajectory: "rgba(232, 165, 75, 0.85)",
-  ink: "#f2efe6",
-  inkDim: "rgba(242, 239, 230, 0.65)",
-  accent: "#e8a54b",
-  wall: "rgba(255,255,255,0.04)",
+  slingshot: "#2f6fed",
+  band: "#1d4fbf",
+  trajectory: "rgba(47, 111, 237, 0.75)",
+  ink: "#111111",
+  inkDim: "rgba(17, 17, 17, 0.55)",
+  accent: "#2f6fed",
+  wall: "rgba(0,0,0,0.03)",
+  overlay: "rgba(255, 255, 255, 0.72)",
 }

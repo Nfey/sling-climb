@@ -4,7 +4,6 @@ export type GameState =
   | "ready"
   | "aiming"
   | "flying"
-  | "catchPending"
   | "gameOver"
 
 export interface PointerState {
