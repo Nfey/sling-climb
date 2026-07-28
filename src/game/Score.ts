@@ -21,8 +21,8 @@ export class Score {
     if (ballY > this.peakHeight) this.peakHeight = ballY
   }
 
-  collectBonus(): void {
-    this.bonusPoints += BONUS_PLATFORM_POINTS
+  collectBonus(amount = BONUS_PLATFORM_POINTS): void {
+    this.bonusPoints += amount
   }
 
   /** Integer meters-ish score from climb distance plus bonuses. */

@@ -17,8 +17,12 @@ import type {
 } from "./types"
 
 export interface BallUpdateResult {
+  /** Player ball landed on a purple bonus platform. */
   bonusCollected: boolean
+  /** Player ball collected a 2x pickup. */
   upgradeCollected: boolean
+  /** Any platform landing this frame (used by purple bonus balls). */
+  platformHit: boolean
 }
 
 /** Unit vectors for 8 cardinal dirs in world space (Y up). */
@@ -40,6 +44,8 @@ export class Ball {
   vy = 0
   radius = BALL_RADIUS
   inSlingshot = true
+  /** Purple secondary ball from a 2x pickup — scores on platforms, ignores kill line. */
+  isBonus = false
   /** Brief squash after launch / bounce for juice. */
   squash = 0
   /** Arrow pads currently overlapped — launch only on enter. */
@@ -51,7 +57,20 @@ export class Ball {
     this.vx = 0
     this.vy = 0
     this.inSlingshot = true
+    this.isBonus = false
     this.squash = 0
+    this.arrowOverlaps.clear()
+  }
+
+  /** Spawn as a flying purple bonus ball. */
+  spawnBonus(x: number, y: number, vx: number, vy: number): void {
+    this.x = x
+    this.y = y
+    this.vx = vx
+    this.vy = vy
+    this.inSlingshot = false
+    this.isBonus = true
+    this.squash = 1
     this.arrowOverlaps.clear()
   }
 
@@ -144,6 +163,7 @@ export class Ball {
     const result: BallUpdateResult = {
       bonusCollected: false,
       upgradeCollected: false,
+      platformHit: false,
     }
     if (this.inSlingshot) {
       this.squash = Math.max(0, this.squash - dt * 3)
@@ -184,13 +204,15 @@ export class Ball {
     this.collideBumpers(bumpers)
     this.collideArrowPads(arrowPads)
 
-    // Pass-through upgrade pickups
-    for (let i = upgrades.length - 1; i >= 0; i--) {
-      const u = upgrades[i]!
-      const dist = Math.hypot(this.x - u.x, this.y - u.y)
-      if (dist < this.radius + u.radius) {
-        upgrades.splice(i, 1)
-        result.upgradeCollected = true
+    // Only the player ball collects 2x pickups
+    if (!this.isBonus) {
+      for (let i = upgrades.length - 1; i >= 0; i--) {
+        const u = upgrades[i]!
+        const dist = Math.hypot(this.x - u.x, this.y - u.y)
+        if (dist < this.radius + u.radius) {
+          upgrades.splice(i, 1)
+          result.upgradeCollected = true
+        }
       }
     }
 
@@ -214,7 +236,8 @@ export class Ball {
           this.y = top + this.radius
           this.vy = PLATFORM_BOOST
           this.squash = 0.85
-          if (p.bonus) {
+          result.platformHit = true
+          if (!this.isBonus && p.bonus) {
             p.bonus = false
             result.bonusCollected = true
           }

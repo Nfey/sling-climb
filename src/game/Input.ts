@@ -1,7 +1,7 @@
 import type { PointerState } from "./types"
 
 /**
- * Multi-touch pointer tracker. Supports simultaneous fingers for dual slingshots.
+ * Multi-touch pointer tracker (single-finger control used by gameplay).
  */
 export class Input {
   /** Active pointers keyed by pointerId. */

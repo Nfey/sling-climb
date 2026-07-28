@@ -54,19 +54,10 @@ export interface ArrowPadData {
   dir: CardinalDir
 }
 
-/** Pass-through collectible that fills the upgrades panel. */
+/** Pass-through collectible that spawns a purple bonus ball. */
 export interface UpgradePickupData {
   x: number
   y: number
   radius: number
-  /** Currently only dual slingshot ("2x"). */
   kind: "dual"
-}
-
-export type UpgradeKind = "dual"
-
-export interface UpgradePanelSlot {
-  kind: UpgradeKind
-  label: string
-  count: number
 }

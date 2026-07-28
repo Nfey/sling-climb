@@ -30,6 +30,8 @@ export const KILL_LINE_OFFSET = 28
 
 export const BONUS_PLATFORM_CHANCE = 0.18
 export const BONUS_PLATFORM_POINTS = 50
+/** Points awarded when a purple 2x ball lands on any platform. */
+export const PURPLE_BALL_PLATFORM_POINTS = 100
 
 export const PORTAL_CHANCE = 0.22
 export const PORTAL_HEIGHT = 96
@@ -58,8 +60,6 @@ export const UPGRADE_PICKUP_CHANCE = 0.16
 export const UPGRADE_PICKUP_RADIUS = 22
 export const UPGRADE_PICKUP_MIN_GAP = 280
 export const UPGRADE_PICKUP_MAX_GAP = 520
-/** Dual-slingshot upgrade duration after tapping 2x in the panel. */
-export const DUAL_SLING_DURATION = 30
 
 export const HIGH_SCORE_KEY = "sling-climb-high-score"
 
@@ -75,10 +75,10 @@ export const COLORS = {
   platformBonusEdge: "#6d28d9",
   ball: "#f0d9a0",
   ballStroke: "#d4b06a",
+  ballPurple: "#c4b5fd",
+  ballPurpleStroke: "#7c3aed",
   slingshot: "#2f6fed",
-  slingshotAlt: "#7c3aed",
   band: "#1d4fbf",
-  bandAlt: "#5b21b6",
   trajectory: "rgba(47, 111, 237, 0.75)",
   ink: "#111111",
   inkDim: "rgba(17, 17, 17, 0.55)",
@@ -95,9 +95,6 @@ export const COLORS = {
   arrowPadRim: "#b45309",
   arrowPadCore: "#fef3c7",
   arrow: "#7c2d12",
-  upgradePickup: "#2563eb",
-  upgradePickupCore: "#dbeafe",
-  upgradeSlot: "#eff6ff",
-  upgradeSlotBorder: "#2563eb",
-  upgradeSlotActive: "#dbeafe",
+  upgradePickup: "#7c3aed",
+  upgradePickupCore: "#ede9fe",
 }

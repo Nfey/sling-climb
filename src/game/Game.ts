@@ -1,21 +1,18 @@
-import { DUAL_SLING_DURATION } from "./constants"
 import { Ball } from "./Ball"
 import { Camera } from "./Camera"
+import { PURPLE_BALL_PLATFORM_POINTS } from "./constants"
 import { Input } from "./Input"
 import { PlatformManager } from "./Platform"
 import { Renderer } from "./Renderer"
 import { Score } from "./Score"
 import { Slingshot } from "./Slingshot"
-import type { GameState, PointerState, Vec2 } from "./types"
-
-type SlingIndex = 0 | 1
+import type { GameState, Vec2 } from "./types"
 
 export class Game {
   private camera = new Camera()
   private ball = new Ball()
-  private slingshots: [Slingshot, Slingshot] = [new Slingshot(), new Slingshot()]
-  /** Which slingshot currently holds the ball (-1 if flying). */
-  private loadedSling: SlingIndex | -1 = 0
+  private bonusBalls: Ball[] = []
+  private slingshot = new Slingshot()
   private platforms = new PlatformManager()
   private score = new Score()
   private input: Input
@@ -28,13 +25,8 @@ export class Game {
   private elapsed = 0
   private lastTime = 0
   private running = false
-
-  /** Collected 2x upgrades waiting in the panel. */
-  private dualInventory = 0
-  /** Seconds remaining of dual-slingshot mode (0 = inactive). */
-  private dualRemaining = 0
-  /** pointerId → slingshot index while that finger controls it. */
-  private pointerSling = new Map<number, SlingIndex>()
+  private lastAimPull: Vec2 | null = null
+  private aimPointerId: number | null = null
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -52,20 +44,13 @@ export class Game {
     requestAnimationFrame((t) => this.frame(t))
   }
 
-  private get primary(): Slingshot {
-    return this.slingshots[0]
-  }
-
-  private get secondary(): Slingshot {
-    return this.slingshots[1]
-  }
-
-  private dualActive(): boolean {
-    return this.dualRemaining > 0
-  }
-
-  private activeSlings(): Slingshot[] {
-    return this.dualActive() ? [...this.slingshots] : [this.primary]
+  private primaryPointer() {
+    const all = this.input.activePointers()
+    if (this.aimPointerId != null) {
+      const kept = this.input.getPointer(this.aimPointerId)
+      if (kept) return kept
+    }
+    return all[0] ?? null
   }
 
   private resize(): void {
@@ -79,30 +64,26 @@ export class Game {
     this.camera.resize(width, height, dpr)
 
     if (!this.started) {
-      this.primary.x = width * 0.5
-      this.primary.y = 0
-      this.secondary.x = width * 0.35
-      this.secondary.y = 0
-      this.ball.reset(this.primary.x, this.primary.y)
+      this.slingshot.x = width * 0.5
+      this.slingshot.y = 0
+      this.ball.reset(this.slingshot.x, this.slingshot.y)
     }
-    this.camera.followSlingshot(this.primary.y)
+    this.camera.followSlingshot(this.slingshot.y)
   }
 
   private resetRun(): void {
     const width = this.camera.width
-    this.primary.reset(width * 0.5, 0)
-    this.secondary.reset(width * 0.35, 0)
-    this.loadedSling = 0
-    this.ball.reset(this.primary.x, this.primary.y)
-    this.platforms.reset(width, this.primary.y)
-    this.score.reset(this.primary.y)
-    this.camera.followSlingshot(this.primary.y)
+    this.slingshot.reset(width * 0.5, 0)
+    this.ball.reset(this.slingshot.x, this.slingshot.y)
+    this.bonusBalls = []
+    this.platforms.reset(width, this.slingshot.y)
+    this.score.reset(this.slingshot.y)
+    this.camera.followSlingshot(this.slingshot.y)
     this.state = "ready"
     this.started = false
     this.elapsed = 0
-    this.dualInventory = 0
-    this.dualRemaining = 0
-    this.pointerSling.clear()
+    this.lastAimPull = null
+    this.aimPointerId = null
   }
 
   private frame(now: number): void {
@@ -120,197 +101,100 @@ export class Game {
     requestAnimationFrame((t) => this.frame(t))
   }
 
-  private upgradeSlotRect(): { x: number; y: number; w: number; h: number } {
-    const killY = this.camera.killScreenY
-    const w = 72
-    const h = 56
-    return {
-      x: this.camera.width / 2 - w / 2,
-      y: killY + 36,
-      w,
-      h,
-    }
-  }
-
-  private hitUpgradeSlot(x: number, y: number): boolean {
-    const r = this.upgradeSlotRect()
-    return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h
-  }
-
-  private assignPointerToNearestSling(p: PointerState): void {
-    const slings = this.activeSlings()
-    let best: SlingIndex = 0
-    let bestDist = Infinity
-    for (let i = 0; i < slings.length; i++) {
-      const idx = i as SlingIndex
-      // Prefer unassigned slingshots
-      const taken = [...this.pointerSling.values()].includes(idx)
-      const screen = this.camera.worldToScreen({ x: slings[i]!.x, y: slings[i]!.y })
-      const dist = Math.hypot(p.x - screen.x, p.y - screen.y) + (taken ? 1000 : 0)
-      if (dist < bestDist) {
-        bestDist = dist
-        best = idx
-      }
-    }
-    this.pointerSling.set(p.id, best)
-  }
-
-  private pointerForSling(idx: SlingIndex): PointerState | null {
-    for (const [id, slingIdx] of this.pointerSling) {
-      if (slingIdx === idx) {
-        return this.input.getPointer(id) ?? null
-      }
-    }
-    return null
+  private spawnPurpleBall(): void {
+    const b = new Ball()
+    const angle = (Math.random() - 0.5) * 0.8
+    const speed = 700
+    b.spawnBonus(
+      this.ball.x,
+      this.ball.y + 8,
+      Math.sin(angle) * speed * 0.45 + this.ball.vx * 0.25,
+      Math.max(500, Math.abs(this.ball.vy) * 0.35 + speed * 0.55),
+    )
+    this.bonusBalls.push(b)
   }
 
   private update(dt: number): void {
-    if (this.dualRemaining > 0) {
-      this.dualRemaining = Math.max(0, this.dualRemaining - dt)
-      if (this.dualRemaining === 0) {
-        // Drop secondary assignments when dual expires
-        for (const [id, idx] of [...this.pointerSling]) {
-          if (idx === 1) this.pointerSling.delete(id)
-        }
-        if (this.loadedSling === 1 && this.ball.inSlingshot) {
-          // Transfer ball to primary if dual ends while loaded in secondary
-          this.loadedSling = 0
-          this.ball.x = this.primary.x
-          this.ball.y = this.primary.y
-        }
-      }
-    }
-
-    // Keep secondary on the same world Y as primary (shared horizontal line)
-    this.secondary.y = this.primary.y
-
     const presses = this.input.consumePresses()
     const releases = this.input.consumeReleases()
 
-    for (const id of releases) {
-      this.pointerSling.delete(id)
+    if (this.aimPointerId != null && releases.includes(this.aimPointerId)) {
+      // handled below in aiming
     }
 
     if (this.state === "gameOver") {
-      for (const p of presses) {
-        if (p.y < this.camera.killScreenY) {
-          this.resetRun()
-          break
-        }
+      if (presses.some((p) => p.y < this.camera.killScreenY)) {
+        this.resetRun()
       }
       return
     }
 
-    // Handle new presses: upgrade panel first, then slingshot control
+    // Bind a play-area press to aiming / moving
     for (const p of presses) {
-      if (this.hitUpgradeSlot(p.x, p.y)) {
-        if (this.dualInventory > 0 && this.dualRemaining <= 0) {
-          this.dualInventory -= 1
-          this.dualRemaining = DUAL_SLING_DURATION
-          // Place secondary near primary if just activated
-          this.secondary.x = Math.max(
-            40,
-            Math.min(this.camera.width - 40, this.primary.x - 80),
-          )
-          this.secondary.y = this.primary.y
-        }
-        continue
-      }
-      // Ignore presses deep in the reserved panel for gameplay
       if (p.y >= this.camera.killScreenY) continue
-      this.assignPointerToNearestSling(p)
+      if (this.aimPointerId == null) this.aimPointerId = p.id
+    }
+    for (const id of releases) {
+      if (id === this.aimPointerId) {
+        // release handled in state machine via missing pointer
+      }
     }
 
-    // --- Ball in a slingshot: aim / fire ---
+    const pointer = this.primaryPointer()
+
     if (this.ball.inSlingshot) {
-      const holderIdx: SlingIndex = this.loadedSling === 1 && this.dualActive() ? 1 : 0
-      this.loadedSling = holderIdx
-      const holder = this.slingshots[holderIdx]
-      holder.frozen = true
-      this.ball.x = holder.x
-      this.ball.y = holder.y
-
-      // Other slingshot can still be dragged while aiming
-      for (const sling of this.activeSlings()) {
-        if (sling === holder) continue
-        sling.frozen = false
-        const ctrl = this.pointerForSling(sling === this.primary ? 0 : 1)
-        if (ctrl) sling.setX(ctrl.x, this.camera.width)
-      }
-
-      const aimPtr = this.pointerForSling(holderIdx)
+      this.slingshot.frozen = true
+      this.ball.x = this.slingshot.x
+      this.ball.y = this.slingshot.y
 
       if (this.state === "ready") {
-        if (aimPtr) {
+        if (pointer && pointer.y < this.camera.killScreenY) {
           this.state = "aiming"
           this.started = true
-        } else {
-          // Any play-area pointer on the loaded sling starts aiming
-          for (const p of this.input.activePointers()) {
-            if (p.y >= this.camera.killScreenY) continue
-            if (!this.pointerSling.has(p.id)) this.assignPointerToNearestSling(p)
-            if (this.pointerSling.get(p.id) === holderIdx) {
-              this.state = "aiming"
-              this.started = true
-              break
-            }
-          }
+          this.aimPointerId = pointer.id
         }
       }
 
       if (this.state === "aiming") {
-        const ptr = this.pointerForSling(holderIdx)
+        const ptr =
+          this.aimPointerId != null
+            ? this.input.getPointer(this.aimPointerId)
+            : pointer
+
         if (!ptr) {
-          // Released the aiming finger — fire or cancel
-          // Use last known position from release: if no pointer, treat as release at rest
-          // We need release position — check if we just released this sling's pointer
-          // Fall back: cancel weak shot by checking stretch
-          if (holder.stretch > 0.08) {
-            // Reconstruct from stretch is hard; fire upward-ish from last stretch stored pull
-            // Instead store last pull on the slingshot during aim
-            const last = this.lastAimPull
-            if (last && Math.hypot(last.x, last.y) > 8) {
-              const vel = holder.launchVelocity(last)
-              this.ball.x = holder.x
-              this.ball.y = holder.y
-              this.ball.launch(vel)
-              this.state = "flying"
-              this.loadedSling = -1
-              holder.frozen = false
-              holder.stretch = 0
-              this.lastAimPull = null
-            } else {
-              this.state = "ready"
-              holder.stretch = 0
-              this.lastAimPull = null
-            }
+          if (this.lastAimPull && Math.hypot(this.lastAimPull.x, this.lastAimPull.y) > 8) {
+            const vel = this.slingshot.launchVelocity(this.lastAimPull)
+            this.ball.x = this.slingshot.x
+            this.ball.y = this.slingshot.y
+            this.ball.launch(vel)
+            this.state = "flying"
+            this.slingshot.frozen = false
+            this.slingshot.stretch = 0
           } else {
             this.state = "ready"
-            holder.stretch = 0
-            this.lastAimPull = null
+            this.slingshot.stretch = 0
           }
+          this.lastAimPull = null
+          this.aimPointerId = null
         } else {
-          const { pull, power } = holder.getPull(
+          const { pull, power } = this.slingshot.getPull(
             ptr.x,
             ptr.y,
             (sx, sy) => this.camera.screenToWorld(sx, sy),
           )
-          holder.stretch = power
+          this.slingshot.stretch = power
           this.lastAimPull = pull
         }
       }
     } else {
-      // Flying: each finger moves its assigned slingshot
       this.state = "flying"
-      this.loadedSling = -1
-      for (const sling of this.activeSlings()) {
-        sling.frozen = false
-      }
+      this.slingshot.frozen = false
 
-      for (const [id, idx] of this.pointerSling) {
-        if (!this.dualActive() && idx === 1) continue
-        const ptr = this.input.getPointer(id)
-        if (ptr) this.slingshots[idx].setX(ptr.x, this.camera.width)
+      if (pointer && pointer.y < this.camera.killScreenY) {
+        this.slingshot.setX(pointer.x, this.camera.width)
+        this.aimPointerId = pointer.id
+      } else if (!pointer) {
+        this.aimPointerId = null
       }
 
       const hit = this.ball.update(
@@ -323,28 +207,23 @@ export class Game {
         this.platforms.upgrades,
       )
       if (hit.bonusCollected) this.score.collectBonus()
-      if (hit.upgradeCollected) this.dualInventory += 1
+      if (hit.upgradeCollected) this.spawnPurpleBall()
       this.score.observe(this.ball.y)
 
       this.advanceWorld()
-      this.secondary.y = this.primary.y
 
-      // Catch with a held slingshot
-      if (this.ball.vy <= 0) {
-        for (let i = 0; i < this.activeSlings().length; i++) {
-          const idx = i as SlingIndex
-          const sling = this.slingshots[idx]
-          const ctrl = this.pointerForSling(idx)
-          if (ctrl && sling.canCatch(this.ball.x, this.ball.y)) {
-            this.ball.catchAt(sling.x, sling.y)
-            sling.frozen = true
-            this.loadedSling = idx
-            this.state = "aiming"
-            this.started = true
-            this.lastAimPull = null
-            break
-          }
-        }
+      if (
+        pointer &&
+        pointer.y < this.camera.killScreenY &&
+        this.ball.vy <= 0 &&
+        this.slingshot.canCatch(this.ball.x, this.ball.y)
+      ) {
+        this.ball.catchAt(this.slingshot.x, this.slingshot.y)
+        this.slingshot.frozen = true
+        this.state = "aiming"
+        this.started = true
+        this.lastAimPull = null
+        this.aimPointerId = pointer.id
       }
 
       if (
@@ -354,22 +233,39 @@ export class Game {
       ) {
         this.score.commitHighScore()
         this.state = "gameOver"
-        this.dualRemaining = 0
+      }
+    }
+
+    // Update purple bonus balls (no game-over on kill line)
+    const killY = this.camera.killWorldY
+    for (let i = this.bonusBalls.length - 1; i >= 0; i--) {
+      const b = this.bonusBalls[i]!
+      const hit = b.update(
+        dt,
+        this.camera.width,
+        this.platforms.platforms,
+        this.platforms.portals,
+        this.platforms.bumpers,
+        this.platforms.arrowPads,
+        this.platforms.upgrades,
+      )
+      if (hit.platformHit) {
+        this.score.collectBonus(PURPLE_BALL_PLATFORM_POINTS)
+      }
+      // Despawn far below for cleanup only — does not end the run
+      if (b.y < killY - this.camera.height) {
+        this.bonusBalls.splice(i, 1)
       }
     }
 
     this.platforms.update(this.camera.y, this.camera.height, this.camera.killWorldY)
-    this.camera.followSlingshot(this.primary.y)
+    this.camera.followSlingshot(this.slingshot.y)
   }
-
-  /** Last aim pull while dragging, used to fire on release. */
-  private lastAimPull: Vec2 | null = null
 
   private advanceWorld(): void {
     const maxAbove = this.camera.height * 0.32
-    if (this.ball.y > this.primary.y + maxAbove) {
-      this.primary.y = this.ball.y - maxAbove
-      this.secondary.y = this.primary.y
+    if (this.ball.y > this.slingshot.y + maxAbove) {
+      this.slingshot.y = this.ball.y - maxAbove
     }
   }
 
@@ -382,93 +278,55 @@ export class Game {
     this.renderer.drawUpgradePickups(cam, this.platforms.upgrades, this.anim)
     this.renderer.drawPortals(cam, this.platforms.portals, this.anim)
 
-    const holderIdx: SlingIndex | -1 = this.ball.inSlingshot
-      ? this.loadedSling === 1 && this.dualActive()
-        ? 1
-        : 0
-      : -1
-
-    // Draw secondary first (under), then primary
-    if (this.dualActive()) {
-      let pouch2: Vec2 | null = null
-      if (holderIdx === 1 && this.state === "aiming") {
-        const ptr = this.pointerForSling(1)
-        if (ptr) {
-          const { pull } = this.secondary.getPull(
-            ptr.x,
-            ptr.y,
-            (sx, sy) => this.camera.screenToWorld(sx, sy),
-          )
-          pouch2 = Renderer.pouchFromPull(this.secondary, pull)
-          this.ball.x = pouch2.x
-          this.ball.y = pouch2.y
-        }
-      }
-      const pulse2 =
-        !this.ball.inSlingshot && this.pointerForSling(1)
-          ? 0.55 + Math.sin(this.anim * 6) * 0.25
-          : this.loadedSling === 1
-            ? 0.35 + Math.sin(this.anim * 3) * 0.1
-            : 0.2
-      this.renderer.drawSlingshot(cam, this.secondary, pouch2, pulse2, true)
-      if (holderIdx === 1 && pouch2 && this.lastAimPull) {
-        this.renderer.drawTrajectory(
-          cam,
-          { x: this.secondary.x, y: this.secondary.y },
-          this.secondary.launchVelocity(this.lastAimPull),
-        )
-      }
-    }
-
     let pouch: Vec2 | null = null
     let trajOrigin: Vec2 | null = null
     let trajVel: Vec2 | null = null
-    if (holderIdx === 0 && this.state === "aiming") {
-      const ptr = this.pointerForSling(0)
+
+    if (this.state === "aiming") {
+      const ptr =
+        this.aimPointerId != null
+          ? this.input.getPointer(this.aimPointerId)
+          : this.primaryPointer()
       if (ptr) {
-        const { pull } = this.primary.getPull(
+        const { pull } = this.slingshot.getPull(
           ptr.x,
           ptr.y,
           (sx, sy) => this.camera.screenToWorld(sx, sy),
         )
-        pouch = Renderer.pouchFromPull(this.primary, pull)
+        pouch = Renderer.pouchFromPull(this.slingshot, pull)
         this.ball.x = pouch.x
         this.ball.y = pouch.y
-        trajOrigin = { x: this.primary.x, y: this.primary.y }
-        trajVel = this.primary.launchVelocity(pull)
-      } else if (this.lastAimPull) {
-        trajOrigin = { x: this.primary.x, y: this.primary.y }
-        trajVel = this.primary.launchVelocity(this.lastAimPull)
+        trajOrigin = { x: this.slingshot.x, y: this.slingshot.y }
+        trajVel = this.slingshot.launchVelocity(pull)
       }
     }
 
+    const holding =
+      this.primaryPointer() != null &&
+      (this.primaryPointer()?.y ?? 0) < this.camera.killScreenY
     const pulse =
-      !this.ball.inSlingshot && this.pointerForSling(0)
+      !this.ball.inSlingshot && holding
         ? 0.55 + Math.sin(this.anim * 6) * 0.25
-        : this.ball.inSlingshot && holderIdx === 0
+        : this.ball.inSlingshot
           ? 0.35 + Math.sin(this.anim * 3) * 0.1
           : 0
 
-    this.renderer.drawSlingshot(cam, this.primary, pouch, pulse, false)
+    this.renderer.drawSlingshot(cam, this.slingshot, pouch, pulse, false)
 
     if (trajOrigin && trajVel) {
       this.renderer.drawTrajectory(cam, trajOrigin, trajVel)
     }
 
+    for (const b of this.bonusBalls) {
+      this.renderer.drawBall(cam, b)
+    }
     this.renderer.drawBall(cam, this.ball)
 
     if (!this.started && this.state === "ready") {
       this.renderer.drawTitle(cam)
     }
 
-    const tip = this.tipForState()
-    this.renderer.drawHud(cam, this.score.current, this.elapsed, tip)
-    this.renderer.drawUpgradePanel(
-      cam,
-      this.upgradeSlotRect(),
-      this.dualInventory,
-      this.dualRemaining,
-    )
+    this.renderer.drawHud(cam, this.score.current, this.elapsed, this.tipForState())
 
     if (this.state === "gameOver") {
       this.renderer.drawGameOver(cam, this.score.current, this.score.highScore)
@@ -478,11 +336,7 @@ export class Game {
   private tipForState(): string | null {
     if (this.state === "gameOver") return null
     if (!this.started) return "Hold & drag to aim · release to fire"
-    if (this.state === "flying") {
-      return this.dualActive()
-        ? "Two fingers · catch with either slingshot"
-        : "Hold to move · catch the ball"
-    }
+    if (this.state === "flying") return "Hold to move · catch the ball"
     if (this.state === "aiming") return "Release to launch"
     if (this.state === "ready") return "Drag to aim"
     return null
