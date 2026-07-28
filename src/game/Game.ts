@@ -3,6 +3,7 @@ import { Camera } from "./Camera"
 import {
   BULLET_FIRE_INTERVAL,
   BULLET_LIFETIME,
+  BULLET_MAX_WALL_HITS,
   BULLET_POWER_DURATION,
   BULLET_PUSH,
   BULLET_RADIUS,
@@ -304,6 +305,7 @@ export class Game {
       vy: left.y * BULLET_SPEED,
       radius: BULLET_RADIUS,
       life: BULLET_LIFETIME,
+      wallHits: 0,
     })
     this.bullets.push({
       x: rightFork.x,
@@ -312,6 +314,7 @@ export class Game {
       vy: right.y * BULLET_SPEED,
       radius: BULLET_RADIUS,
       life: BULLET_LIFETIME,
+      wallHits: 0,
     })
   }
 
@@ -349,9 +352,11 @@ export class Game {
       if (b.x - b.radius < 0) {
         b.x = b.radius
         b.vx = Math.abs(b.vx) * BULLET_WALL_BOUNCE
+        b.wallHits += 1
       } else if (b.x + b.radius > width) {
         b.x = width - b.radius
         b.vx = -Math.abs(b.vx) * BULLET_WALL_BOUNCE
+        b.wallHits += 1
       }
 
       let hitSomething = false
@@ -373,7 +378,12 @@ export class Game {
         }
       }
 
-      if (hitSomething || b.life <= 0 || b.y < killY - 40) {
+      if (
+        hitSomething ||
+        b.life <= 0 ||
+        b.wallHits >= BULLET_MAX_WALL_HITS ||
+        b.y < killY - 40
+      ) {
         this.bullets.splice(i, 1)
       }
     }
