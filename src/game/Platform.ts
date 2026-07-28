@@ -23,6 +23,7 @@ import {
   PORTAL_PAIR_OFFSET_MIN,
   BULLET_PICKUP_SHARE,
   FREE_MOVE_PICKUP_SHARE,
+  POW_PICKUP_SHARE,
   UPGRADE_PICKUP_CHANCE,
   UPGRADE_PICKUP_MAX_GAP,
   UPGRADE_PICKUP_MIN_GAP,
@@ -176,6 +177,9 @@ export class PlatformManager {
           const r = Math.random()
           if (r < BULLET_PICKUP_SHARE) return "bullets"
           if (r < BULLET_PICKUP_SHARE + FREE_MOVE_PICKUP_SHARE) return "freeMove"
+          if (r < BULLET_PICKUP_SHARE + FREE_MOVE_PICKUP_SHARE + POW_PICKUP_SHARE) {
+            return "pow"
+          }
           return "dual"
         })(),
       })
