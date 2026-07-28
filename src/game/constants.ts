@@ -1,8 +1,9 @@
 export const GRAVITY = 2200
 export const BALL_RADIUS = 14
-export const BALL_BOUNCE = 0.72
 export const WALL_BOUNCE = 0.85
 export const AIR_DRAG = 0.0004
+/** Fixed upward boost when landing on a platform from above (px/s). */
+export const PLATFORM_BOOST = 1100
 
 export const SLINGSHOT_CATCH_RADIUS = 36
 export const SLINGSHOT_FORK_WIDTH = 44

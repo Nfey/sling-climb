@@ -1,8 +1,8 @@
 import {
   AIR_DRAG,
-  BALL_BOUNCE,
   BALL_RADIUS,
   GRAVITY,
+  PLATFORM_BOOST,
   WALL_BOUNCE,
 } from "./constants"
 import type { PlatformData, Vec2 } from "./types"
@@ -73,7 +73,7 @@ export class Ball {
       this.squash = 0.6
     }
 
-    // One-way platforms: bounce only while falling (vy < 0)
+    // One-way platforms: boost upward on contact from above; keep horizontal velocity
     if (this.vy < 0) {
       for (const p of platforms) {
         const left = p.x
@@ -91,8 +91,8 @@ export class Ball {
           bottomOfBall >= top - Math.abs(this.vy * dt) - 8
         ) {
           this.y = top + this.radius
-          this.vy = Math.abs(this.vy) * BALL_BOUNCE
-          this.squash = 0.7
+          this.vy = PLATFORM_BOOST
+          this.squash = 0.85
           break
         }
       }
