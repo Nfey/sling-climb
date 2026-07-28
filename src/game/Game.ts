@@ -12,6 +12,8 @@ import {
   BULLET_WEDGE_PAD,
   FREE_MOVE_DURATION,
   PURPLE_BALL_PLATFORM_POINTS,
+  PURPLE_BALL_SPAWN_SIDE,
+  PURPLE_BALL_SPAWN_UP,
   SLINGSHOT_FORK_WIDTH,
 } from "./constants"
 import { Input } from "./Input"
@@ -133,13 +135,12 @@ export class Game {
 
   private spawnPurpleBall(): void {
     const b = new Ball()
-    const angle = (Math.random() - 0.5) * 0.8
-    const speed = 700
+    const side = Math.random() < 0.5 ? -1 : 1
     b.spawnBonus(
       this.ball.x,
       this.ball.y + 8,
-      Math.sin(angle) * speed * 0.45 + this.ball.vx * 0.25,
-      Math.max(500, Math.abs(this.ball.vy) * 0.35 + speed * 0.55),
+      side * PURPLE_BALL_SPAWN_SIDE + this.ball.vx * 0.15,
+      PURPLE_BALL_SPAWN_UP,
     )
     this.bonusBalls.push(b)
   }
