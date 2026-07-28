@@ -6,6 +6,7 @@ import {
   BULLET_MAX_WALL_HITS,
   BULLET_POWER_DURATION,
   BULLET_PUSH,
+  BULLET_PUSH_UP,
   BULLET_RADIUS,
   BULLET_SPEED,
   BULLET_WALL_BOUNCE,
@@ -369,7 +370,7 @@ export class Game {
     ball.x = bullet.x + nx * (ball.radius + bullet.radius)
     ball.y = bullet.y + ny * (ball.radius + bullet.radius)
     ball.vx += nx * BULLET_PUSH
-    ball.vy += ny * BULLET_PUSH
+    ball.vy += ny * BULLET_PUSH + BULLET_PUSH_UP
     ball.squash = Math.max(ball.squash, 0.55)
   }
 

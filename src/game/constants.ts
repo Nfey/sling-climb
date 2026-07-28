@@ -73,6 +73,8 @@ export const BULLET_SPEED = 900
 export const BULLET_RADIUS = 4.5
 export const BULLET_LIFETIME = 2.4
 export const BULLET_PUSH = 820
+/** Extra upward velocity added on bullet contact (world Y up). */
+export const BULLET_PUSH_UP = 320
 export const BULLET_WALL_BOUNCE = 0.92
 /** Remove a bullet after this many side-wall contacts. */
 export const BULLET_MAX_WALL_HITS = 2
