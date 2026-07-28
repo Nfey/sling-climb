@@ -70,6 +70,4 @@ export interface BulletData {
   vy: number
   radius: number
   life: number
-  /** Side-wall contacts so far (despawn after BULLET_MAX_WALL_HITS). */
-  wallHits: number
 }
