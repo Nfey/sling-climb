@@ -74,11 +74,6 @@ export class Game {
    * Paid down slowly so portal exits stay readable; launch/POW gaps use fast follow.
    */
   private portalCatchupRemaining = 0
-  /**
-   * Hit streak while airborne (platform / bumper / portal).
-   * Drives SFX pitch; resets on catch. Aligns with the combo meter.
-   */
-  private flightCombo = 1
   /** World Y when the current flight started (launch or after catch). */
   private flightStartY = 0
 
@@ -164,20 +159,16 @@ export class Game {
     this.catchBurst = 0
     this.scorePopups = []
     this.portalCatchupRemaining = 0
-    this.flightCombo = 1
     this.flightStartY = 0
   }
 
-  /** Bump airborne combo for SFX intensity (platform / bumper / portal). */
-  private bumpFlightCombo(): void {
-    this.flightCombo += 1
-    this.audio.setCombo(this.flightCombo)
+  private syncAudioCombo(): void {
+    this.audio.setCombo(this.score.combo)
   }
 
   private beginFlight(launchPower = 0.7): void {
-    this.flightCombo = 1
     this.flightStartY = this.ball.y
-    this.audio.setCombo(1)
+    this.syncAudioCombo()
     this.audio.setClimb(0)
     this.audio.startFlight()
     this.audio.playLaunch(launchPower)
@@ -186,7 +177,6 @@ export class Game {
   private endFlightCatch(): void {
     this.audio.playCatch()
     this.audio.resetFlight()
-    this.flightCombo = 1
   }
 
   private frame(now: number): void {
@@ -396,8 +386,8 @@ export class Game {
         const at = hit.bumperAt ?? { x: this.ball.x, y: this.ball.y }
         this.spawnScorePopup(at.x, at.y + 12, awarded, COLORS.bumper)
         this.score.bumpCombo()
+        this.syncAudioCombo()
         this.audio.playBumper()
-        this.bumpFlightCombo()
       }
       if (hit.arrowHit) {
         const awarded = this.score.collectBonus(HAZARD_BONUS_POINTS)
@@ -407,8 +397,8 @@ export class Game {
       }
       if (hit.platformHit) {
         this.score.bumpCombo()
+        this.syncAudioCombo()
         this.audio.playPlatformBounce()
-        this.bumpFlightCombo()
       }
       if (hit.wallHit) this.audio.playWallBounce()
       if (hit.upgradeCollected === "dual") {
@@ -437,8 +427,8 @@ export class Game {
           COLORS.portal,
         )
         this.score.bumpCombo()
+        this.syncAudioCombo()
         this.audio.playPortal()
-        this.bumpFlightCombo()
         // Queue the soft-follow gap from this teleport for slow camera catch-up.
         const softMaxAbove = this.camera.height * 0.32
         const anchor = this.freeMoveActive ? this.camera.y : this.slingshot.y

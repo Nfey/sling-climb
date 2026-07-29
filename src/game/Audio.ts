@@ -18,7 +18,7 @@ export class GameAudio {
   private master: GainNode | null = null
   private unlocked = false
 
-  /** Hits since last catch (mirrors combo meter). */
+  /** Hits since last catch — driven by Score.combo. */
   private combo = 1
   /** World-Y gained above the launch/catch baseline while airborne. */
   private climb = 0
@@ -86,10 +86,6 @@ export class GameAudio {
 
   setCombo(combo: number): void {
     this.combo = Math.max(1, combo)
-  }
-
-  bumpCombo(): void {
-    this.combo += 1
   }
 
   /** Update climb height gained since last catch (world px). */
