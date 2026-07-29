@@ -80,7 +80,8 @@ export class Game {
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
-    this.input = new Input(canvas)
+    // Unlock audio inside the real gesture handlers (pointer/key), not rAF.
+    this.input = new Input(canvas, () => this.audio.unlock())
     this.renderer = new Renderer(canvas)
     this.resize()
     window.addEventListener("resize", () => this.resize())
@@ -266,8 +267,6 @@ export class Game {
   private update(dt: number): void {
     const presses = this.input.consumePresses()
     const releases = this.input.consumeReleases()
-
-    if (presses.length > 0) this.audio.unlock()
 
     if (this.aimPointerId != null && releases.includes(this.aimPointerId)) {
       // handled below in aiming
