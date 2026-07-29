@@ -70,10 +70,11 @@ export class Slingshot {
     return { pull: { x: worldDx, y: worldDy }, power }
   }
 
-  launchVelocity(pull: Vec2): Vec2 {
+  launchVelocity(pull: Vec2, powerMult = 1): Vec2 {
+    const m = LAUNCH_POWER * powerMult
     return {
-      x: -pull.x * LAUNCH_POWER,
-      y: -pull.y * LAUNCH_POWER,
+      x: -pull.x * m,
+      y: -pull.y * m,
     }
   }
 

@@ -11,6 +11,8 @@ import {
   BULLET_SPEED,
   BULLET_WEDGE_PAD,
   FREE_MOVE_DURATION,
+  POW_DURATION,
+  POW_LAUNCH_MULT,
   PURPLE_BALL_PLATFORM_POINTS,
   PURPLE_BALL_SPAWN_SIDE,
   PURPLE_BALL_SPAWN_UP,
@@ -48,6 +50,8 @@ export class Game {
   private bulletFireCooldown = 0
   /** Seconds remaining of free XY slingshot movement. */
   private freeMoveRemaining = 0
+  /** Seconds remaining of 2x slingshot launch power. */
+  private powRemaining = 0
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -76,6 +80,14 @@ export class Game {
 
   private get freeMoveActive(): boolean {
     return this.freeMoveRemaining > 0
+  }
+
+  private get powActive(): boolean {
+    return this.powRemaining > 0
+  }
+
+  private launchMult(): number {
+    return this.powActive ? POW_LAUNCH_MULT : 1
   }
 
   private resize(): void {
@@ -116,6 +128,7 @@ export class Game {
     this.bulletPowerRemaining = 0
     this.bulletFireCooldown = 0
     this.freeMoveRemaining = 0
+    this.powRemaining = 0
   }
 
   private frame(now: number): void {
@@ -187,6 +200,10 @@ export class Game {
       }
     }
 
+    if (this.powRemaining > 0) {
+      this.powRemaining = Math.max(0, this.powRemaining - dt)
+    }
+
     // Bind any press to aiming / moving
     for (const p of presses) {
       if (this.aimPointerId == null) this.aimPointerId = p.id
@@ -218,7 +235,7 @@ export class Game {
 
         if (!ptr) {
           if (this.lastAimPull && Math.hypot(this.lastAimPull.x, this.lastAimPull.y) > 8) {
-            const vel = this.slingshot.launchVelocity(this.lastAimPull)
+            const vel = this.slingshot.launchVelocity(this.lastAimPull, this.launchMult())
             this.ball.x = this.slingshot.x
             this.ball.y = this.slingshot.y
             this.ball.launch(vel)
@@ -269,6 +286,9 @@ export class Game {
       }
       if (hit.upgradeCollected === "freeMove") {
         this.freeMoveRemaining = FREE_MOVE_DURATION
+      }
+      if (hit.upgradeCollected === "pow") {
+        this.powRemaining = POW_DURATION
       }
       if (hit.portalDeltaY !== 0) {
         // Keep slingshot locked relative to the ball, cancel the screen pop,
@@ -525,7 +545,7 @@ export class Game {
         this.ball.x = pouch.x
         this.ball.y = pouch.y
         trajOrigin = { x: this.slingshot.x, y: this.slingshot.y }
-        trajVel = this.slingshot.launchVelocity(pull)
+        trajVel = this.slingshot.launchVelocity(pull, this.launchMult())
       }
     }
 
@@ -537,7 +557,8 @@ export class Game {
           ? 0.35 + Math.sin(this.anim * 3) * 0.1
           : 0
 
-    this.renderer.drawSlingshot(cam, this.slingshot, pouch, pulse, this.freeMoveActive)
+    const slingStyle = this.freeMoveActive ? "freeMove" : this.powActive ? "pow" : "normal"
+    this.renderer.drawSlingshot(cam, this.slingshot, pouch, pulse, slingStyle)
 
     if (trajOrigin && trajVel) {
       this.renderer.drawTrajectory(cam, trajOrigin, trajVel)
@@ -562,8 +583,14 @@ export class Game {
   private tipForState(): string | null {
     if (this.state === "gameOver") return null
     if (!this.started) return "Hold & drag to aim · release to fire"
+    if (this.powActive && (this.state === "aiming" || this.state === "ready")) {
+      return `POW · 2x launch · ${Math.ceil(this.powRemaining)}s`
+    }
     if (this.freeMoveActive && this.state === "flying") {
       return `Free move · ${Math.ceil(this.freeMoveRemaining)}s`
+    }
+    if (this.powActive && this.state === "flying") {
+      return `POW · ${Math.ceil(this.powRemaining)}s`
     }
     if (this.state === "flying") return "Hold to move · catch the ball"
     if (this.state === "aiming") return "Release to launch"

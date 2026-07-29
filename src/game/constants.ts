@@ -69,9 +69,15 @@ export const UPGRADE_PICKUP_MAX_GAP = 480
 /** Chance a pickup is the bullet volley. 0 = disabled (code kept). */
 export const BULLET_PICKUP_SHARE = 0
 /** Chance a pickup is free-move (after bullets are ruled out). */
-export const FREE_MOVE_PICKUP_SHARE = 0.4
+export const FREE_MOVE_PICKUP_SHARE = 0.3
+/** Chance a pickup is POW (after bullets + free-move are ruled out). */
+export const POW_PICKUP_SHARE = 0.3
 /** Seconds the slingshot can be dragged freely in X and Y. */
 export const FREE_MOVE_DURATION = 30
+/** Seconds the slingshot launches at 2x power. */
+export const POW_DURATION = 20
+/** Launch strength multiplier while POW is active. */
+export const POW_LAUNCH_MULT = 2
 
 export const BULLET_POWER_DURATION = 8
 /** Visual pellet spawn rate (gameplay is hitscan, not projectile). */
@@ -131,4 +137,6 @@ export const COLORS = {
   bulletCore: "#fff7ed",
   freeMovePickup: "#0f766e",
   freeMovePickupCore: "#ccfbf1",
+  powPickup: "#dc2626",
+  powPickupCore: "#fee2e2",
 }

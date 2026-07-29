@@ -59,7 +59,7 @@ export interface UpgradePickupData {
   x: number
   y: number
   radius: number
-  kind: "dual" | "bullets" | "freeMove"
+  kind: "dual" | "bullets" | "freeMove" | "pow"
 }
 
 /** Cosmetic pellet that travels along a fork beam (no physics). */

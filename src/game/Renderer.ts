@@ -245,7 +245,7 @@ export class Renderer {
     sling: Slingshot,
     pouch: Vec2 | null,
     pulse = 0,
-    freeMove = false,
+    style: "normal" | "freeMove" | "pow" = "normal",
   ): void {
     const ctx = this.ctx
     const base = camera.worldToScreen(sling.base)
@@ -253,19 +253,25 @@ export class Renderer {
     const right = camera.worldToScreen(sling.rightFork)
     const rest = camera.worldToScreen({ x: sling.x, y: sling.y })
     const pouchScreen = pouch ? camera.worldToScreen(pouch) : rest
-    const body = COLORS.slingshot
-    const band = COLORS.band
-    const glow = freeMove ? COLORS.freeMovePickup : COLORS.accent
+    const freeMove = style === "freeMove"
+    const pow = style === "pow"
+    const body = pow ? COLORS.powPickup : COLORS.slingshot
+    const band = pow ? "#991b1b" : COLORS.band
+    const glow = freeMove
+      ? COLORS.freeMovePickup
+      : pow
+        ? COLORS.powPickup
+        : COLORS.accent
 
-    // Soft glow when ready to catch / holding
-    if (pulse > 0 || freeMove) {
+    // Soft glow when ready to catch / holding / powered
+    if (pulse > 0 || freeMove || pow) {
       ctx.save()
-      ctx.globalAlpha = freeMove
+      ctx.globalAlpha = freeMove || pow
         ? 0.22 + Math.sin(this.time * 5) * 0.08
         : 0.25 + pulse * 0.25
       ctx.fillStyle = glow
       ctx.beginPath()
-      ctx.arc(rest.x, rest.y, 28 + (freeMove ? 6 : pulse * 8), 0, Math.PI * 2)
+      ctx.arc(rest.x, rest.y, 28 + (freeMove || pow ? 6 : pulse * 8), 0, Math.PI * 2)
       ctx.fill()
       ctx.restore()
     }
@@ -312,10 +318,14 @@ export class Renderer {
 
     // Movement guide — follows the slingshot (important during free-move)
     ctx.save()
-    ctx.globalAlpha = freeMove ? 0.28 : 0.2
-    ctx.strokeStyle = freeMove ? COLORS.freeMovePickup : COLORS.ink
+    ctx.globalAlpha = freeMove ? 0.28 : pow ? 0.26 : 0.2
+    ctx.strokeStyle = freeMove
+      ? COLORS.freeMovePickup
+      : pow
+        ? COLORS.powPickup
+        : COLORS.ink
     ctx.lineWidth = 1
-    ctx.setLineDash(freeMove ? [4, 6] : [6, 8])
+    ctx.setLineDash(freeMove || pow ? [4, 6] : [6, 8])
     ctx.beginPath()
     ctx.moveTo(12, rest.y)
     ctx.lineTo(camera.width - 12, rest.y)
@@ -423,34 +433,38 @@ export class Renderer {
 
       const isBullets = u.kind === "bullets"
       const isFreeMove = u.kind === "freeMove"
-      ctx.save()
-      ctx.fillStyle = isBullets
+      const isPow = u.kind === "pow"
+      const fill = isBullets
         ? COLORS.bulletPickupCore
         : isFreeMove
           ? COLORS.freeMovePickupCore
-          : COLORS.upgradePickupCore
+          : isPow
+            ? COLORS.powPickupCore
+            : COLORS.upgradePickupCore
+      const stroke = isBullets
+        ? COLORS.bulletPickup
+        : isFreeMove
+          ? COLORS.freeMovePickup
+          : isPow
+            ? COLORS.powPickup
+            : COLORS.upgradePickup
+      const label = isBullets ? "•••" : isFreeMove ? "XY" : isPow ? "POW" : "2x"
+      ctx.save()
+      ctx.fillStyle = fill
       ctx.beginPath()
       ctx.arc(s.x, s.y, u.radius, 0, Math.PI * 2)
       ctx.fill()
-      ctx.strokeStyle = isBullets
-        ? COLORS.bulletPickup
-        : isFreeMove
-          ? COLORS.freeMovePickup
-          : COLORS.upgradePickup
+      ctx.strokeStyle = stroke
       ctx.lineWidth = 3
       ctx.stroke()
-      ctx.fillStyle = isBullets
-        ? COLORS.bulletPickup
-        : isFreeMove
-          ? COLORS.freeMovePickup
-          : COLORS.upgradePickup
+      ctx.fillStyle = stroke
       ctx.font =
-        isBullets || isFreeMove
-          ? "800 13px 'Bricolage Grotesque', sans-serif"
+        isBullets || isFreeMove || isPow
+          ? "800 12px 'Bricolage Grotesque', sans-serif"
           : "800 16px 'Bricolage Grotesque', sans-serif"
       ctx.textAlign = "center"
       ctx.textBaseline = "middle"
-      ctx.fillText(isBullets ? "•••" : isFreeMove ? "XY" : "2x", s.x, s.y + 1)
+      ctx.fillText(label, s.x, s.y + 1)
       ctx.textBaseline = "alphabetic"
       ctx.restore()
     }
