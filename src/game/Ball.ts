@@ -30,6 +30,12 @@ export interface BallUpdateResult {
   platformHit: boolean
   /** World-Y change from a portal teleport this frame (0 if none). */
   portalDeltaY: number
+  /** Side-wall bounce this frame (not a portal entry). */
+  wallHit: boolean
+  /** Fresh bumper contact this frame (not continuous overlap). */
+  bumperHit: boolean
+  /** Arrow pad consumed this frame. */
+  arrowHit: boolean
 }
 
 /** Unit vectors for 8 cardinal dirs in world space (Y up). */
@@ -58,6 +64,8 @@ export class Ball {
   /** Near-vertical bounces on the same platform (anti-stuck). */
   private stuckHits = 0
   private stuckPlatformKey = ""
+  /** Bumper keys currently overlapping — used to SFX/score only on enter. */
+  private bumperOverlaps = new Set<string>()
 
   reset(x: number, y: number): void {
     this.x = x
@@ -68,6 +76,7 @@ export class Ball {
     this.isBonus = false
     this.squash = 0
     this.clearStuckTracking()
+    this.bumperOverlaps.clear()
   }
 
   /** Spawn as a flying purple bonus ball. */
@@ -80,6 +89,7 @@ export class Ball {
     this.isBonus = true
     this.squash = 1
     this.clearStuckTracking()
+    this.bumperOverlaps.clear()
   }
 
   launch(velocity: Vec2): void {
@@ -88,6 +98,7 @@ export class Ball {
     this.inSlingshot = false
     this.squash = 1
     this.clearStuckTracking()
+    this.bumperOverlaps.clear()
   }
 
   catchAt(x: number, y: number): void {
@@ -98,6 +109,7 @@ export class Ball {
     this.inSlingshot = true
     this.squash = 1
     this.clearStuckTracking()
+    this.bumperOverlaps.clear()
   }
 
   private clearStuckTracking(): void {
@@ -149,13 +161,19 @@ export class Ball {
     return this.y - prevY
   }
 
-  private collideBumpers(bumpers: BumperData[]): void {
+  private collideBumpers(bumpers: BumperData[]): boolean {
+    let hit = false
+    const current = new Set<string>()
     for (const b of bumpers) {
       const dx = this.x - b.x
       const dy = this.y - b.y
       const dist = Math.hypot(dx, dy)
       const minDist = this.radius + b.radius
       if (dist >= minDist || dist < 0.0001) continue
+
+      const key = `${b.x.toFixed(1)}:${b.y.toFixed(1)}`
+      current.add(key)
+      const entered = !this.bumperOverlaps.has(key)
 
       const nx = dx / dist
       const ny = dy / dist
@@ -170,10 +188,14 @@ export class Ball {
       this.vx += nx * BUMPER_KNOCK
       this.vy += ny * BUMPER_KNOCK
       this.squash = 0.9
+
+      if (entered) hit = true
     }
+    this.bumperOverlaps = current
+    return hit
   }
 
-  private collideArrowPads(pads: ArrowPadData[]): void {
+  private collideArrowPads(pads: ArrowPadData[]): boolean {
     for (let i = pads.length - 1; i >= 0; i--) {
       const pad = pads[i]!
       const dist = Math.hypot(this.x - pad.x, this.y - pad.y)
@@ -183,7 +205,9 @@ export class Ball {
       this.vy = dir.y * ARROW_PAD_SPEED
       this.squash = 0.75
       pads.splice(i, 1)
+      return true
     }
+    return false
   }
 
   /**
@@ -205,6 +229,9 @@ export class Ball {
       upgradeCollected: null,
       platformHit: false,
       portalDeltaY: 0,
+      wallHit: false,
+      bumperHit: false,
+      arrowHit: false,
     }
     if (this.inSlingshot) {
       this.squash = Math.max(0, this.squash - dt * 3)
@@ -225,6 +252,7 @@ export class Ball {
         this.x = this.radius
         this.vx = Math.abs(this.vx) * WALL_BOUNCE
         this.squash = 0.6
+        result.wallHit = true
       }
     } else if (this.x + this.radius > worldWidth) {
       const entry = this.vx >= 0 ? this.findPortalAt(portals, "right") : null
@@ -235,11 +263,12 @@ export class Ball {
         this.x = worldWidth - this.radius
         this.vx = -Math.abs(this.vx) * WALL_BOUNCE
         this.squash = 0.6
+        result.wallHit = true
       }
     }
 
-    this.collideBumpers(bumpers)
-    this.collideArrowPads(arrowPads)
+    result.bumperHit = this.collideBumpers(bumpers)
+    result.arrowHit = this.collideArrowPads(arrowPads)
 
     // Only the player ball collects pickups
     if (!this.isBonus) {
