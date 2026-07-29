@@ -18,7 +18,7 @@ Add to Home Screen for a fullscreen feel.
 - **Ball loaded:** drag (past a small deadzone) to aim; release to fire. Trajectory dots show the path.
 - **Ball in flight:** press and hold to move the slingshot left/right on the midline.
 - **Catch:** if the ball hits the slingshot while your finger is down, it is caught. Keep holding and drag a little to aim again — no need to lift between move and aim. Only lift to launch.
-- **Miss:** if the ball falls below the line under the slingshot, game over. Score is peak height; high score is stored in `localStorage`.
+- **Miss:** if the ball falls below the line under the slingshot, game over. Run points come from climb + bonuses; the end-of-run high score is roughly height × points / speed (height weighted a bit more). A blue “BEST” height line marks your previous max climb and turns green once you pass it. High score and max height are stored in `localStorage`.
 
 The band under the slingshot line is reserved for future powerups/upgrades.
 

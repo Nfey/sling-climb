@@ -1,5 +1,6 @@
 import {
   COLORS,
+  HEIGHT_MARKER_SPACING,
   MAX_PULL,
   PLATFORM_HEIGHT,
   SCORE_POPUP_RISE,
@@ -74,6 +75,85 @@ export class Renderer {
     ctx.font = "500 11px 'DM Sans', sans-serif"
     ctx.textAlign = "center"
     ctx.fillText("more upgrades coming soon", width / 2, killY + 28)
+  }
+
+  /**
+   * Dashed altitude lines with left-side height marks (climb above run start).
+   * Drawn early so gameplay sits on top.
+   */
+  drawAltitudeMarkers(camera: Camera, startHeight: number): void {
+    const ctx = this.ctx
+    const topWorld = camera.screenToWorld(0, -40).y
+    const bottomWorld = camera.screenToWorld(0, camera.killScreenY + 20).y
+    const climbBottom = bottomWorld - startHeight
+    const climbTop = topWorld - startHeight
+    const spacing = HEIGHT_MARKER_SPACING
+    let climb = Math.ceil(climbBottom / spacing) * spacing
+    if (climb <= 0) climb = spacing
+
+    ctx.save()
+    for (; climb <= climbTop; climb += spacing) {
+      const worldY = startHeight + climb
+      const sy = camera.worldToScreen({ x: 0, y: worldY }).y
+      if (sy > camera.killScreenY || sy < 56) continue
+
+      ctx.strokeStyle = COLORS.heightMarker
+      ctx.lineWidth = 1
+      ctx.setLineDash([5, 7])
+      ctx.beginPath()
+      ctx.moveTo(36, sy)
+      ctx.lineTo(camera.width - 12, sy)
+      ctx.stroke()
+      ctx.setLineDash([])
+
+      // Tick mark on the left
+      ctx.beginPath()
+      ctx.moveTo(8, sy)
+      ctx.lineTo(28, sy)
+      ctx.stroke()
+
+      ctx.fillStyle = COLORS.heightMarkerLabel
+      ctx.font = "600 11px 'DM Sans', sans-serif"
+      ctx.textAlign = "left"
+      ctx.textBaseline = "middle"
+      ctx.fillText(formatHeightLabel(climb), 8, sy - 10)
+    }
+    ctx.textBaseline = "alphabetic"
+    ctx.restore()
+  }
+
+  /**
+   * Solid line at the previous-run max height.
+   * Blue until the player passes it this run, then green. Fixed for the run.
+   */
+  drawMaxHeightLine(
+    camera: Camera,
+    worldY: number,
+    passed: boolean,
+  ): void {
+    if (worldY <= 0) return
+    const ctx = this.ctx
+    const sy = camera.worldToScreen({ x: 0, y: worldY }).y
+    if (sy < -20 || sy > camera.killScreenY + 10) return
+
+    const color = passed ? COLORS.maxHeightLinePassed : COLORS.maxHeightLine
+
+    ctx.save()
+    ctx.strokeStyle = color
+    ctx.lineWidth = 2
+    ctx.setLineDash([])
+    ctx.beginPath()
+    ctx.moveTo(12, sy)
+    ctx.lineTo(camera.width - 12, sy)
+    ctx.stroke()
+
+    ctx.fillStyle = color
+    ctx.font = "700 11px 'DM Sans', sans-serif"
+    ctx.textAlign = "right"
+    ctx.textBaseline = "bottom"
+    ctx.fillText(passed ? "BEST ✓" : "BEST", camera.width - 14, sy - 4)
+    ctx.textBaseline = "alphabetic"
+    ctx.restore()
   }
 
   drawPlatforms(camera: Camera, platforms: PlatformData[]): void {
@@ -660,6 +740,15 @@ function formatTime(seconds: number): string {
   const s = Math.floor(total % 60)
   const cs = Math.floor((total % 1) * 100)
   return `${m}:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`
+}
+
+/** Compact altitude label for left-side marks (climb px above start). */
+function formatHeightLabel(climb: number): string {
+  if (climb >= 1000) {
+    const k = climb / 1000
+    return Number.isInteger(k) ? `${k}k` : `${k.toFixed(1)}k`
+  }
+  return String(Math.round(climb))
 }
 
 function roundRect(

@@ -469,7 +469,7 @@ export class Game {
         this.ball.vy <= 0 &&
         this.ball.y < this.camera.killWorldY
       ) {
-        this.score.commitHighScore()
+        this.score.commitHighScore(this.elapsed)
         this.audio.playGameOver()
         this.audio.resetFlight()
         this.state = "gameOver"
@@ -706,6 +706,12 @@ export class Game {
   private draw(dt: number): void {
     const cam = this.camera
     this.renderer.begin(cam, dt)
+    this.renderer.drawAltitudeMarkers(cam, this.score.startHeight)
+    this.renderer.drawMaxHeightLine(
+      cam,
+      this.score.heightLineWorldY,
+      this.score.heightLinePassed,
+    )
     this.renderer.drawPlatforms(cam, this.platforms.platforms)
     this.renderer.drawBumpers(cam, this.platforms.bumpers, this.anim)
     this.renderer.drawArrowPads(cam, this.platforms.arrowPads, this.anim)
@@ -779,7 +785,7 @@ export class Game {
     if (this.state === "gameOver") {
       this.renderer.drawGameOver(
         cam,
-        this.score.current,
+        this.score.finalScore || this.score.computeFinalScore(this.elapsed),
         this.score.highScore,
         this.score.isNewHighScore,
         this.anim,

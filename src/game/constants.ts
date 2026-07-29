@@ -126,7 +126,22 @@ export const BULLET_PUSH_UP = 1600
 /** Minimum upward speed enforced while overlapping the beam (px/s). */
 export const BULLET_MIN_UP = 620
 
-export const HIGH_SCORE_KEY = "sling-climb-high-score"
+/** Persisted composite high score (height × points / speed). */
+export const HIGH_SCORE_KEY = "sling-climb-high-score-v2"
+/** Persisted best climb height (world px above run start). */
+export const MAX_HEIGHT_KEY = "sling-climb-max-height"
+
+/** World-Y spacing between dashed altitude marker lines. */
+export const HEIGHT_MARKER_SPACING = 200
+/**
+ * End-of-run score exponents: height × points / speed, soft-weighted.
+ * Height slightly above points; speed (climb rate) barely moves the needle.
+ */
+export const SCORE_HEIGHT_EXP = 1.15
+export const SCORE_POINTS_EXP = 1
+export const SCORE_SPEED_EXP = 0.2
+/** Typical climb rate (px/s) used to normalize the soft speed divisor toward ~1. */
+export const SCORE_SPEED_REF = 280
 
 export const COLORS = {
   skyTop: "#ffffff",
@@ -170,4 +185,10 @@ export const COLORS = {
   freeMovePickupCore: "#ccfbf1",
   powPickup: "#dc2626",
   powPickupCore: "#fee2e2",
+  /** Previous best-height line before the player passes it. */
+  maxHeightLine: "#2f6fed",
+  /** Best-height line after the player has passed it this run. */
+  maxHeightLinePassed: "#16a34a",
+  heightMarker: "rgba(17, 17, 17, 0.22)",
+  heightMarkerLabel: "rgba(17, 17, 17, 0.45)",
 }
