@@ -6,6 +6,8 @@ export class Score {
   startHeight = 0
   bonusPoints = 0
   highScore = 0
+  /** True after commitHighScore() if this run beat the previous best. */
+  isNewHighScore = false
 
   constructor() {
     this.highScore = this.loadHighScore()
@@ -15,6 +17,7 @@ export class Score {
     this.startHeight = startY
     this.peakHeight = startY
     this.bonusPoints = 0
+    this.isNewHighScore = false
   }
 
   observe(ballY: number): void {
@@ -31,9 +34,11 @@ export class Score {
     return heightScore + this.bonusPoints
   }
 
-  commitHighScore(): number {
+  /** Persist high score if beaten. Returns true when this run set a new best. */
+  commitHighScore(): boolean {
     const score = this.current
-    if (score > this.highScore) {
+    this.isNewHighScore = score > this.highScore
+    if (this.isNewHighScore) {
       this.highScore = score
       try {
         localStorage.setItem(HIGH_SCORE_KEY, String(score))
@@ -41,7 +46,7 @@ export class Score {
         // ignore quota / private mode
       }
     }
-    return score
+    return this.isNewHighScore
   }
 
   private loadHighScore(): number {
