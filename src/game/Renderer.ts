@@ -537,7 +537,13 @@ export class Renderer {
     ctx.fillText("Pull back to launch · catch to climb", camera.width / 2, camera.slingshotScreenY - 88)
   }
 
-  drawGameOver(camera: Camera, score: number, highScore: number): void {
+  drawGameOver(
+    camera: Camera,
+    score: number,
+    highScore: number,
+    isNewHighScore = false,
+    anim = 0,
+  ): void {
     const ctx = this.ctx
     const { width } = camera
     const cy = camera.slingshotScreenY - 40
@@ -550,6 +556,21 @@ export class Renderer {
     ctx.font = "800 36px 'Bricolage Grotesque', sans-serif"
     ctx.fillText("Game Over", width / 2, cy - 40)
 
+    if (isNewHighScore) {
+      const pulse = 0.75 + Math.sin(anim * 7) * 0.25
+      ctx.save()
+      ctx.globalAlpha = 0.18 * pulse
+      ctx.fillStyle = COLORS.accent
+      ctx.beginPath()
+      roundRect(ctx, width / 2 - 110, cy - 92, 220, 36, 10)
+      ctx.fill()
+      ctx.globalAlpha = pulse
+      ctx.fillStyle = COLORS.accent
+      ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText("NEW HIGH SCORE!", width / 2, cy - 68)
+      ctx.restore()
+    }
+
     ctx.font = "800 52px 'Bricolage Grotesque', sans-serif"
     ctx.fillStyle = COLORS.accent
     ctx.fillText(String(score), width / 2, cy + 24)
@@ -557,7 +578,13 @@ export class Renderer {
     ctx.fillStyle = COLORS.inkDim
     ctx.font = "500 14px 'DM Sans', sans-serif"
     ctx.fillText("SCORE", width / 2, cy - 4)
-    ctx.fillText(`Best ${highScore}`, width / 2, cy + 52)
+    if (isNewHighScore) {
+      ctx.fillStyle = COLORS.accent
+      ctx.font = "700 14px 'DM Sans', sans-serif"
+      ctx.fillText("New best!", width / 2, cy + 52)
+    } else {
+      ctx.fillText(`Best ${highScore}`, width / 2, cy + 52)
+    }
 
     ctx.fillStyle = COLORS.ink
     ctx.font = "600 16px 'DM Sans', sans-serif"

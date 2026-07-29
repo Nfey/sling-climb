@@ -592,7 +592,13 @@ export class Game {
     this.renderer.drawHud(cam, this.score.current, this.elapsed, this.tipForState())
 
     if (this.state === "gameOver") {
-      this.renderer.drawGameOver(cam, this.score.current, this.score.highScore)
+      this.renderer.drawGameOver(
+        cam,
+        this.score.current,
+        this.score.highScore,
+        this.score.isNewHighScore,
+        this.anim,
+      )
     }
   }
 
