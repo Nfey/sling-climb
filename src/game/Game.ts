@@ -728,6 +728,7 @@ export class Game {
       this.score.heightLineWorldY,
       this.score.heightLinePassed,
     )
+    this.renderer.drawMilestoneHeightLines(cam, this.score.milestoneLines)
     this.renderer.drawPlatforms(cam, this.platforms.platforms)
     this.renderer.drawBumpers(cam, this.platforms.bumpers, this.anim)
     this.renderer.drawArrowPads(cam, this.platforms.arrowPads, this.anim)
