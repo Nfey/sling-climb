@@ -609,8 +609,8 @@ export class Renderer {
     bestHeight = 0,
   ): void {
     const ctx = this.ctx
-    const scoreY = 52
     const bestRowY = 36
+    const scoreY = 62
 
     ctx.textAlign = "left"
     ctx.fillStyle = COLORS.inkDim
