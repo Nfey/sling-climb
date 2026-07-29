@@ -139,6 +139,42 @@ export const MAX_HEIGHT_KEY = "sling-climb-max-height"
 /** World-Y spacing between dashed altitude marker lines. */
 export const HEIGHT_MARKER_SPACING = 200
 
+/** Climb height (world px above run start) per sky background band. */
+export const SKY_ZONE_SPACING = 5000
+/** Sky palette length before it repeats (must be a multiple of SKY_ZONE_SPACING). */
+export const SKY_ZONE_CYCLE = 100_000
+export const SKY_ZONE_COUNT = SKY_ZONE_CYCLE / SKY_ZONE_SPACING
+
+/** Sky background colors in climb order; repeats every SKY_ZONE_CYCLE. */
+export const SKY_ZONE_COLORS: readonly string[] = [
+  "#ffffff",
+  "#fff1f2",
+  "#fff7ed",
+  "#fefce8",
+  "#f0fdf4",
+  "#ecfeff",
+  "#eff6ff",
+  "#f5f3ff",
+  "#fdf4ff",
+  "#fce7f3",
+  "#f8fafc",
+  "#f1f5f9",
+  "#e0f2fe",
+  "#dbeafe",
+  "#e0e7ff",
+  "#ede9fe",
+  "#f3e8ff",
+  "#fae8ff",
+  "#ffe4e6",
+  "#ffedd5",
+]
+
+/** Background fill for a climb height above the run start (world px). */
+export function skyZoneColor(climb: number): string {
+  const band = Math.floor(Math.max(0, climb) / SKY_ZONE_SPACING)
+  return SKY_ZONE_COLORS[band % SKY_ZONE_COUNT]!
+}
+
 export const COLORS = {
   skyTop: "#ffffff",
   skyMid: "#ffffff",
