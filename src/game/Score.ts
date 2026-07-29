@@ -8,6 +8,11 @@ export class Score {
   highScore = 0
   /** True after commitHighScore() if this run beat the previous best. */
   isNewHighScore = false
+  /**
+   * Point multiplier while the ball is airborne.
+   * Starts at 1; bumps on platform / bumper / portal; resets on catch.
+   */
+  combo = 1
 
   constructor() {
     this.highScore = this.loadHighScore()
@@ -18,14 +23,32 @@ export class Score {
     this.peakHeight = startY
     this.bonusPoints = 0
     this.isNewHighScore = false
+    this.combo = 1
   }
 
   observe(ballY: number): void {
     if (ballY > this.peakHeight) this.peakHeight = ballY
   }
 
-  collectBonus(amount = BONUS_PLATFORM_POINTS): void {
+  /** Award base points multiplied by the current combo. Returns points added. */
+  collectBonus(amount = BONUS_PLATFORM_POINTS): number {
+    const awarded = amount * this.combo
+    this.bonusPoints += awarded
+    return awarded
+  }
+
+  /** Award points with no combo multiplier (e.g. purple secondary balls). */
+  collectFlat(amount: number): number {
     this.bonusPoints += amount
+    return amount
+  }
+
+  bumpCombo(): void {
+    this.combo += 1
+  }
+
+  resetCombo(): void {
+    this.combo = 1
   }
 
   /** Integer meters-ish score from climb distance plus bonuses. */

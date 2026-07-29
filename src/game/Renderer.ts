@@ -390,7 +390,7 @@ export class Renderer {
       const rise = (1 - t) * SCORE_POPUP_RISE
       const s = camera.worldToScreen({ x: popup.x, y: popup.y + rise })
       ctx.globalAlpha = Math.min(1, t * 1.35)
-      ctx.fillStyle = COLORS.platformBonus
+      ctx.fillStyle = popup.color
       ctx.fillText(popup.text, s.x, s.y)
     }
     ctx.restore()
@@ -457,7 +457,13 @@ export class Renderer {
     ctx.restore()
   }
 
-  drawHud(camera: Camera, score: number, elapsed: number, tip: string | null): void {
+  drawHud(
+    camera: Camera,
+    score: number,
+    elapsed: number,
+    tip: string | null,
+    combo = 1,
+  ): void {
     const ctx = this.ctx
     ctx.textAlign = "left"
     ctx.fillStyle = COLORS.ink
@@ -467,6 +473,12 @@ export class Renderer {
     ctx.fillStyle = COLORS.inkDim
     ctx.font = "500 12px 'DM Sans', sans-serif"
     ctx.fillText("SCORE", 20, 22)
+
+    if (combo >= 2) {
+      ctx.fillStyle = COLORS.accent
+      ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText(`${combo}x`, 20, 70)
+    }
 
     ctx.textAlign = "right"
     ctx.fillStyle = COLORS.inkDim
