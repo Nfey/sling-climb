@@ -22,6 +22,8 @@ import type {
 export interface BallUpdateResult {
   /** Player ball landed on a purple bonus platform. */
   bonusCollected: boolean
+  /** World position to spawn the "+100" popup (platform top-center). */
+  bonusAt: Vec2 | null
   /** Player ball collected a pickup (kind set when true). */
   upgradeCollected: "dual" | "bullets" | "freeMove" | "pow" | null
   /** Any platform landing this frame (used by purple bonus balls). */
@@ -199,6 +201,7 @@ export class Ball {
   ): BallUpdateResult {
     const result: BallUpdateResult = {
       bonusCollected: false,
+      bonusAt: null,
       upgradeCollected: null,
       platformHit: false,
       portalDeltaY: 0,
@@ -292,6 +295,7 @@ export class Ball {
           if (!this.isBonus && p.bonus) {
             p.bonus = false
             result.bonusCollected = true
+            result.bonusAt = { x: p.x + p.width * 0.5, y: p.y + p.height }
           }
           break
         }

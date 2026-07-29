@@ -16,11 +16,13 @@ import {
   CAMERA_TOP_MARGIN,
   CATCH_BURST_DURATION,
   FREE_MOVE_DURATION,
+  BONUS_PLATFORM_POINTS,
   POW_DURATION,
   POW_LAUNCH_MULT,
   PURPLE_BALL_PLATFORM_POINTS,
   PURPLE_BALL_SPAWN_SIDE,
   PURPLE_BALL_SPAWN_UP,
+  SCORE_POPUP_DURATION,
   SLINGSHOT_FORK_WIDTH,
 } from "./constants"
 import { Input } from "./Input"
@@ -28,7 +30,7 @@ import { PlatformManager } from "./Platform"
 import { Renderer } from "./Renderer"
 import { Score } from "./Score"
 import { Slingshot } from "./Slingshot"
-import type { BulletData, GameState, Vec2 } from "./types"
+import type { BulletData, GameState, ScorePopup, Vec2 } from "./types"
 
 export class Game {
   private camera = new Camera()
@@ -59,6 +61,8 @@ export class Game {
   private powRemaining = 0
   /** Catch feedback burst timer (seconds remaining). */
   private catchBurst = 0
+  /** Floating "+100" labels from purple bonus platforms. */
+  private scorePopups: ScorePopup[] = []
   /**
    * Soft-follow distance still owed to a portal teleport.
    * Paid down slowly so portal exits stay readable; launch/POW gaps use fast follow.
@@ -141,6 +145,7 @@ export class Game {
     this.freeMoveRemaining = 0
     this.powRemaining = 0
     this.catchBurst = 0
+    this.scorePopups = []
     this.portalCatchupRemaining = 0
   }
 
@@ -221,6 +226,11 @@ export class Game {
       this.catchBurst = Math.max(0, this.catchBurst - dt)
     }
 
+    if (this.scorePopups.length > 0) {
+      for (const popup of this.scorePopups) popup.life -= dt
+      this.scorePopups = this.scorePopups.filter((p) => p.life > 0)
+    }
+
     // Bind any press to aiming / moving
     for (const p of presses) {
       if (this.aimPointerId == null) this.aimPointerId = p.id
@@ -295,7 +305,18 @@ export class Game {
         this.platforms.arrowPads,
         this.platforms.upgrades,
       )
-      if (hit.bonusCollected) this.score.collectBonus()
+      if (hit.bonusCollected) {
+        this.score.collectBonus()
+        if (hit.bonusAt) {
+          this.scorePopups.push({
+            x: hit.bonusAt.x,
+            y: hit.bonusAt.y + 18,
+            life: SCORE_POPUP_DURATION,
+            duration: SCORE_POPUP_DURATION,
+            text: `+${BONUS_PLATFORM_POINTS}`,
+          })
+        }
+      }
       if (hit.upgradeCollected === "dual") this.spawnPurpleBall()
       if (hit.upgradeCollected === "bullets") {
         this.bulletPowerRemaining = BULLET_POWER_DURATION
@@ -623,6 +644,7 @@ export class Game {
         this.catchBurst / CATCH_BURST_DURATION,
       )
     }
+    this.renderer.drawScorePopups(cam, this.scorePopups)
 
     if (trajOrigin && trajVel) {
       this.renderer.drawTrajectory(cam, trajOrigin, trajVel)
