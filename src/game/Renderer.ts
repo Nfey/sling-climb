@@ -261,10 +261,10 @@ export class Renderer {
     const pouchScreen = pouch ? camera.worldToScreen(pouch) : rest
     const freeMove = style === "freeMove"
     const pow = style === "pow"
-    // Stick stays wood; pow only deepens the red band
-    const wood = COLORS.slingshot
-    const woodDark = COLORS.slingshotDark
-    const woodLight = COLORS.slingshotLight
+    // Blue stick body; pow only deepens the red band
+    const body = COLORS.slingshot
+    const bodyDark = COLORS.slingshotDark
+    const bodyLight = COLORS.slingshotLight
     const band = pow ? COLORS.bandDark : COLORS.band
     const glow = freeMove
       ? COLORS.freeMovePickup
@@ -288,11 +288,11 @@ export class Renderer {
     const crotch = { x: rest.x, y: rest.y + 4 }
     const handleBottom = { x: base.x, y: base.y + SLINGSHOT_FORK_HEIGHT * 0.2 }
 
-    // Wooden Y-fork: dark outline, then fill, then light grain highlight
+    // Blue Y-fork: dark outline, fill, light highlight
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
 
-    const drawWoodY = (width: number, color: string): void => {
+    const drawBodyY = (width: number, color: string): void => {
       ctx.strokeStyle = color
       ctx.lineWidth = width
       ctx.beginPath()
@@ -304,17 +304,17 @@ export class Renderer {
       ctx.stroke()
     }
 
-    drawWoodY(14, woodDark)
-    drawWoodY(10, wood)
-    drawWoodY(3.5, woodLight)
+    drawBodyY(14, bodyDark)
+    drawBodyY(10, body)
+    drawBodyY(3.5, bodyLight)
 
-    // Knotty fork tips where the band is tied
+    // Fork tips where the band is tied
     for (const tip of [left, right]) {
-      ctx.fillStyle = woodDark
+      ctx.fillStyle = bodyDark
       ctx.beginPath()
       ctx.arc(tip.x, tip.y, 5.5, 0, Math.PI * 2)
       ctx.fill()
-      ctx.fillStyle = wood
+      ctx.fillStyle = body
       ctx.beginPath()
       ctx.arc(tip.x, tip.y, 3.5, 0, Math.PI * 2)
       ctx.fill()
@@ -332,10 +332,13 @@ export class Renderer {
       ctx.stroke()
     }
 
-    // Red elastic strands from each fork into the pouch sides
+    // Red elastic strands from each fork into the pouch sides (extra sag = looser)
     const pouchW = 18
-    const leftAttach = { x: pouchScreen.x - pouchW * 0.55, y: pouchScreen.y + 1 }
-    const rightAttach = { x: pouchScreen.x + pouchW * 0.55, y: pouchScreen.y + 1 }
+    const leftAttach = { x: pouchScreen.x - pouchW * 0.55, y: pouchScreen.y + 2 }
+    const rightAttach = { x: pouchScreen.x + pouchW * 0.55, y: pouchScreen.y + 2 }
+    const pullDist = Math.hypot(pouchScreen.x - rest.x, pouchScreen.y - rest.y)
+    const taut = Math.min(1, pullDist / (MAX_PULL * 0.85))
+    const bandSag = 18 * (1 - taut * 0.55)
 
     const drawBand = (
       from: Vec2,
@@ -349,7 +352,7 @@ export class Renderer {
       ctx.moveTo(from.x, from.y)
       ctx.quadraticCurveTo(
         (from.x + to.x) * 0.5,
-        (from.y + to.y) * 0.5 + 6,
+        (from.y + to.y) * 0.5 + bandSag,
         to.x,
         to.y,
       )
@@ -491,7 +494,8 @@ export class Renderer {
   drawBall(camera: Camera, ball: Ball): void {
     const ctx = this.ctx
     const s = camera.worldToScreen({ x: ball.x, y: ball.y })
-    const squash = ball.squash
+    // Keep a round ball while nestled in the slingshot pouch
+    const squash = ball.inSlingshot ? 0 : ball.squash
     const scaleX = 1 + squash * 0.25
     const scaleY = 1 - squash * 0.2
 

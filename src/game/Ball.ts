@@ -96,7 +96,7 @@ export class Ball {
     this.vx = 0
     this.vy = 0
     this.inSlingshot = true
-    this.squash = 1
+    this.squash = 0
     this.clearStuckTracking()
   }
 
@@ -207,7 +207,7 @@ export class Ball {
       portalDeltaY: 0,
     }
     if (this.inSlingshot) {
-      this.squash = Math.max(0, this.squash - dt * 3)
+      this.squash = 0
       return result
     }
 
