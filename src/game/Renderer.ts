@@ -72,10 +72,6 @@ export class Renderer {
     ctx.lineTo(width - 16, killY)
     ctx.stroke()
 
-    ctx.fillStyle = COLORS.inkDim
-    ctx.font = "500 11px 'DM Sans', sans-serif"
-    ctx.textAlign = "center"
-    ctx.fillText("more upgrades coming soon", width / 2, killY + 28)
   }
 
   /** Horizontal sky fills keyed to 5k climb bands (repeats every 100k). */
