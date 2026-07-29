@@ -14,6 +14,11 @@ export const CATCH_BURST_DURATION = 0.55
  * phone-scale; canvas is centered with gutters beside it.
  */
 export const PLAYFIELD_MAX_WIDTH = 430
+/**
+ * Viewport width at/above which WASD / mouse control hints are shown.
+ * Touch-only copy is used below this breakpoint.
+ */
+export const DESKTOP_HINT_MIN_WIDTH = 768
 /** Slingshot move speed with WASD while the ball is flying (px/s). */
 export const SLINGSHOT_KEYBOARD_SPEED = 560
 
