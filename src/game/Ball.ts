@@ -191,6 +191,7 @@ export class Ball {
         this.x = worldWidth - this.radius - 0.5
         this.y = portal.rightY + offsetInPortal
         result.portalDeltaY = this.y - prevY
+        // Keep vx/vy unchanged so momentum continues through the portal
         this.squash = 0.35
       } else {
         this.x = this.radius
@@ -205,6 +206,7 @@ export class Ball {
         this.x = this.radius + 0.5
         this.y = portal.leftY + offsetInPortal
         result.portalDeltaY = this.y - prevY
+        // Keep vx/vy unchanged so momentum continues through the portal
         this.squash = 0.35
       } else {
         this.x = worldWidth - this.radius
