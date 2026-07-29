@@ -6,7 +6,7 @@
 
 /** Soft ceiling so high combos don't squeal. */
 const MAX_COMBO_FOR_PITCH = 12
-/** Climb height (world px) that maxes the whoosh drama. */
+/** Climb height (world px) that maxes flight drama. */
 const CLIMB_FULL_SCALE = 1800
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -25,24 +25,11 @@ export class GameAudio {
   /** True while the player ball is in flight. */
   private flying = false
 
-  private whoosh: {
-    noise: AudioBufferSourceNode
-    filter: BiquadFilterNode
-    gain: GainNode
-    lfo: OscillatorNode
-    lfoGain: GainNode
-  } | null = null
-
   private points: {
     osc: OscillatorNode
     gain: GainNode
     filter: BiquadFilterNode
     nextTick: number
-  } | null = null
-
-  private stretch: {
-    osc: OscillatorNode
-    gain: GainNode
   } | null = null
 
   /** Unlock on first gesture (browsers block autoplay). */
@@ -99,27 +86,22 @@ export class GameAudio {
 
   setCombo(combo: number): void {
     this.combo = Math.max(1, combo)
-    this.refreshLoops()
   }
 
   bumpCombo(): void {
     this.combo += 1
-    this.refreshLoops()
   }
 
   /** Update climb height gained since last catch (world px). */
   setClimb(climbPx: number): void {
     this.climb = Math.max(0, climbPx)
-    this.refreshLoops()
   }
 
-  /** Begin flight loops (whoosh + soft points arpeggio). */
+  /** Begin flight loop (soft points arpeggio). */
   startFlight(): void {
     this.flying = true
     this.ensureCtx()
-    this.startWhoosh()
     this.startPointsLoop()
-    this.refreshLoops()
   }
 
   /** Catch / ground — stop flight loops and reset intensity. */
@@ -127,69 +109,13 @@ export class GameAudio {
     this.flying = false
     this.combo = 1
     this.climb = 0
-    this.stopWhoosh()
     this.stopPointsLoop()
-    this.stopStretch()
-  }
-
-  /**
-   * Soft rubber-band tension while aiming. `power` is 0..1 stretch;
-   * pass 0 (or call stop) when not aiming.
-   */
-  setAimStretch(power: number): void {
-    const ctx = this.ensureCtx()
-    if (!ctx || !this.master) return
-    const p = clamp(power, 0, 1)
-    if (p < 0.04) {
-      this.stopStretch()
-      return
-    }
-    if (!this.stretch) {
-      const osc = ctx.createOscillator()
-      osc.type = "sawtooth"
-      osc.frequency.value = 60
-      const gain = ctx.createGain()
-      gain.gain.value = 0.0001
-      const filt = ctx.createBiquadFilter()
-      filt.type = "lowpass"
-      filt.frequency.value = 280
-      osc.connect(filt)
-      filt.connect(gain)
-      gain.connect(this.master)
-      osc.start()
-      this.stretch = { osc, gain }
-    }
-    const t = ctx.currentTime
-    // Pitch rises gently with pull; stay quiet under launch snap.
-    this.stretch.osc.frequency.setTargetAtTime(55 + p * 90, t, 0.05)
-    this.stretch.gain.gain.setTargetAtTime(0.02 + p * 0.04, t, 0.05)
-  }
-
-  private stopStretch(): void {
-    if (!this.stretch) return
-    const { osc, gain } = this.stretch
-    const ctx = this.ctx
-    if (ctx) {
-      try {
-        gain.gain.cancelScheduledValues(ctx.currentTime)
-        gain.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.03)
-      } catch {
-        // ignore
-      }
-    }
-    try {
-      osc.stop(ctx ? ctx.currentTime + 0.06 : undefined)
-    } catch {
-      // already stopped
-    }
-    this.stretch = null
   }
 
   // ─── one-shots ───────────────────────────────────────────────────────────
 
   /** Rubber-band snap on launch. `power` is 0..1 slingshot stretch. */
   playLaunch(power = 0.7): void {
-    this.stopStretch()
     const ctx = this.ensureCtx()
     if (!ctx || !this.master) return
     const t = ctx.currentTime
@@ -455,65 +381,6 @@ export class GameAudio {
 
   // ─── flight loops ────────────────────────────────────────────────────────
 
-  private startWhoosh(): void {
-    if (this.whoosh || !this.ctx || !this.master) return
-    const ctx = this.ctx
-    const buffer = this.noiseBuffer(1.5)
-    const noise = ctx.createBufferSource()
-    noise.buffer = buffer
-    noise.loop = true
-
-    const filter = ctx.createBiquadFilter()
-    filter.type = "bandpass"
-    filter.frequency.value = 420
-    filter.Q.value = 0.7
-
-    const gain = ctx.createGain()
-    gain.gain.value = 0.0001
-
-    // Subtle amplitude flutter
-    const lfo = ctx.createOscillator()
-    lfo.type = "sine"
-    lfo.frequency.value = 3.5
-    const lfoGain = ctx.createGain()
-    lfoGain.gain.value = 0.012
-    lfo.connect(lfoGain)
-    lfoGain.connect(gain.gain)
-
-    noise.connect(filter)
-    filter.connect(gain)
-    gain.connect(this.master)
-    noise.start()
-    lfo.start()
-
-    this.whoosh = { noise, filter, gain, lfo, lfoGain }
-  }
-
-  private stopWhoosh(): void {
-    if (!this.whoosh) return
-    const { noise, lfo, gain } = this.whoosh
-    const ctx = this.ctx
-    if (ctx) {
-      try {
-        gain.gain.cancelScheduledValues(ctx.currentTime)
-        gain.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.04)
-      } catch {
-        // ignore
-      }
-    }
-    try {
-      noise.stop(ctx ? ctx.currentTime + 0.08 : undefined)
-    } catch {
-      // already stopped
-    }
-    try {
-      lfo.stop()
-    } catch {
-      // already stopped
-    }
-    this.whoosh = null
-  }
-
   /**
    * Soft arcade "points ticking" while airborne — short blips that speed up
    * and rise in pitch with intensity (not much louder).
@@ -582,23 +449,6 @@ export class GameAudio {
       this.points.gain.gain.exponentialRampToValueAtTime(peak, now + 0.01)
       this.points.gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.07)
       this.points.nextTick = now + interval
-    }
-  }
-
-  private refreshLoops(): void {
-    if (!this.ctx) return
-    const i = this.intensity()
-    const t = this.ctx.currentTime
-
-    if (this.whoosh) {
-      // Filter opens + slight volume rise with drama (still quiet under SFX)
-      const freq = 380 + i * 900
-      const vol = 0.028 + i * 0.045
-      this.whoosh.filter.frequency.setTargetAtTime(freq, t, 0.08)
-      this.whoosh.filter.Q.setTargetAtTime(0.65 + i * 0.9, t, 0.08)
-      this.whoosh.gain.gain.setTargetAtTime(vol, t, 0.1)
-      this.whoosh.lfo.frequency.setTargetAtTime(3.2 + i * 4, t, 0.1)
-      this.whoosh.lfoGain.gain.setTargetAtTime(0.01 + i * 0.02, t, 0.1)
     }
   }
 }

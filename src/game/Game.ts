@@ -334,7 +334,6 @@ export class Game {
           } else {
             this.state = "ready"
             this.slingshot.stretch = 0
-            this.audio.setAimStretch(0)
           }
           this.lastAimPull = null
           this.aimPointerId = null
@@ -346,7 +345,6 @@ export class Game {
           )
           this.slingshot.stretch = power
           this.lastAimPull = pull
-          this.audio.setAimStretch(power)
         }
       }
     } else {
