@@ -4,7 +4,9 @@ import {
   MAX_PULL,
   PLATFORM_HEIGHT,
   SCORE_POPUP_RISE,
+  SKY_ZONE_SPACING,
   SLINGSHOT_FORK_HEIGHT,
+  skyZoneColor,
 } from "./constants"
 import type { Ball } from "./Ball"
 import type { Camera } from "./Camera"
@@ -30,20 +32,20 @@ export class Renderer {
     this.ctx = ctx
   }
 
-  begin(camera: Camera, dt: number): void {
+  begin(camera: Camera, dt: number, startHeight: number): void {
     this.time += dt
     const ctx = this.ctx
     const dpr = camera.dpr
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, camera.width, camera.height)
-    this.drawBackground(camera)
+    this.drawBackground(camera, startHeight)
   }
 
-  private drawBackground(camera: Camera): void {
+  private drawBackground(camera: Camera, startHeight: number): void {
     const ctx = this.ctx
     const { width, height } = camera
-    ctx.fillStyle = COLORS.skyTop
-    ctx.fillRect(0, 0, width, height)
+    const killY = camera.killScreenY
+    this.drawSkyBands(camera, startHeight, killY)
 
     // Soft hash for a bit of depth on white
     ctx.save()
@@ -60,7 +62,6 @@ export class Renderer {
     ctx.restore()
 
     // Reserved powerup zone below kill line
-    const killY = camera.killScreenY
     ctx.fillStyle = COLORS.reserved
     ctx.fillRect(0, killY, width, height - killY)
 
@@ -75,6 +76,35 @@ export class Renderer {
     ctx.font = "500 11px 'DM Sans', sans-serif"
     ctx.textAlign = "center"
     ctx.fillText("more upgrades coming soon", width / 2, killY + 28)
+  }
+
+  /** Horizontal sky fills keyed to 5k climb bands (repeats every 100k). */
+  private drawSkyBands(
+    camera: Camera,
+    startHeight: number,
+    killY: number,
+  ): void {
+    const ctx = this.ctx
+    const { width } = camera
+    const topWorld = camera.screenToWorld(0, -24).y
+    const bottomWorld = camera.screenToWorld(0, killY + 24).y
+    const climbMin = Math.min(topWorld, bottomWorld) - startHeight
+    const climbMax = Math.max(topWorld, bottomWorld) - startHeight
+    const spacing = SKY_ZONE_SPACING
+
+    let climb = Math.floor(climbMin / spacing) * spacing
+    for (; climb <= climbMax + spacing; climb += spacing) {
+      const worldLow = startHeight + climb
+      const worldHigh = startHeight + climb + spacing
+      const syTop = camera.worldToScreen({ x: 0, y: worldHigh }).y
+      const syBottom = camera.worldToScreen({ x: 0, y: worldLow }).y
+      const y0 = Math.max(0, syTop)
+      const y1 = Math.min(killY, syBottom)
+      if (y1 <= y0) continue
+
+      ctx.fillStyle = skyZoneColor(climb)
+      ctx.fillRect(0, y0, width, y1 - y0)
+    }
   }
 
   /**

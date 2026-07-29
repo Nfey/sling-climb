@@ -721,7 +721,7 @@ export class Game {
 
   private draw(dt: number): void {
     const cam = this.camera
-    this.renderer.begin(cam, dt)
+    this.renderer.begin(cam, dt, this.score.startHeight)
     this.renderer.drawAltitudeMarkers(cam, this.score.startHeight)
     this.renderer.drawMaxHeightLine(
       cam,
