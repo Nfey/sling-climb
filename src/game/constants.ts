@@ -45,13 +45,11 @@ export const PURPLE_BALL_SPAWN_UP = 920
 /** Initial horizontal speed magnitude on 2x spawn; sign is random (px/s). */
 export const PURPLE_BALL_SPAWN_SIDE = 480
 
-export const PORTAL_CHANCE = 0.22
+export const PORTAL_CHANCE = 0.55
 export const PORTAL_HEIGHT = 96
-export const PORTAL_MIN_GAP = 220
-export const PORTAL_MAX_GAP = 420
-/** Vertical offset range between matched left/right portals. */
-export const PORTAL_PAIR_OFFSET_MIN = 40
-export const PORTAL_PAIR_OFFSET_MAX = 140
+/** Vertical gap between successive staggered portals. */
+export const PORTAL_MIN_GAP = 140
+export const PORTAL_MAX_GAP = 240
 
 export const BUMPER_CHANCE = 0.2
 export const BUMPER_RADIUS_MIN = 18

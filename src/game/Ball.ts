@@ -14,7 +14,7 @@ import type {
   BumperData,
   CardinalDir,
   PlatformData,
-  PortalPair,
+  PortalData,
   UpgradePickupData,
   Vec2,
 } from "./types"
@@ -103,18 +103,48 @@ export class Ball {
     this.stuckPlatformKey = ""
   }
 
-  private findLeftPortal(portals: PortalPair[]): PortalPair | null {
+  private findPortalAt(
+    portals: PortalData[],
+    side: "left" | "right",
+  ): PortalData | null {
     for (const p of portals) {
-      if (this.y >= p.leftY && this.y <= p.leftY + p.height) return p
+      if (p.side !== side) continue
+      if (this.y >= p.y && this.y <= p.y + p.height) return p
     }
     return null
   }
 
-  private findRightPortal(portals: PortalPair[]): PortalPair | null {
+  /** Nearest portal on the opposite wall that sits strictly above the entry. */
+  private findNextPortalUp(
+    portals: PortalData[],
+    entry: PortalData,
+  ): PortalData | null {
+    const opposite = entry.side === "left" ? "right" : "left"
+    let best: PortalData | null = null
     for (const p of portals) {
-      if (this.y >= p.rightY && this.y <= p.rightY + p.height) return p
+      if (p.side !== opposite) continue
+      if (p.y <= entry.y) continue
+      if (!best || p.y < best.y) best = p
     }
-    return null
+    return best
+  }
+
+  private teleportThroughPortal(
+    entry: PortalData,
+    exit: PortalData,
+    worldWidth: number,
+  ): number {
+    const prevY = this.y
+    const frac = Math.max(0, Math.min(1, (this.y - entry.y) / entry.height))
+    this.y = exit.y + frac * exit.height
+    if (exit.side === "left") {
+      this.x = this.radius + 0.5
+    } else {
+      this.x = worldWidth - this.radius - 0.5
+    }
+    // Keep vx/vy so momentum continues through the portal
+    this.squash = 0.35
+    return this.y - prevY
   }
 
   private collideBumpers(bumpers: BumperData[]): void {
@@ -162,7 +192,7 @@ export class Ball {
     dt: number,
     worldWidth: number,
     platforms: PlatformData[],
-    portals: PortalPair[],
+    portals: PortalData[],
     bumpers: BumperData[],
     arrowPads: ArrowPadData[],
     upgrades: UpgradePickupData[],
@@ -182,32 +212,22 @@ export class Ball {
     this.x += this.vx * dt
     this.y += this.vy * dt
 
-    // Walls or matched portals (exit at the paired portal's height)
+    // Walls or staggered portals (always exit the next portal up on the other side)
     if (this.x - this.radius < 0) {
-      const portal = this.vx <= 0 ? this.findLeftPortal(portals) : null
-      if (portal) {
-        const offsetInPortal = this.y - portal.leftY
-        const prevY = this.y
-        this.x = worldWidth - this.radius - 0.5
-        this.y = portal.rightY + offsetInPortal
-        result.portalDeltaY = this.y - prevY
-        // Keep vx/vy unchanged so momentum continues through the portal
-        this.squash = 0.35
+      const entry = this.vx <= 0 ? this.findPortalAt(portals, "left") : null
+      const exit = entry ? this.findNextPortalUp(portals, entry) : null
+      if (entry && exit) {
+        result.portalDeltaY = this.teleportThroughPortal(entry, exit, worldWidth)
       } else {
         this.x = this.radius
         this.vx = Math.abs(this.vx) * WALL_BOUNCE
         this.squash = 0.6
       }
     } else if (this.x + this.radius > worldWidth) {
-      const portal = this.vx >= 0 ? this.findRightPortal(portals) : null
-      if (portal) {
-        const offsetInPortal = this.y - portal.rightY
-        const prevY = this.y
-        this.x = this.radius + 0.5
-        this.y = portal.leftY + offsetInPortal
-        result.portalDeltaY = this.y - prevY
-        // Keep vx/vy unchanged so momentum continues through the portal
-        this.squash = 0.35
+      const entry = this.vx >= 0 ? this.findPortalAt(portals, "right") : null
+      const exit = entry ? this.findNextPortalUp(portals, entry) : null
+      if (entry && exit) {
+        result.portalDeltaY = this.teleportThroughPortal(entry, exit, worldWidth)
       } else {
         this.x = worldWidth - this.radius
         this.vx = -Math.abs(this.vx) * WALL_BOUNCE

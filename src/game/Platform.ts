@@ -19,8 +19,6 @@ import {
   PORTAL_HEIGHT,
   PORTAL_MAX_GAP,
   PORTAL_MIN_GAP,
-  PORTAL_PAIR_OFFSET_MAX,
-  PORTAL_PAIR_OFFSET_MIN,
   BULLET_PICKUP_SHARE,
   FREE_MOVE_PICKUP_SHARE,
   POW_PICKUP_SHARE,
@@ -34,7 +32,7 @@ import type {
   BumperData,
   CardinalDir,
   PlatformData,
-  PortalPair,
+  PortalData,
   UpgradePickupData,
 } from "./types"
 
@@ -44,12 +42,13 @@ function rand(min: number, max: number): number {
 
 export class PlatformManager {
   platforms: PlatformData[] = []
-  portals: PortalPair[] = []
+  portals: PortalData[] = []
   bumpers: BumperData[] = []
   arrowPads: ArrowPadData[] = []
   upgrades: UpgradePickupData[] = []
   private nextY = 0
   private nextPortalY = 0
+  private nextPortalSide: "left" | "right" = "left"
   private nextBumperY = 0
   private nextArrowY = 0
   private nextUpgradeY = 0
@@ -64,6 +63,7 @@ export class PlatformManager {
     this.upgrades = []
     this.nextY = slingshotY + 80
     this.nextPortalY = slingshotY + 280
+    this.nextPortalSide = Math.random() < 0.5 ? "left" : "right"
     this.nextBumperY = slingshotY + 200
     this.nextArrowY = slingshotY + 240
     this.nextUpgradeY = slingshotY + 360
@@ -116,14 +116,13 @@ export class PlatformManager {
 
   private maybeSpawnPortal(): void {
     if (Math.random() < PORTAL_CHANCE) {
-      const offset =
-        rand(PORTAL_PAIR_OFFSET_MIN, PORTAL_PAIR_OFFSET_MAX) *
-        (Math.random() < 0.5 ? -1 : 1)
       this.portals.push({
-        leftY: this.nextPortalY,
-        rightY: this.nextPortalY + offset,
+        side: this.nextPortalSide,
+        y: this.nextPortalY,
         height: PORTAL_HEIGHT,
       })
+      // Alternate sides so portals stay staggered up the climb
+      this.nextPortalSide = this.nextPortalSide === "left" ? "right" : "left"
     }
     this.nextPortalY += rand(PORTAL_MIN_GAP, PORTAL_MAX_GAP)
   }
@@ -210,9 +209,7 @@ export class PlatformManager {
     }
 
     this.platforms = this.platforms.filter((p) => p.y + p.height > killWorldY)
-    this.portals = this.portals.filter(
-      (p) => Math.max(p.leftY, p.rightY) + p.height > killWorldY,
-    )
+    this.portals = this.portals.filter((p) => p.y + p.height > killWorldY)
     this.bumpers = this.bumpers.filter((b) => b.y + b.radius > killWorldY)
     this.arrowPads = this.arrowPads.filter((a) => a.y + a.radius > killWorldY)
     this.upgrades = this.upgrades.filter((u) => u.y + u.radius > killWorldY)
