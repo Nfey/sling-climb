@@ -1,10 +1,8 @@
 import {
   BONUS_PLATFORM_POINTS,
+  CLIMB_POINT_UNIT,
   HIGH_SCORE_KEY,
   MAX_HEIGHT_KEY,
-  SCORE_HEIGHT_EXP,
-  SCORE_POINTS_EXP,
-  SCORE_TIME_EXP,
 } from "./constants"
 
 export class Score {
@@ -15,8 +13,10 @@ export class Score {
   heightPoints = 0
   bonusPoints = 0
   highScore = 0
-  /** True after commitHighScore() if this run beat the previous best. */
+  /** True after commitHighScore() if this run beat the previous best score. */
   isNewHighScore = false
+  /** True after commitHighScore() if this run beat the previous best climb. */
+  isNewBestHeight = false
   /**
    * Point multiplier while the ball is airborne.
    * Starts at 1; bumps on platform / bumper / portal; resets on catch.
@@ -32,8 +32,6 @@ export class Score {
    * max-height line is drawn. Does not rise during the current run.
    */
   runHeightLine = 0
-  /** Composite end-of-run score after commitHighScore(). */
-  finalScore = 0
 
   constructor() {
     this.highScore = this.loadNumber(HIGH_SCORE_KEY)
@@ -46,8 +44,8 @@ export class Score {
     this.heightPoints = 0
     this.bonusPoints = 0
     this.isNewHighScore = false
+    this.isNewBestHeight = false
     this.combo = 1
-    this.finalScore = 0
     // Snapshot previous best so the indicator stays fixed for this run.
     this.runHeightLine = this.bestMaxHeight
   }
@@ -76,8 +74,14 @@ export class Score {
     if (ballY <= this.peakHeight) return
     const prevPeak = this.peakHeight
     this.peakHeight = ballY
-    const prevUnits = Math.max(0, Math.floor((prevPeak - this.startHeight) / 10))
-    const nextUnits = Math.max(0, Math.floor((this.peakHeight - this.startHeight) / 10))
+    const prevUnits = Math.max(
+      0,
+      Math.floor((prevPeak - this.startHeight) / CLIMB_POINT_UNIT),
+    )
+    const nextUnits = Math.max(
+      0,
+      Math.floor((this.peakHeight - this.startHeight) / CLIMB_POINT_UNIT),
+    )
     const gained = nextUnits - prevUnits
     if (gained > 0) this.heightPoints += gained * this.combo
   }
@@ -109,40 +113,24 @@ export class Score {
   }
 
   /**
-   * End-of-run high score ≈ height × points / time.
-   * Height is weighted a bit above points; total elapsed time only softens
-   * the total — faster for the same height/points scores higher.
+   * Persist best run score and best climb height.
+   * Returns true when this run set a new best score.
    */
-  computeFinalScore(elapsed: number): number {
-    const height = Math.max(1, this.climbHeight)
-    const points = Math.max(1, this.current)
-    const time = Math.max(1, elapsed)
-    return Math.max(
-      1,
-      Math.round(
-        (Math.pow(height, SCORE_HEIGHT_EXP) * Math.pow(points, SCORE_POINTS_EXP)) /
-          Math.pow(time, SCORE_TIME_EXP),
-      ),
-    )
-  }
+  commitHighScore(): boolean {
+    const runScore = this.current
 
-  /**
-   * Persist composite high score and best climb height.
-   * Returns true when this run set a new best composite score.
-   */
-  commitHighScore(elapsed: number): boolean {
-    this.finalScore = this.computeFinalScore(elapsed)
+    this.isNewHighScore = runScore > this.highScore
+    if (this.isNewHighScore) {
+      this.highScore = runScore
+      this.saveNumber(HIGH_SCORE_KEY, this.highScore)
+    }
 
-    if (this.climbHeight > this.bestMaxHeight) {
+    this.isNewBestHeight = this.climbHeight > this.bestMaxHeight
+    if (this.isNewBestHeight) {
       this.bestMaxHeight = this.climbHeight
       this.saveNumber(MAX_HEIGHT_KEY, this.bestMaxHeight)
     }
 
-    this.isNewHighScore = this.finalScore > this.highScore
-    if (this.isNewHighScore) {
-      this.highScore = this.finalScore
-      this.saveNumber(HIGH_SCORE_KEY, this.highScore)
-    }
     return this.isNewHighScore
   }
 
