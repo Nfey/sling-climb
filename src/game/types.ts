@@ -70,7 +70,7 @@ export interface BulletData {
   radius: number
 }
 
-/** Floating score label that rises and fades above a bonus platform. */
+/** Floating score label that rises and fades above a scoring event. */
 export interface ScorePopup {
   x: number
   y: number
@@ -79,4 +79,6 @@ export interface ScorePopup {
   /** Full lifetime used for fade / rise (seconds). */
   duration: number
   text: string
+  /** CSS color for the popup text. */
+  color: string
 }

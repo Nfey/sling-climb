@@ -44,8 +44,11 @@ export const SLINGSHOT_SCREEN_FRAC = 2 / 3
 export const KILL_LINE_OFFSET = 28
 
 export const BONUS_PLATFORM_CHANCE = 0.18
-export const BONUS_PLATFORM_POINTS = 100
-/** How long the purple "+100" popup floats above a bonus platform (seconds). */
+/** Points for landing on a purple bonus platform (before combo). */
+export const BONUS_PLATFORM_POINTS = 200
+/** Points for bumper, arrow pad, or portal (before combo). */
+export const HAZARD_BONUS_POINTS = 100
+/** How long a floating score popup lasts (seconds). */
 export const SCORE_POPUP_DURATION = 0.85
 /** How far the score popup rises in world space over its life (px). */
 export const SCORE_POPUP_RISE = 42
