@@ -17,6 +17,8 @@ export class Input {
   private canvas: HTMLCanvasElement
   /** Called synchronously inside pointer/key gestures (e.g. audio unlock). */
   private onUserGesture: (() => void) | null
+  /** Called synchronously when a captured pointer ends (launch SFX must run here). */
+  private onPointerEnd: ((id: number) => void) | null
   private onKeyDown = (e: KeyboardEvent): void => {
     const key = normalizeMoveKey(e.key)
     if (!key) return
@@ -34,9 +36,14 @@ export class Input {
     this.keys.clear()
   }
 
-  constructor(canvas: HTMLCanvasElement, onUserGesture?: () => void) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    onUserGesture?: () => void,
+    onPointerEnd?: (id: number) => void,
+  ) {
     this.canvas = canvas
     this.onUserGesture = onUserGesture ?? null
+    this.onPointerEnd = onPointerEnd ?? null
     this.bind()
   }
 
@@ -89,6 +96,7 @@ export class Input {
       p.down = false
       this.pointers.delete(e.pointerId)
       this.releasedQueue.push(e.pointerId)
+      this.onPointerEnd?.(e.pointerId)
       e.preventDefault()
     }
 

@@ -543,30 +543,48 @@ export class Renderer {
     climbHeight: number,
     tip: string | null,
     combo = 1,
+    highScore = 0,
+    bestHeight = 0,
   ): void {
     const ctx = this.ctx
-    ctx.textAlign = "left"
-    ctx.fillStyle = COLORS.ink
-    ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText(String(score), 20, 36 + 8)
+    const scoreY = 52
+    const bestRowY = 36
 
+    ctx.textAlign = "left"
     ctx.fillStyle = COLORS.inkDim
     ctx.font = "500 12px 'DM Sans', sans-serif"
     ctx.fillText("SCORE", 20, 22)
 
+    if (highScore > 0) {
+      ctx.fillStyle = COLORS.accent
+      ctx.font = "600 11px 'DM Sans', sans-serif"
+      ctx.fillText(String(highScore), 20, bestRowY)
+    }
+
+    ctx.fillStyle = COLORS.ink
+    ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText(String(score), 20, scoreY)
+
     if (combo >= 2) {
       ctx.fillStyle = COLORS.accent
       ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
-      ctx.fillText(`${combo}x`, 20, 70)
+      ctx.fillText(`${combo}x`, 20, scoreY + 26)
     }
 
     ctx.textAlign = "right"
     ctx.fillStyle = COLORS.inkDim
     ctx.font = "500 12px 'DM Sans', sans-serif"
     ctx.fillText("HEIGHT", camera.width - 20, 22)
+
+    if (bestHeight > 0) {
+      ctx.fillStyle = COLORS.accent
+      ctx.font = "600 11px 'DM Sans', sans-serif"
+      ctx.fillText(formatHeightLabel(bestHeight), camera.width - 20, bestRowY)
+    }
+
     ctx.fillStyle = COLORS.ink
     ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText(formatHeightLabel(climbHeight), camera.width - 20, 36 + 8)
+    ctx.fillText(formatHeightLabel(climbHeight), camera.width - 20, scoreY)
 
     if (tip) {
       ctx.textAlign = "center"
