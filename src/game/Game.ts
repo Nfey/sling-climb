@@ -80,7 +80,11 @@ export class Game {
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
     // Unlock audio inside the real gesture handlers (pointer/key), not rAF.
-    this.input = new Input(canvas, () => this.audio.unlock())
+    this.input = new Input(
+      canvas,
+      () => this.audio.unlock(),
+      (id) => this.onPointerEnd(id),
+    )
     this.renderer = new Renderer(canvas)
     this.resize()
     window.addEventListener("resize", () => this.resize())
@@ -172,6 +176,38 @@ export class Game {
     this.audio.setClimb(0)
     this.audio.startFlight()
     this.audio.playLaunch(launchPower)
+  }
+
+  /**
+   * Finish slingshot aim on pointer release. Runs synchronously from the
+   * pointerup handler so launch SFX stay inside the user-gesture stack.
+   */
+  private commitAimRelease(): void {
+    if (this.state !== "aiming" || !this.ball.inSlingshot) return
+
+    if (this.lastAimPull && Math.hypot(this.lastAimPull.x, this.lastAimPull.y) > 8) {
+      this.audio.unlock()
+      const power = this.slingshot.stretch
+      const vel = this.slingshot.launchVelocity(this.lastAimPull, this.launchMult())
+      this.ball.x = this.slingshot.x
+      this.ball.y = this.slingshot.y
+      this.ball.launch(vel)
+      this.state = "flying"
+      this.slingshot.frozen = false
+      this.slingshot.stretch = 0
+      this.beginFlight(power)
+    } else {
+      this.state = "ready"
+      this.slingshot.stretch = 0
+    }
+    this.lastAimPull = null
+    this.aimPointerId = null
+  }
+
+  /** Pointer lifted — commit aim while still in the browser gesture stack. */
+  private onPointerEnd(id: number): void {
+    if (this.aimPointerId !== id) return
+    this.commitAimRelease()
   }
 
   private endFlightCatch(): void {
@@ -324,22 +360,7 @@ export class Game {
             : pointer
 
         if (!ptr) {
-          if (this.lastAimPull && Math.hypot(this.lastAimPull.x, this.lastAimPull.y) > 8) {
-            const power = this.slingshot.stretch
-            const vel = this.slingshot.launchVelocity(this.lastAimPull, this.launchMult())
-            this.ball.x = this.slingshot.x
-            this.ball.y = this.slingshot.y
-            this.ball.launch(vel)
-            this.state = "flying"
-            this.slingshot.frozen = false
-            this.slingshot.stretch = 0
-            this.beginFlight(power)
-          } else {
-            this.state = "ready"
-            this.slingshot.stretch = 0
-          }
-          this.lastAimPull = null
-          this.aimPointerId = null
+          this.commitAimRelease()
         } else {
           const { pull, power } = this.slingshot.getPull(
             ptr.x,
@@ -775,6 +796,8 @@ export class Game {
       this.score.climbHeight,
       this.tipForState(),
       this.score.combo,
+      this.score.highScore,
+      this.score.bestMaxHeight,
     )
 
     if (this.state === "gameOver") {
