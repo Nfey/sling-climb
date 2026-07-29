@@ -261,8 +261,11 @@ export class Renderer {
     const pouchScreen = pouch ? camera.worldToScreen(pouch) : rest
     const freeMove = style === "freeMove"
     const pow = style === "pow"
-    const body = pow ? COLORS.powPickup : COLORS.slingshot
-    const band = pow ? "#991b1b" : COLORS.band
+    // Stick stays wood; pow only deepens the red band
+    const wood = COLORS.slingshot
+    const woodDark = COLORS.slingshotDark
+    const woodLight = COLORS.slingshotLight
+    const band = pow ? COLORS.bandDark : COLORS.band
     const glow = freeMove
       ? COLORS.freeMovePickup
       : pow
@@ -282,45 +285,105 @@ export class Renderer {
       ctx.restore()
     }
 
-    // Post
-    ctx.strokeStyle = body
-    ctx.lineWidth = 10
+    const crotch = { x: rest.x, y: rest.y + 4 }
+    const handleBottom = { x: base.x, y: base.y + SLINGSHOT_FORK_HEIGHT * 0.2 }
+
+    // Wooden Y-fork: dark outline, then fill, then light grain highlight
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
-    ctx.beginPath()
-    ctx.moveTo(base.x, base.y + SLINGSHOT_FORK_HEIGHT * 0.2)
-    ctx.lineTo(rest.x, rest.y + 6)
-    ctx.stroke()
 
-    // Fork arms
-    ctx.lineWidth = 8
-    ctx.beginPath()
-    ctx.moveTo(left.x, left.y)
-    ctx.lineTo(rest.x, rest.y + 4)
-    ctx.lineTo(right.x, right.y)
-    ctx.stroke()
+    const drawWoodY = (width: number, color: string): void => {
+      ctx.strokeStyle = color
+      ctx.lineWidth = width
+      ctx.beginPath()
+      ctx.moveTo(handleBottom.x, handleBottom.y)
+      ctx.lineTo(crotch.x, crotch.y)
+      ctx.moveTo(left.x, left.y)
+      ctx.lineTo(crotch.x, crotch.y)
+      ctx.lineTo(right.x, right.y)
+      ctx.stroke()
+    }
 
-    // Rubber bands
-    ctx.strokeStyle = band
-    ctx.lineWidth = 3.5
+    drawWoodY(14, woodDark)
+    drawWoodY(10, wood)
+    drawWoodY(3.5, woodLight)
+
+    // Knotty fork tips where the band is tied
+    for (const tip of [left, right]) {
+      ctx.fillStyle = woodDark
+      ctx.beginPath()
+      ctx.arc(tip.x, tip.y, 5.5, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = wood
+      ctx.beginPath()
+      ctx.arc(tip.x, tip.y, 3.5, 0, Math.PI * 2)
+      ctx.fill()
+    }
+
+    // Red rubber band wraps at each fork tip
+    for (const tip of [left, right]) {
+      ctx.strokeStyle = band
+      ctx.lineWidth = 2.5
+      ctx.beginPath()
+      ctx.arc(tip.x, tip.y, 6.5, -0.6, Math.PI + 0.6)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(tip.x, tip.y, 4.5, 0.4, Math.PI - 0.2)
+      ctx.stroke()
+    }
+
+    // Red elastic strands from each fork into the pouch sides
+    const pouchW = 18
+    const leftAttach = { x: pouchScreen.x - pouchW * 0.55, y: pouchScreen.y + 1 }
+    const rightAttach = { x: pouchScreen.x + pouchW * 0.55, y: pouchScreen.y + 1 }
+
+    const drawBand = (
+      from: Vec2,
+      to: Vec2,
+      width: number,
+      color: string,
+    ): void => {
+      ctx.strokeStyle = color
+      ctx.lineWidth = width
+      ctx.beginPath()
+      ctx.moveTo(from.x, from.y)
+      ctx.quadraticCurveTo(
+        (from.x + to.x) * 0.5,
+        (from.y + to.y) * 0.5 + 6,
+        to.x,
+        to.y,
+      )
+      ctx.stroke()
+    }
+
+    drawBand(left, leftAttach, 5, COLORS.bandDark)
+    drawBand(right, rightAttach, 5, COLORS.bandDark)
+    drawBand(left, leftAttach, 3.2, band)
+    drawBand(right, rightAttach, 3.2, band)
+
+    // Small brown leather pouch where the ball rests (cup under/around the ball)
+    ctx.save()
+    ctx.translate(pouchScreen.x, pouchScreen.y)
+    ctx.fillStyle = COLORS.pouchDark
     ctx.beginPath()
-    ctx.moveTo(left.x, left.y)
-    ctx.quadraticCurveTo(
-      (left.x + pouchScreen.x) * 0.5,
-      (left.y + pouchScreen.y) * 0.5 + 6,
-      pouchScreen.x,
-      pouchScreen.y,
-    )
-    ctx.stroke()
+    ctx.ellipse(0, 4, pouchW * 0.62, 10, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = COLORS.pouch
     ctx.beginPath()
-    ctx.moveTo(right.x, right.y)
-    ctx.quadraticCurveTo(
-      (right.x + pouchScreen.x) * 0.5,
-      (right.y + pouchScreen.y) * 0.5 + 6,
-      pouchScreen.x,
-      pouchScreen.y,
-    )
+    ctx.ellipse(0, 2.5, pouchW * 0.55, 8.5, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = COLORS.pouchLight
+    ctx.beginPath()
+    ctx.ellipse(-3.5, 0.5, pouchW * 0.18, 3.5, -0.35, 0, Math.PI * 2)
+    ctx.fill()
+    // Stitch line across the pouch mouth
+    ctx.strokeStyle = COLORS.pouchDark
+    ctx.lineWidth = 1.2
+    ctx.beginPath()
+    ctx.moveTo(-pouchW * 0.4, 0)
+    ctx.quadraticCurveTo(0, -3.5, pouchW * 0.4, 0)
     ctx.stroke()
+    ctx.restore()
 
     // Movement guide — follows the slingshot (important during free-move)
     ctx.save()
