@@ -20,6 +20,7 @@ import {
   PORTAL_MAX_GAP,
   PORTAL_MIN_GAP,
   BULLET_PICKUP_SHARE,
+  DUAL_PICKUP_SHARE,
   FREE_MOVE_PICKUP_SHARE,
   POW_PICKUP_SHARE,
   UPGRADE_PICKUP_CHANCE,
@@ -204,27 +205,35 @@ export class PlatformManager {
     this.nextArrowY += rand(ARROW_PAD_MIN_GAP, ARROW_PAD_MAX_GAP)
   }
 
+  private pickUpgradeKind(): UpgradePickupData["kind"] | null {
+    const r = Math.random()
+    let t = BULLET_PICKUP_SHARE
+    if (r < t) return "bullets"
+    t += FREE_MOVE_PICKUP_SHARE
+    if (r < t) return "freeMove"
+    t += POW_PICKUP_SHARE
+    if (r < t) return "pow"
+    t += DUAL_PICKUP_SHARE
+    if (r < t) return "dual"
+    return null
+  }
+
   private maybeSpawnUpgrade(): void {
     if (Math.random() < UPGRADE_PICKUP_CHANCE) {
-      const radius = UPGRADE_PICKUP_RADIUS
-      const x = rand(
-        PLATFORM_HORIZONTAL_MARGIN + radius,
-        this.worldWidth - PLATFORM_HORIZONTAL_MARGIN - radius,
-      )
-      this.upgrades.push({
-        x,
-        y: this.nextUpgradeY,
-        radius,
-        kind: (() => {
-          const r = Math.random()
-          if (r < BULLET_PICKUP_SHARE) return "bullets"
-          if (r < BULLET_PICKUP_SHARE + FREE_MOVE_PICKUP_SHARE) return "freeMove"
-          if (r < BULLET_PICKUP_SHARE + FREE_MOVE_PICKUP_SHARE + POW_PICKUP_SHARE) {
-            return "pow"
-          }
-          return "dual"
-        })(),
-      })
+      const kind = this.pickUpgradeKind()
+      if (kind !== null) {
+        const radius = UPGRADE_PICKUP_RADIUS
+        const x = rand(
+          PLATFORM_HORIZONTAL_MARGIN + radius,
+          this.worldWidth - PLATFORM_HORIZONTAL_MARGIN - radius,
+        )
+        this.upgrades.push({
+          x,
+          y: this.nextUpgradeY,
+          radius,
+          kind,
+        })
+      }
     }
     this.nextUpgradeY += rand(UPGRADE_PICKUP_MIN_GAP, UPGRADE_PICKUP_MAX_GAP)
   }

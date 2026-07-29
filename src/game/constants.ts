@@ -100,10 +100,12 @@ export const UPGRADE_PICKUP_MIN_GAP = 260
 export const UPGRADE_PICKUP_MAX_GAP = 480
 /** Chance a pickup is the bullet volley. 0 = disabled (code kept). */
 export const BULLET_PICKUP_SHARE = 0
-/** Chance a pickup is free-move (after bullets are ruled out). */
-export const FREE_MOVE_PICKUP_SHARE = 0.3
+/** Chance a pickup is free-move XY (after bullets are ruled out). 0 = disabled. */
+export const FREE_MOVE_PICKUP_SHARE = 0
 /** Chance a pickup is POW (after bullets + free-move are ruled out). */
 export const POW_PICKUP_SHARE = 0.3
+/** Chance a pickup is the 2x dual ball (after earlier kinds are ruled out). 0 = disabled. */
+export const DUAL_PICKUP_SHARE = 0
 /** Seconds the slingshot can be dragged freely in X and Y. */
 export const FREE_MOVE_DURATION = 30
 /** Seconds the slingshot launches at 2x power. */
