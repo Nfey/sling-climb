@@ -50,6 +50,8 @@ export const PORTAL_HEIGHT = 96
 /** Vertical gap between successive staggered portals. */
 export const PORTAL_MIN_GAP = 140
 export const PORTAL_MAX_GAP = 240
+/** Max world-Y speed the camera/slingshot rises when catching up after a portal (px/s). */
+export const CAMERA_CATCHUP_SPEED = 750
 
 export const BUMPER_CHANCE = 0.2
 export const BUMPER_RADIUS_MIN = 18

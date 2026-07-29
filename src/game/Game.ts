@@ -10,6 +10,7 @@ import {
   BULLET_RADIUS,
   BULLET_SPEED,
   BULLET_WEDGE_PAD,
+  CAMERA_CATCHUP_SPEED,
   CATCH_BURST_DURATION,
   FREE_MOVE_DURATION,
   POW_DURATION,
@@ -297,18 +298,11 @@ export class Game {
       if (hit.upgradeCollected === "pow") {
         this.powRemaining = POW_DURATION
       }
-      if (hit.portalDeltaY !== 0) {
-        // Shift the slingshot/camera with the ball so screen-Y stays continuous
-        // and vertical velocity still reads correctly (no post-portal camera ease
-        // that would slide the ball and kill perceived momentum).
-        this.slingshot.y += hit.portalDeltaY
-        if (this.freeMoveActive) {
-          this.camera.y += hit.portalDeltaY
-        }
-      }
+      // Portal teleports the ball immediately; camera/slingshot catch up
+      // gradually via advanceWorld so the kill line doesn't jump onto the ball.
       this.score.observe(this.ball.y)
 
-      this.advanceWorld()
+      this.advanceWorld(dt)
 
       if (this.ball.vy <= 0 && this.slingshot.canCatch(this.ball.x, this.ball.y)) {
         this.ball.catchAt(this.slingshot.x, this.slingshot.y)
@@ -512,14 +506,19 @@ export class Game {
     }
   }
 
-  private advanceWorld(): void {
+  private advanceWorld(dt: number): void {
     const maxAbove = this.camera.height * 0.32
+    const maxStep = CAMERA_CATCHUP_SPEED * dt
     if (this.freeMoveActive) {
-      if (this.ball.y > this.camera.y + maxAbove) {
-        this.camera.y = this.ball.y - maxAbove
+      const target = this.ball.y - maxAbove
+      if (this.camera.y < target) {
+        this.camera.y += Math.min(target - this.camera.y, maxStep)
       }
-    } else if (this.ball.y > this.slingshot.y + maxAbove) {
-      this.slingshot.y = this.ball.y - maxAbove
+    } else {
+      const target = this.ball.y - maxAbove
+      if (this.slingshot.y < target) {
+        this.slingshot.y += Math.min(target - this.slingshot.y, maxStep)
+      }
     }
   }
 
