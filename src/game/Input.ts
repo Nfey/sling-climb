@@ -15,9 +15,12 @@ export class Input {
   private keys = new Set<string>()
 
   private canvas: HTMLCanvasElement
+  /** Called synchronously inside pointer/key gestures (e.g. audio unlock). */
+  private onUserGesture: (() => void) | null
   private onKeyDown = (e: KeyboardEvent): void => {
     const key = normalizeMoveKey(e.key)
     if (!key) return
+    this.onUserGesture?.()
     this.keys.add(key)
     e.preventDefault()
   }
@@ -31,8 +34,9 @@ export class Input {
     this.keys.clear()
   }
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, onUserGesture?: () => void) {
     this.canvas = canvas
+    this.onUserGesture = onUserGesture ?? null
     this.bind()
   }
 
@@ -42,6 +46,8 @@ export class Input {
     el.addEventListener(
       "pointerdown",
       (e) => {
+        // Resume AudioContext in the gesture stack — not in rAF.
+        this.onUserGesture?.()
         el.setPointerCapture(e.pointerId)
         const { x, y } = this.clientToCanvas(e.clientX, e.clientY)
         const state: PointerState = {
@@ -75,6 +81,8 @@ export class Input {
     const end = (e: PointerEvent) => {
       const p = this.pointers.get(e.pointerId)
       if (!p) return
+      // Release-to-fire is also a gesture — unlock again so launch SFX can play.
+      this.onUserGesture?.()
       const { x, y } = this.clientToCanvas(e.clientX, e.clientY)
       p.x = x
       p.y = y

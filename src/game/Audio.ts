@@ -32,23 +32,35 @@ export class GameAudio {
     nextTick: number
   } | null = null
 
-  /** Unlock on first gesture (browsers block autoplay). */
+  /**
+   * Unlock Web Audio on a real user gesture.
+   * Must be called synchronously from pointer/key handlers — browsers reject
+   * AudioContext.resume() when deferred to requestAnimationFrame.
+   * Safe to call repeatedly until the context is running.
+   */
   unlock(): void {
-    if (this.unlocked) return
     const ctx = this.ensureCtx()
-    if (!ctx) return
+    if (!ctx || !this.master) return
+    if (ctx.state === "running") {
+      this.unlocked = true
+      return
+    }
     if (ctx.state === "suspended") {
-      void ctx.resume()
+      void ctx.resume().then(() => {
+        if (ctx.state === "running") this.unlocked = true
+      })
     }
     // Tiny silent blip to fully open the audio pipeline on iOS Safari.
-    const g = ctx.createGain()
-    g.gain.value = 0.0001
-    g.connect(this.master!)
-    const o = ctx.createOscillator()
-    o.connect(g)
-    o.start()
-    o.stop(ctx.currentTime + 0.01)
-    this.unlocked = true
+    // Re-run on each gesture until running — a deferred unlock leaves this muted.
+    if (!this.unlocked) {
+      const g = ctx.createGain()
+      g.gain.value = 0.0001
+      g.connect(this.master)
+      const o = ctx.createOscillator()
+      o.connect(g)
+      o.start()
+      o.stop(ctx.currentTime + 0.01)
+    }
   }
 
   private ensureCtx(): AudioContext | null {
