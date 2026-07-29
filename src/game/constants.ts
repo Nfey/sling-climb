@@ -64,7 +64,8 @@ export const PURPLE_BALL_SPAWN_UP = 920
 /** Initial horizontal speed magnitude on 2x spawn; sign is random (px/s). */
 export const PURPLE_BALL_SPAWN_SIDE = 480
 
-export const PORTAL_CHANCE = 0.55
+/** Chance to place an entry+exit portal pair (two staggered openings). */
+export const PORTAL_CHANCE = 0.35
 export const PORTAL_HEIGHT = 96
 /** Vertical gap between successive staggered portals. */
 export const PORTAL_MIN_GAP = 140
