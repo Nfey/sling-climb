@@ -69,3 +69,14 @@ export interface BulletData {
   vy: number
   radius: number
 }
+
+/** Floating score label that rises and fades above a bonus platform. */
+export interface ScorePopup {
+  x: number
+  y: number
+  /** Seconds remaining. */
+  life: number
+  /** Full lifetime used for fade / rise (seconds). */
+  duration: number
+  text: string
+}

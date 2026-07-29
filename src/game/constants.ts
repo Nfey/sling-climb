@@ -37,7 +37,11 @@ export const SLINGSHOT_SCREEN_FRAC = 2 / 3
 export const KILL_LINE_OFFSET = 28
 
 export const BONUS_PLATFORM_CHANCE = 0.18
-export const BONUS_PLATFORM_POINTS = 50
+export const BONUS_PLATFORM_POINTS = 100
+/** How long the purple "+100" popup floats above a bonus platform (seconds). */
+export const SCORE_POPUP_DURATION = 0.85
+/** How far the score popup rises in world space over its life (px). */
+export const SCORE_POPUP_RISE = 42
 /** Points awarded when a purple 2x ball lands on any platform. */
 export const PURPLE_BALL_PLATFORM_POINTS = 100
 /** Initial upward speed when a 2x purple ball spawns (px/s). */

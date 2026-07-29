@@ -2,11 +2,21 @@ import {
   COLORS,
   MAX_PULL,
   PLATFORM_HEIGHT,
+  SCORE_POPUP_RISE,
   SLINGSHOT_FORK_HEIGHT,
 } from "./constants"
 import type { Ball } from "./Ball"
 import type { Camera } from "./Camera"
-import type { ArrowPadData, BulletData, BumperData, PlatformData, PortalData, UpgradePickupData, Vec2 } from "./types"
+import type {
+  ArrowPadData,
+  BulletData,
+  BumperData,
+  PlatformData,
+  PortalData,
+  ScorePopup,
+  UpgradePickupData,
+  Vec2,
+} from "./types"
 import type { Slingshot } from "./Slingshot"
 
 export class Renderer {
@@ -364,6 +374,25 @@ export class Renderer {
     ctx.textBaseline = "middle"
     ctx.fillText("Caught!", rest.x, rest.y - 52 - progress * 10)
     ctx.textBaseline = "alphabetic"
+    ctx.restore()
+  }
+
+  /** Purple "+100" that rises and fades above a bonus platform. */
+  drawScorePopups(camera: Camera, popups: ScorePopup[]): void {
+    if (popups.length === 0) return
+    const ctx = this.ctx
+    ctx.save()
+    ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    for (const popup of popups) {
+      const t = Math.max(0, Math.min(1, popup.life / popup.duration))
+      const rise = (1 - t) * SCORE_POPUP_RISE
+      const s = camera.worldToScreen({ x: popup.x, y: popup.y + rise })
+      ctx.globalAlpha = Math.min(1, t * 1.35)
+      ctx.fillStyle = COLORS.platformBonus
+      ctx.fillText(popup.text, s.x, s.y)
+    }
     ctx.restore()
   }
 
