@@ -333,6 +333,44 @@ export class Renderer {
     ctx.restore()
   }
 
+  /** Expanding rings + flash when the ball is caught. `t` is 1→0 over the burst. */
+  drawCatchBurst(camera: Camera, sling: Slingshot, t: number): void {
+    const ctx = this.ctx
+    const rest = camera.worldToScreen({ x: sling.x, y: sling.y })
+    const progress = 1 - Math.max(0, Math.min(1, t))
+    const alpha = Math.max(0, t)
+
+    ctx.save()
+    // Bright core flash
+    ctx.globalAlpha = 0.35 * alpha
+    ctx.fillStyle = COLORS.accent
+    ctx.beginPath()
+    ctx.arc(rest.x, rest.y, 18 + progress * 10, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Expanding rings
+    for (let i = 0; i < 3; i++) {
+      const ringT = Math.max(0, progress - i * 0.12)
+      const r = 20 + ringT * (48 + i * 18)
+      ctx.globalAlpha = alpha * (0.85 - i * 0.22) * (1 - ringT)
+      ctx.strokeStyle = COLORS.accent
+      ctx.lineWidth = 3.5 - i * 0.6
+      ctx.beginPath()
+      ctx.arc(rest.x, rest.y, r, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+
+    // "Caught!" label
+    ctx.globalAlpha = Math.min(1, alpha * 1.4)
+    ctx.fillStyle = COLORS.ink
+    ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    ctx.fillText("Caught!", rest.x, rest.y - 52 - progress * 10)
+    ctx.textBaseline = "alphabetic"
+    ctx.restore()
+  }
+
   drawTrajectory(
     camera: Camera,
     origin: Vec2,

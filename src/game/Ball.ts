@@ -4,6 +4,9 @@ import {
   BUMPER_KNOCK,
   GRAVITY,
   PLATFORM_BOOST,
+  PLATFORM_STUCK_HITS,
+  PLATFORM_STUCK_NUDGE,
+  PLATFORM_STUCK_VX,
   WALL_BOUNCE,
 } from "./constants"
 import type {
@@ -50,6 +53,9 @@ export class Ball {
   isBonus = false
   /** Brief squash after launch / bounce for juice. */
   squash = 0
+  /** Near-vertical bounces on the same platform (anti-stuck). */
+  private stuckHits = 0
+  private stuckPlatformKey = ""
 
   reset(x: number, y: number): void {
     this.x = x
@@ -59,6 +65,7 @@ export class Ball {
     this.inSlingshot = true
     this.isBonus = false
     this.squash = 0
+    this.clearStuckTracking()
   }
 
   /** Spawn as a flying purple bonus ball. */
@@ -70,6 +77,7 @@ export class Ball {
     this.inSlingshot = false
     this.isBonus = true
     this.squash = 1
+    this.clearStuckTracking()
   }
 
   launch(velocity: Vec2): void {
@@ -77,6 +85,7 @@ export class Ball {
     this.vy = velocity.y
     this.inSlingshot = false
     this.squash = 1
+    this.clearStuckTracking()
   }
 
   catchAt(x: number, y: number): void {
@@ -85,7 +94,13 @@ export class Ball {
     this.vx = 0
     this.vy = 0
     this.inSlingshot = true
-    this.squash = 0.4
+    this.squash = 1
+    this.clearStuckTracking()
+  }
+
+  private clearStuckTracking(): void {
+    this.stuckHits = 0
+    this.stuckPlatformKey = ""
   }
 
   private findLeftPortal(portals: PortalPair[]): PortalPair | null {
@@ -234,6 +249,24 @@ export class Ball {
           this.vy = PLATFORM_BOOST
           this.squash = 0.85
           result.platformHit = true
+
+          // Break perfect vertical bounce loops on the same platform
+          const key = `${p.x.toFixed(1)}:${p.y.toFixed(1)}:${p.width.toFixed(1)}`
+          if (Math.abs(this.vx) < PLATFORM_STUCK_VX) {
+            if (key === this.stuckPlatformKey) this.stuckHits += 1
+            else {
+              this.stuckPlatformKey = key
+              this.stuckHits = 1
+            }
+            if (this.stuckHits >= PLATFORM_STUCK_HITS) {
+              const side = Math.random() < 0.5 ? -1 : 1
+              this.vx = side * PLATFORM_STUCK_NUDGE
+              this.stuckHits = 0
+            }
+          } else {
+            this.clearStuckTracking()
+          }
+
           if (!this.isBonus && p.bonus) {
             p.bonus = false
             result.bonusCollected = true

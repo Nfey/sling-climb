@@ -10,6 +10,7 @@ import {
   BULLET_RADIUS,
   BULLET_SPEED,
   BULLET_WEDGE_PAD,
+  CATCH_BURST_DURATION,
   FREE_MOVE_DURATION,
   POW_DURATION,
   POW_LAUNCH_MULT,
@@ -52,6 +53,8 @@ export class Game {
   private freeMoveRemaining = 0
   /** Seconds remaining of 2x slingshot launch power. */
   private powRemaining = 0
+  /** Catch feedback burst timer (seconds remaining). */
+  private catchBurst = 0
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -129,6 +132,7 @@ export class Game {
     this.bulletFireCooldown = 0
     this.freeMoveRemaining = 0
     this.powRemaining = 0
+    this.catchBurst = 0
   }
 
   private frame(now: number): void {
@@ -202,6 +206,10 @@ export class Game {
 
     if (this.powRemaining > 0) {
       this.powRemaining = Math.max(0, this.powRemaining - dt)
+    }
+
+    if (this.catchBurst > 0) {
+      this.catchBurst = Math.max(0, this.catchBurst - dt)
     }
 
     // Bind any press to aiming / moving
@@ -308,6 +316,7 @@ export class Game {
         this.slingshot.frozen = true
         this.started = true
         this.lastAimPull = null
+        this.catchBurst = CATCH_BURST_DURATION
         // Catch even without a held finger; only enter aim if already holding.
         if (pointer) {
           this.state = "aiming"
@@ -559,6 +568,13 @@ export class Game {
 
     const slingStyle = this.freeMoveActive ? "freeMove" : this.powActive ? "pow" : "normal"
     this.renderer.drawSlingshot(cam, this.slingshot, pouch, pulse, slingStyle)
+    if (this.catchBurst > 0) {
+      this.renderer.drawCatchBurst(
+        cam,
+        this.slingshot,
+        this.catchBurst / CATCH_BURST_DURATION,
+      )
+    }
 
     if (trajOrigin && trajVel) {
       this.renderer.drawTrajectory(cam, trajOrigin, trajVel)
@@ -583,6 +599,7 @@ export class Game {
   private tipForState(): string | null {
     if (this.state === "gameOver") return null
     if (!this.started) return "Hold & drag to aim · release to fire"
+    if (this.catchBurst > 0) return "Caught!"
     if (this.powActive && (this.state === "aiming" || this.state === "ready")) {
       return `POW · 2x launch · ${Math.ceil(this.powRemaining)}s`
     }
