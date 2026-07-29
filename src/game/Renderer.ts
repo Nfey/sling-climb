@@ -546,49 +546,63 @@ export class Renderer {
   ): void {
     const ctx = this.ctx
     const { width } = camera
-    const cy = camera.slingshotScreenY - 40
+    const cx = width / 2
+    // Stack from top so banner / title / score never collide
+    let y = camera.slingshotScreenY - (isNewHighScore ? 148 : 110)
 
     ctx.fillStyle = COLORS.overlay
     ctx.fillRect(0, 0, width, camera.killScreenY)
 
     ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+
     ctx.fillStyle = COLORS.ink
     ctx.font = "800 36px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText("Game Over", width / 2, cy - 40)
+    ctx.fillText("Game Over", cx, y)
+    y += 48
 
     if (isNewHighScore) {
       const pulse = 0.75 + Math.sin(anim * 7) * 0.25
       ctx.save()
-      ctx.globalAlpha = 0.18 * pulse
+      ctx.globalAlpha = 0.16 * pulse
       ctx.fillStyle = COLORS.accent
       ctx.beginPath()
-      roundRect(ctx, width / 2 - 110, cy - 92, 220, 36, 10)
+      roundRect(ctx, cx - 118, y - 18, 236, 36, 10)
       ctx.fill()
       ctx.globalAlpha = pulse
       ctx.fillStyle = COLORS.accent
-      ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
-      ctx.fillText("NEW HIGH SCORE!", width / 2, cy - 68)
+      ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText("NEW HIGH SCORE!", cx, y)
       ctx.restore()
+      y += 48
     }
 
-    ctx.font = "800 52px 'Bricolage Grotesque', sans-serif"
-    ctx.fillStyle = COLORS.accent
-    ctx.fillText(String(score), width / 2, cy + 24)
-
     ctx.fillStyle = COLORS.inkDim
-    ctx.font = "500 14px 'DM Sans', sans-serif"
-    ctx.fillText("SCORE", width / 2, cy - 4)
+    ctx.font = "500 13px 'DM Sans', sans-serif"
+    ctx.fillText("SCORE", cx, y)
+    y += 38
+
+    ctx.fillStyle = COLORS.accent
+    ctx.font = "800 52px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText(String(score), cx, y)
+    y += 44
+
     if (isNewHighScore) {
       ctx.fillStyle = COLORS.accent
       ctx.font = "700 14px 'DM Sans', sans-serif"
-      ctx.fillText("New best!", width / 2, cy + 52)
+      ctx.fillText("New best!", cx, y)
     } else {
-      ctx.fillText(`Best ${highScore}`, width / 2, cy + 52)
+      ctx.fillStyle = COLORS.inkDim
+      ctx.font = "500 14px 'DM Sans', sans-serif"
+      ctx.fillText(`Best ${highScore}`, cx, y)
     }
+    y += 48
 
     ctx.fillStyle = COLORS.ink
     ctx.font = "600 16px 'DM Sans', sans-serif"
-    ctx.fillText("Tap to play again", width / 2, cy + 96)
+    ctx.fillText("Tap to play again", cx, y)
+
+    ctx.textBaseline = "alphabetic"
   }
 
   /** Helper for aim pouch offset in world space from pull. */
