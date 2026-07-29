@@ -540,7 +540,7 @@ export class Renderer {
   drawHud(
     camera: Camera,
     score: number,
-    elapsed: number,
+    climbHeight: number,
     tip: string | null,
     combo = 1,
   ): void {
@@ -563,10 +563,10 @@ export class Renderer {
     ctx.textAlign = "right"
     ctx.fillStyle = COLORS.inkDim
     ctx.font = "500 12px 'DM Sans', sans-serif"
-    ctx.fillText("TIME", camera.width - 20, 22)
+    ctx.fillText("HEIGHT", camera.width - 20, 22)
     ctx.fillStyle = COLORS.ink
     ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText(formatTime(elapsed), camera.width - 20, 36 + 8)
+    ctx.fillText(formatHeightLabel(climbHeight), camera.width - 20, 36 + 8)
 
     if (tip) {
       ctx.textAlign = "center"
@@ -659,13 +659,17 @@ export class Renderer {
     score: number,
     highScore: number,
     isNewHighScore = false,
+    climbHeight: number,
+    bestHeight: number,
+    isNewBestHeight = false,
     anim = 0,
   ): void {
     const ctx = this.ctx
     const { width } = camera
     const cx = width / 2
+    const showBanner = isNewHighScore || isNewBestHeight
     // Stack from top so banner / title / score never collide
-    let y = camera.slingshotScreenY - (isNewHighScore ? 148 : 110)
+    let y = camera.slingshotScreenY - (showBanner ? 148 : 110)
 
     ctx.fillStyle = COLORS.overlay
     ctx.fillRect(0, 0, width, camera.killScreenY)
@@ -678,18 +682,23 @@ export class Renderer {
     ctx.fillText("Game Over", cx, y)
     y += 48
 
-    if (isNewHighScore) {
+    if (showBanner) {
       const pulse = 0.75 + Math.sin(anim * 7) * 0.25
+      const banner = isNewHighScore && isNewBestHeight
+        ? "NEW BEST SCORE & HEIGHT!"
+        : isNewHighScore
+          ? "NEW HIGH SCORE!"
+          : "NEW HEIGHT RECORD!"
       ctx.save()
       ctx.globalAlpha = 0.16 * pulse
       ctx.fillStyle = COLORS.accent
       ctx.beginPath()
-      roundRect(ctx, cx - 118, y - 18, 236, 36, 10)
+      roundRect(ctx, cx - 148, y - 18, 296, 36, 10)
       ctx.fill()
       ctx.globalAlpha = pulse
       ctx.fillStyle = COLORS.accent
       ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
-      ctx.fillText("NEW HIGH SCORE!", cx, y)
+      ctx.fillText(banner, cx, y)
       ctx.restore()
       y += 48
     }
@@ -702,18 +711,39 @@ export class Renderer {
     ctx.fillStyle = COLORS.accent
     ctx.font = "800 52px 'Bricolage Grotesque', sans-serif"
     ctx.fillText(String(score), cx, y)
-    y += 44
+    y += 36
 
     if (isNewHighScore) {
       ctx.fillStyle = COLORS.accent
       ctx.font = "700 14px 'DM Sans', sans-serif"
       ctx.fillText("New best!", cx, y)
-    } else {
+    } else if (highScore > 0) {
       ctx.fillStyle = COLORS.inkDim
       ctx.font = "500 14px 'DM Sans', sans-serif"
       ctx.fillText(`Best ${highScore}`, cx, y)
     }
-    y += 48
+    y += 40
+
+    ctx.fillStyle = COLORS.inkDim
+    ctx.font = "500 13px 'DM Sans', sans-serif"
+    ctx.fillText("HEIGHT", cx, y)
+    y += 32
+
+    ctx.fillStyle = COLORS.ink
+    ctx.font = "800 36px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText(formatHeightLabel(climbHeight), cx, y)
+    y += 28
+
+    if (isNewBestHeight) {
+      ctx.fillStyle = COLORS.accent
+      ctx.font = "700 14px 'DM Sans', sans-serif"
+      ctx.fillText("New best!", cx, y)
+    } else if (bestHeight > 0) {
+      ctx.fillStyle = COLORS.inkDim
+      ctx.font = "500 14px 'DM Sans', sans-serif"
+      ctx.fillText(`Best ${formatHeightLabel(bestHeight)}`, cx, y)
+    }
+    y += 44
 
     ctx.fillStyle = COLORS.ink
     ctx.font = "600 16px 'DM Sans', sans-serif"
@@ -734,15 +764,7 @@ export class Renderer {
   }
 }
 
-function formatTime(seconds: number): string {
-  const total = Math.max(0, seconds)
-  const m = Math.floor(total / 60)
-  const s = Math.floor(total % 60)
-  const cs = Math.floor((total % 1) * 100)
-  return `${m}:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`
-}
-
-/** Compact altitude label for left-side marks (climb px above start). */
+/** Compact altitude label for HUD and left-side marks (climb px above start). */
 function formatHeightLabel(climb: number): string {
   if (climb >= 1000) {
     const k = climb / 1000

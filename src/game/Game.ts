@@ -54,7 +54,6 @@ export class Game {
   private state: GameState = "ready"
   private started = false
   private anim = 0
-  private elapsed = 0
   private lastTime = 0
   private running = false
   private lastAimPull: Vec2 | null = null
@@ -151,7 +150,6 @@ export class Game {
     this.camera.followSlingshot(this.slingshot.y)
     this.state = "ready"
     this.started = false
-    this.elapsed = 0
     this.lastAimPull = null
     this.aimPointerId = null
     this.bulletPowerRemaining = 0
@@ -188,9 +186,6 @@ export class Game {
     this.anim += dt
 
     this.update(dt)
-    if (this.started && this.state !== "gameOver") {
-      this.elapsed += dt
-    }
     this.draw(dt)
 
     requestAnimationFrame((t) => this.frame(t))
@@ -469,7 +464,7 @@ export class Game {
         this.ball.vy <= 0 &&
         this.ball.y < this.camera.killWorldY
       ) {
-        this.score.commitHighScore(this.elapsed)
+        this.score.commitHighScore()
         this.audio.playGameOver()
         this.audio.resetFlight()
         this.state = "gameOver"
@@ -777,7 +772,7 @@ export class Game {
     this.renderer.drawHud(
       cam,
       this.score.current,
-      this.elapsed,
+      this.score.climbHeight,
       this.tipForState(),
       this.score.combo,
     )
@@ -785,9 +780,12 @@ export class Game {
     if (this.state === "gameOver") {
       this.renderer.drawGameOver(
         cam,
-        this.score.finalScore || this.score.computeFinalScore(this.elapsed),
+        this.score.current,
         this.score.highScore,
         this.score.isNewHighScore,
+        this.score.climbHeight,
+        this.score.bestMaxHeight,
+        this.score.isNewBestHeight,
         this.anim,
       )
     }
