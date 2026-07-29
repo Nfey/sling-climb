@@ -83,9 +83,11 @@ export class PlatformManager {
     while (this.nextY < slingshotY + 1400) {
       this.spawnOne()
     }
-    while (this.nextPortalY < slingshotY + 1400) {
+    const initialTop = slingshotY + 1400
+    while (this.nextPortalY < initialTop) {
       this.maybeSpawnPortal()
     }
+    this.ensurePortalExits(initialTop)
     while (this.nextBumperY < slingshotY + 1400) {
       this.maybeSpawnBumper()
     }
@@ -116,15 +118,56 @@ export class PlatformManager {
 
   private maybeSpawnPortal(): void {
     if (Math.random() < PORTAL_CHANCE) {
+      // Spawn an entry and its opposite exit above so the ball never hits a
+      // lone portal that can only bounce.
       this.portals.push({
         side: this.nextPortalSide,
         y: this.nextPortalY,
         height: PORTAL_HEIGHT,
       })
-      // Alternate sides so portals stay staggered up the climb
+      this.nextPortalSide = this.nextPortalSide === "left" ? "right" : "left"
+      this.nextPortalY += rand(PORTAL_MIN_GAP, PORTAL_MAX_GAP)
+
+      this.portals.push({
+        side: this.nextPortalSide,
+        y: this.nextPortalY,
+        height: PORTAL_HEIGHT,
+      })
       this.nextPortalSide = this.nextPortalSide === "left" ? "right" : "left"
     }
     this.nextPortalY += rand(PORTAL_MIN_GAP, PORTAL_MAX_GAP)
+  }
+
+  /**
+   * Keep a sentinel exit above the climb so every portal the ball can reach
+   * has a higher opposite-side partner to teleport into.
+   */
+  private ensurePortalExits(beyondY: number): void {
+    if (this.portals.length === 0) return
+
+    for (let guard = 0; guard < 64; guard++) {
+      let highest = this.portals[0]!
+      for (const p of this.portals) {
+        if (p.y > highest.y) highest = p
+      }
+      if (highest.y >= beyondY) {
+        this.nextPortalSide = highest.side === "left" ? "right" : "left"
+        this.nextPortalY = Math.max(
+          this.nextPortalY,
+          highest.y + rand(PORTAL_MIN_GAP, PORTAL_MAX_GAP),
+        )
+        return
+      }
+
+      const opposite: "left" | "right" =
+        highest.side === "left" ? "right" : "left"
+      const exitY = highest.y + rand(PORTAL_MIN_GAP, PORTAL_MAX_GAP)
+      this.portals.push({
+        side: opposite,
+        y: exitY,
+        height: PORTAL_HEIGHT,
+      })
+    }
   }
 
   private maybeSpawnBumper(): void {
@@ -198,6 +241,8 @@ export class PlatformManager {
     while (this.nextPortalY < topNeeded) {
       this.maybeSpawnPortal()
     }
+    // Keep the unpaired sentinel exit above the generated playable range.
+    this.ensurePortalExits(topNeeded)
     while (this.nextBumperY < topNeeded) {
       this.maybeSpawnBumper()
     }
