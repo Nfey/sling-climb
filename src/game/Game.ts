@@ -17,6 +17,7 @@ import {
   CATCH_BURST_DURATION,
   FREE_MOVE_DURATION,
   BONUS_PLATFORM_POINTS,
+  DESKTOP_HINT_MIN_WIDTH,
   PLAYFIELD_MAX_WIDTH,
   POW_DURATION,
   POW_LAUNCH_MULT,
@@ -787,6 +788,11 @@ export class Game {
     }
   }
 
+  /** True on desktop-sized viewports where keyboard/mouse hints apply. */
+  private isDesktopHint(): boolean {
+    return window.matchMedia(`(min-width: ${DESKTOP_HINT_MIN_WIDTH}px)`).matches
+  }
+
   private tipForState(): string | null {
     if (this.state === "gameOver") return null
     if (!this.started) return "Hold & drag to aim · release to fire"
@@ -795,12 +801,19 @@ export class Game {
       return `POW · 2x launch · ${Math.ceil(this.powRemaining)}s`
     }
     if (this.freeMoveActive && this.state === "flying") {
-      return `Free move · WASD · ${Math.ceil(this.freeMoveRemaining)}s`
+      const secs = Math.ceil(this.freeMoveRemaining)
+      return this.isDesktopHint()
+        ? `Free move · WASD · ${secs}s`
+        : `Free move · ${secs}s`
     }
     if (this.powActive && this.state === "flying") {
       return `POW · ${Math.ceil(this.powRemaining)}s`
     }
-    if (this.state === "flying") return "WASD or hold to move · catch the ball"
+    if (this.state === "flying") {
+      return this.isDesktopHint()
+        ? "WASD or hold to move · catch the ball"
+        : "Hold to move · catch the ball"
+    }
     if (this.state === "aiming") return "Release to launch"
     if (this.state === "ready") return "Drag to aim"
     return null
