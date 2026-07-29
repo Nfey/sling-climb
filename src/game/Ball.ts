@@ -159,8 +159,9 @@ export class Ball {
     } else {
       this.x = worldWidth - this.radius - 0.5
     }
-    this.vx *= PORTAL_SPEED_DAMPING
-    this.vy *= PORTAL_SPEED_DAMPING
+    if (this.vy < 0) {
+      this.vy *= PORTAL_SPEED_DAMPING
+    }
     this.squash = 0.35
     return this.y - prevY
   }
