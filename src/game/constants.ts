@@ -70,6 +70,8 @@ export const PORTAL_HEIGHT = 96
 /** Vertical gap between successive staggered portals. */
 export const PORTAL_MIN_GAP = 140
 export const PORTAL_MAX_GAP = 240
+/** Speed multiplier applied to the ball when exiting a portal (0–1). */
+export const PORTAL_SPEED_DAMPING = 0.85
 /** Base world-Y speed for camera catch-up after launches / POW (px/s). */
 export const CAMERA_CATCHUP_SPEED = 1600
 /** Extra catch-up speed per px beyond the soft follow target (launches). */
