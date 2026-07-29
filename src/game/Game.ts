@@ -10,7 +10,9 @@ import {
   BULLET_RADIUS,
   BULLET_SPEED,
   BULLET_WEDGE_PAD,
+  CAMERA_CATCHUP_GAP_GAIN,
   CAMERA_CATCHUP_SPEED,
+  CAMERA_TOP_MARGIN,
   CATCH_BURST_DURATION,
   FREE_MOVE_DURATION,
   POW_DURATION,
@@ -507,18 +509,30 @@ export class Game {
   }
 
   private advanceWorld(dt: number): void {
-    const maxAbove = this.camera.height * 0.32
-    const maxStep = CAMERA_CATCHUP_SPEED * dt
+    // Soft follow keeps the ball near the upper third; hard clamp never lets
+    // it cross the top of the screen (important for POW launches).
+    const softMaxAbove = this.camera.height * 0.32
+    const hardMaxAbove =
+      this.camera.slingshotScreenY - this.ball.radius - CAMERA_TOP_MARGIN
+
+    const raiseAnchor = (anchorY: number): number => {
+      let y = anchorY
+      const hardTarget = this.ball.y - hardMaxAbove
+      if (y < hardTarget) y = hardTarget
+
+      const softTarget = this.ball.y - softMaxAbove
+      if (y < softTarget) {
+        const gap = softTarget - y
+        const speed = CAMERA_CATCHUP_SPEED + gap * CAMERA_CATCHUP_GAP_GAIN
+        y += Math.min(gap, speed * dt)
+      }
+      return y
+    }
+
     if (this.freeMoveActive) {
-      const target = this.ball.y - maxAbove
-      if (this.camera.y < target) {
-        this.camera.y += Math.min(target - this.camera.y, maxStep)
-      }
+      this.camera.y = raiseAnchor(this.camera.y)
     } else {
-      const target = this.ball.y - maxAbove
-      if (this.slingshot.y < target) {
-        this.slingshot.y += Math.min(target - this.slingshot.y, maxStep)
-      }
+      this.slingshot.y = raiseAnchor(this.slingshot.y)
     }
   }
 
