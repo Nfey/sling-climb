@@ -10,6 +10,10 @@ import {
   BULLET_RADIUS,
   BULLET_SPEED,
   BULLET_WEDGE_PAD,
+  CAMERA_CATCHUP_GAP_GAIN,
+  CAMERA_CATCHUP_SPEED,
+  CAMERA_PORTAL_CATCHUP_SPEED,
+  CAMERA_TOP_MARGIN,
   CATCH_BURST_DURATION,
   FREE_MOVE_DURATION,
   POW_DURATION,
@@ -55,6 +59,11 @@ export class Game {
   private powRemaining = 0
   /** Catch feedback burst timer (seconds remaining). */
   private catchBurst = 0
+  /**
+   * Soft-follow distance still owed to a portal teleport.
+   * Paid down slowly so portal exits stay readable; launch/POW gaps use fast follow.
+   */
+  private portalCatchupRemaining = 0
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -132,6 +141,7 @@ export class Game {
     this.freeMoveRemaining = 0
     this.powRemaining = 0
     this.catchBurst = 0
+    this.portalCatchupRemaining = 0
   }
 
   private frame(now: number): void {
@@ -298,17 +308,17 @@ export class Game {
         this.powRemaining = POW_DURATION
       }
       if (hit.portalDeltaY !== 0) {
-        // Shift the slingshot/camera with the ball so screen-Y stays continuous
-        // and vertical velocity still reads correctly (no post-portal camera ease
-        // that would slide the ball and kill perceived momentum).
-        this.slingshot.y += hit.portalDeltaY
-        if (this.freeMoveActive) {
-          this.camera.y += hit.portalDeltaY
-        }
+        // Queue the soft-follow gap from this teleport for slow camera catch-up.
+        const softMaxAbove = this.camera.height * 0.32
+        const anchor = this.freeMoveActive ? this.camera.y : this.slingshot.y
+        const softGap = Math.max(0, this.ball.y - softMaxAbove - anchor)
+        this.portalCatchupRemaining = Math.max(this.portalCatchupRemaining, softGap)
       }
+      // Portal teleports the ball immediately; camera/slingshot catch up
+      // gradually via advanceWorld so the kill line doesn't jump onto the ball.
       this.score.observe(this.ball.y)
 
-      this.advanceWorld()
+      this.advanceWorld(dt)
 
       if (this.ball.vy <= 0 && this.slingshot.canCatch(this.ball.x, this.ball.y)) {
         this.ball.catchAt(this.slingshot.x, this.slingshot.y)
@@ -512,14 +522,54 @@ export class Game {
     }
   }
 
-  private advanceWorld(): void {
-    const maxAbove = this.camera.height * 0.32
-    if (this.freeMoveActive) {
-      if (this.ball.y > this.camera.y + maxAbove) {
-        this.camera.y = this.ball.y - maxAbove
+  private advanceWorld(dt: number): void {
+    // Soft follow keeps the ball near the upper third; hard clamp never lets
+    // it cross the top of the screen (important for POW launches).
+    // Portal-created gaps ease slowly; launch/POW gaps use the fast follow.
+    const softMaxAbove = this.camera.height * 0.32
+    const hardMaxAbove =
+      this.camera.slingshotScreenY - this.ball.radius - CAMERA_TOP_MARGIN
+
+    const raiseAnchor = (anchorY: number): number => {
+      let y = anchorY
+      const hardTarget = this.ball.y - hardMaxAbove
+      if (y < hardTarget) y = hardTarget
+
+      const softTarget = this.ball.y - softMaxAbove
+      if (y >= softTarget) {
+        this.portalCatchupRemaining = 0
+        return y
       }
-    } else if (this.ball.y > this.slingshot.y + maxAbove) {
-      this.slingshot.y = this.ball.y - maxAbove
+
+      const gap = softTarget - y
+      const portalPart = Math.min(gap, this.portalCatchupRemaining)
+      const launchPart = gap - portalPart
+
+      let step = 0
+      if (portalPart > 0) {
+        const portalStep = Math.min(
+          portalPart,
+          CAMERA_PORTAL_CATCHUP_SPEED * dt,
+        )
+        step += portalStep
+        this.portalCatchupRemaining = Math.max(
+          0,
+          this.portalCatchupRemaining - portalStep,
+        )
+      }
+      if (launchPart > 0) {
+        const launchSpeed =
+          CAMERA_CATCHUP_SPEED + launchPart * CAMERA_CATCHUP_GAP_GAIN
+        step += Math.min(launchPart, launchSpeed * dt)
+      }
+
+      return y + step
+    }
+
+    if (this.freeMoveActive) {
+      this.camera.y = raiseAnchor(this.camera.y)
+    } else {
+      this.slingshot.y = raiseAnchor(this.slingshot.y)
     }
   }
 

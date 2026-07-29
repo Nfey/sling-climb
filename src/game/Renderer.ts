@@ -6,7 +6,7 @@ import {
 } from "./constants"
 import type { Ball } from "./Ball"
 import type { Camera } from "./Camera"
-import type { ArrowPadData, BulletData, BumperData, PlatformData, PortalPair, UpgradePickupData, Vec2 } from "./types"
+import type { ArrowPadData, BulletData, BumperData, PlatformData, PortalData, UpgradePickupData, Vec2 } from "./types"
 import type { Slingshot } from "./Slingshot"
 
 export class Renderer {
@@ -186,22 +186,18 @@ export class Renderer {
     }
   }
 
-  drawPortals(camera: Camera, portals: PortalPair[], anim: number): void {
+  drawPortals(camera: Camera, portals: PortalData[], anim: number): void {
     const ctx = this.ctx
     const pulse = 0.55 + Math.sin(anim * 5) * 0.2
     for (const p of portals) {
-      const leftTop = camera.worldToScreen({ x: 0, y: p.leftY + p.height })
-      const leftBottom = camera.worldToScreen({ x: 0, y: p.leftY })
-      const leftH = leftBottom.y - leftTop.y
-      if (leftBottom.y >= -20 && leftTop.y <= camera.height + 20) {
-        this.drawPortalPillar(ctx, 0, leftTop.y, 10, leftH, pulse, true)
-      }
-
-      const rightTop = camera.worldToScreen({ x: 0, y: p.rightY + p.height })
-      const rightBottom = camera.worldToScreen({ x: 0, y: p.rightY })
-      const rightH = rightBottom.y - rightTop.y
-      if (rightBottom.y >= -20 && rightTop.y <= camera.height + 20) {
-        this.drawPortalPillar(ctx, camera.width - 10, rightTop.y, 10, rightH, pulse, false)
+      const top = camera.worldToScreen({ x: 0, y: p.y + p.height })
+      const bottom = camera.worldToScreen({ x: 0, y: p.y })
+      const h = bottom.y - top.y
+      if (bottom.y < -20 || top.y > camera.height + 20) continue
+      if (p.side === "left") {
+        this.drawPortalPillar(ctx, 0, top.y, 10, h, pulse, true)
+      } else {
+        this.drawPortalPillar(ctx, camera.width - 10, top.y, 10, h, pulse, false)
       }
     }
   }
