@@ -2,6 +2,7 @@ import {
   COLORS,
   HEIGHT_MARKER_SPACING,
   MAX_PULL,
+  MILESTONE_COLORS,
   PLATFORM_HEIGHT,
   SCORE_POPUP_RISE,
   SKY_ZONE_SPACING,
@@ -182,6 +183,41 @@ export class Renderer {
     ctx.textAlign = "right"
     ctx.textBaseline = "bottom"
     ctx.fillText(passed ? "BEST ✓" : "BEST", camera.width - 14, sy - 4)
+    ctx.textBaseline = "alphabetic"
+    ctx.restore()
+  }
+
+  /**
+   * Dashed lines at 2×, 3×, … multiples of the previous best height.
+   * Each turns green once the player passes it. Colors cycle every 10.
+   */
+  drawMilestoneHeightLines(
+    camera: Camera,
+    milestones: { worldY: number; label: string; passed: boolean; colorIndex: number }[],
+  ): void {
+    const ctx = this.ctx
+    ctx.save()
+    ctx.lineWidth = 2
+    ctx.setLineDash([8, 5])
+    ctx.font = "700 11px 'DM Sans', sans-serif"
+    ctx.textAlign = "right"
+    ctx.textBaseline = "bottom"
+    for (const m of milestones) {
+      const sy = camera.worldToScreen({ x: 0, y: m.worldY }).y
+      if (sy < -20 || sy > camera.killScreenY + 10) continue
+      const unpassed = MILESTONE_COLORS[m.colorIndex % MILESTONE_COLORS.length]!
+      const color = m.passed ? COLORS.milestoneLinePassed : unpassed
+      ctx.strokeStyle = color
+      ctx.beginPath()
+      ctx.moveTo(12, sy)
+      ctx.lineTo(camera.width - 12, sy)
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.fillStyle = color
+      ctx.fillText(m.passed ? `${m.label} ✓` : m.label, camera.width - 14, sy - 4)
+      ctx.setLineDash([8, 5])
+    }
+    ctx.setLineDash([])
     ctx.textBaseline = "alphabetic"
     ctx.restore()
   }

@@ -221,6 +221,25 @@ export const COLORS = {
   maxHeightLine: "#2f6fed",
   /** Best-height line after the player has passed it this run. */
   maxHeightLinePassed: "#16a34a",
+  /** Color used for milestone lines (2x, 3x, …) once passed. */
+  milestoneLinePassed: "#16a34a",
   heightMarker: "rgba(17, 17, 17, 0.22)",
   heightMarkerLabel: "rgba(17, 17, 17, 0.45)",
 }
+
+/**
+ * Fixed color order for the 2×/3×/…/10× best-height milestone lines.
+ * Cycles back to index 0 after 10 entries. Index 0 = 2× best, index 1 = 3×, etc.
+ */
+export const MILESTONE_COLORS: readonly string[] = [
+  "#f59e0b", // amber
+  "#ef4444", // red
+  "#a855f7", // purple
+  "#06b6d4", // cyan
+  "#f97316", // orange
+  "#ec4899", // pink
+  "#10b981", // emerald
+  "#6366f1", // indigo
+  "#84cc16", // lime
+  "#e11d48", // rose
+]

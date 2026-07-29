@@ -67,6 +67,26 @@ export class Score {
   }
 
   /**
+   * 2×, 3×, … 10× multiples of the frozen best-height line.
+   * Each entry carries worldY, a label, whether the player has passed it,
+   * and a colorIndex (0-based, cycles every 10).
+   */
+  get milestoneLines(): { worldY: number; label: string; passed: boolean; colorIndex: number }[] {
+    if (this.runHeightLine <= 0) return []
+    const result = []
+    for (let mult = 2; mult <= 10; mult++) {
+      const climb = this.runHeightLine * mult
+      result.push({
+        worldY: this.startHeight + climb,
+        label: `${mult}× BEST`,
+        passed: this.climbHeight >= climb,
+        colorIndex: mult - 2, // 0-based index into MILESTONE_COLORS
+      })
+    }
+    return result
+  }
+
+  /**
    * Record a new peak height. Each new 10px climb unit is banked immediately
    * at the current combo so distance points scale with the multiplier.
    */
