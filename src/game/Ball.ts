@@ -188,8 +188,18 @@ export class Ball {
         this.vx -= 2 * into * nx
         this.vy -= 2 * into * ny
       }
+      // Dampen outgoing speed so bumpers don't accelerate the ball excessively
+      const speed = Math.hypot(this.vx, this.vy)
+      const maxBumperSpeed = 800
+      if (speed > maxBumperSpeed) {
+        const scale = maxBumperSpeed / speed
+        this.vx *= scale
+        this.vy *= scale
+      }
       this.vx += nx * BUMPER_KNOCK
-      this.vy += ny * BUMPER_KNOCK
+      // Reduce downward knock so gravity doesn't compound into extreme speed
+      const knockY = ny < 0 ? ny * BUMPER_KNOCK * 0.35 : ny * BUMPER_KNOCK
+      this.vy += knockY
       this.squash = 0.9
 
       if (entered && !hit) {
@@ -210,7 +220,8 @@ export class Ball {
       if (dist >= this.radius + pad.radius) continue
       const dir = DIR_VECTORS[pad.dir]
       this.vx = dir.x * ARROW_PAD_SPEED * 0.5
-      this.vy = dir.y * ARROW_PAD_SPEED
+      // Halve downward arrow speed so gravity doesn't compound into extreme velocity
+      this.vy = dir.y < 0 ? dir.y * ARROW_PAD_SPEED * 0.45 : dir.y * ARROW_PAD_SPEED
       this.squash = 0.75
       const at = { x: pad.x, y: pad.y + pad.radius }
       pads.splice(i, 1)
