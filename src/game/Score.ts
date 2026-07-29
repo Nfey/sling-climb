@@ -1,5 +1,6 @@
 import {
   BONUS_PLATFORM_POINTS,
+  CLIMB_POINT_UNIT,
   HIGH_SCORE_KEY,
   MAX_HEIGHT_KEY,
   SCORE_HEIGHT_EXP,
@@ -76,8 +77,14 @@ export class Score {
     if (ballY <= this.peakHeight) return
     const prevPeak = this.peakHeight
     this.peakHeight = ballY
-    const prevUnits = Math.max(0, Math.floor((prevPeak - this.startHeight) / 10))
-    const nextUnits = Math.max(0, Math.floor((this.peakHeight - this.startHeight) / 10))
+    const prevUnits = Math.max(
+      0,
+      Math.floor((prevPeak - this.startHeight) / CLIMB_POINT_UNIT),
+    )
+    const nextUnits = Math.max(
+      0,
+      Math.floor((this.peakHeight - this.startHeight) / CLIMB_POINT_UNIT),
+    )
     const gained = nextUnits - prevUnits
     if (gained > 0) this.heightPoints += gained * this.combo
   }
@@ -109,12 +116,12 @@ export class Score {
   }
 
   /**
-   * End-of-run high score ≈ height × points / time.
-   * Height is weighted a bit above points; total elapsed time only softens
-   * the total — faster for the same height/points scores higher.
+   * End-of-run high score ≈ climbUnits^1.15 × points / seconds.
+   * Climb units match in-run distance banking (world px / CLIMB_POINT_UNIT).
+   * Faster runs with the same climb and points score higher.
    */
   computeFinalScore(elapsed: number): number {
-    const height = Math.max(1, this.climbHeight)
+    const height = Math.max(1, this.climbHeight / CLIMB_POINT_UNIT)
     const points = Math.max(1, this.current)
     const time = Math.max(1, elapsed)
     return Math.max(

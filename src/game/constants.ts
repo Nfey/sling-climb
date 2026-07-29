@@ -130,19 +130,21 @@ export const BULLET_PUSH_UP = 1600
 export const BULLET_MIN_UP = 620
 
 /** Persisted composite high score (height × points / time). */
-export const HIGH_SCORE_KEY = "sling-climb-high-score-v2"
+export const HIGH_SCORE_KEY = "sling-climb-high-score-v3"
+/** World px per climb unit banked into run points and the final height term. */
+export const CLIMB_POINT_UNIT = 10
 /** Persisted best climb height (world px above run start). */
 export const MAX_HEIGHT_KEY = "sling-climb-max-height"
 
 /** World-Y spacing between dashed altitude marker lines. */
 export const HEIGHT_MARKER_SPACING = 200
 /**
- * End-of-run score exponents: height × points / time, soft-weighted.
- * Height slightly above points; total run time barely moves the needle.
+ * End-of-run score exponents on climb units (not raw world px), points, and seconds.
+ * Height is weighted slightly above points; elapsed time divides linearly.
  */
 export const SCORE_HEIGHT_EXP = 1.15
 export const SCORE_POINTS_EXP = 1
-export const SCORE_TIME_EXP = 0.2
+export const SCORE_TIME_EXP = 1
 
 export const COLORS = {
   skyTop: "#ffffff",
