@@ -22,11 +22,11 @@ import type {
 export interface BallUpdateResult {
   /** Player ball landed on a purple bonus platform. */
   bonusCollected: boolean
-  /** World position to spawn the "+100" popup (platform top-center). */
+  /** World position to spawn the purple-platform score popup. */
   bonusAt: Vec2 | null
   /** Player ball collected a pickup (kind set when true). */
   upgradeCollected: "dual" | "bullets" | "freeMove" | "pow" | null
-  /** Any platform landing this frame (used by purple bonus balls). */
+  /** Any platform landing this frame (used by purple bonus balls / combo). */
   platformHit: boolean
   /** World-Y change from a portal teleport this frame (0 if none). */
   portalDeltaY: number
@@ -34,8 +34,10 @@ export interface BallUpdateResult {
   wallHit: boolean
   /** Fresh bumper contact this frame (not continuous overlap). */
   bumperHit: boolean
+  bumperAt: Vec2 | null
   /** Arrow pad consumed this frame. */
   arrowHit: boolean
+  arrowAt: Vec2 | null
 }
 
 /** Unit vectors for 8 cardinal dirs in world space (Y up). */
@@ -161,8 +163,9 @@ export class Ball {
     return this.y - prevY
   }
 
-  private collideBumpers(bumpers: BumperData[]): boolean {
+  private collideBumpers(bumpers: BumperData[]): { hit: boolean; at: Vec2 | null } {
     let hit = false
+    let at: Vec2 | null = null
     const current = new Set<string>()
     for (const b of bumpers) {
       const dx = this.x - b.x
@@ -189,13 +192,18 @@ export class Ball {
       this.vy += ny * BUMPER_KNOCK
       this.squash = 0.9
 
-      if (entered) hit = true
+      if (entered && !hit) {
+        hit = true
+        at = { x: b.x, y: b.y + b.radius }
+      }
     }
     this.bumperOverlaps = current
-    return hit
+    return { hit, at }
   }
 
-  private collideArrowPads(pads: ArrowPadData[]): boolean {
+  private collideArrowPads(
+    pads: ArrowPadData[],
+  ): { hit: boolean; at: Vec2 | null } {
     for (let i = pads.length - 1; i >= 0; i--) {
       const pad = pads[i]!
       const dist = Math.hypot(this.x - pad.x, this.y - pad.y)
@@ -204,10 +212,11 @@ export class Ball {
       this.vx = dir.x * ARROW_PAD_SPEED * 0.5
       this.vy = dir.y * ARROW_PAD_SPEED
       this.squash = 0.75
+      const at = { x: pad.x, y: pad.y + pad.radius }
       pads.splice(i, 1)
-      return true
+      return { hit: true, at }
     }
-    return false
+    return { hit: false, at: null }
   }
 
   /**
@@ -231,7 +240,9 @@ export class Ball {
       portalDeltaY: 0,
       wallHit: false,
       bumperHit: false,
+      bumperAt: null,
       arrowHit: false,
+      arrowAt: null,
     }
     if (this.inSlingshot) {
       this.squash = Math.max(0, this.squash - dt * 3)
@@ -267,8 +278,12 @@ export class Ball {
       }
     }
 
-    result.bumperHit = this.collideBumpers(bumpers)
-    result.arrowHit = this.collideArrowPads(arrowPads)
+    const bumper = this.collideBumpers(bumpers)
+    result.bumperHit = bumper.hit
+    result.bumperAt = bumper.at
+    const arrow = this.collideArrowPads(arrowPads)
+    result.arrowHit = arrow.hit
+    result.arrowAt = arrow.at
 
     // Only the player ball collects pickups
     if (!this.isBonus) {

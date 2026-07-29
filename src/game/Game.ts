@@ -23,9 +23,11 @@ import {
   PURPLE_BALL_PLATFORM_POINTS,
   PURPLE_BALL_SPAWN_SIDE,
   PURPLE_BALL_SPAWN_UP,
+  HAZARD_BONUS_POINTS,
   SCORE_POPUP_DURATION,
   SLINGSHOT_FORK_WIDTH,
   SLINGSHOT_KEYBOARD_SPEED,
+  COLORS,
 } from "./constants"
 import { GameAudio } from "./Audio"
 import { Input } from "./Input"
@@ -214,6 +216,22 @@ export class Game {
     this.bonusBalls.push(b)
   }
 
+  private spawnScorePopup(
+    x: number,
+    y: number,
+    points: number,
+    color: string,
+  ): void {
+    this.scorePopups.push({
+      x,
+      y,
+      life: SCORE_POPUP_DURATION,
+      duration: SCORE_POPUP_DURATION,
+      text: `+${points}`,
+      color,
+    })
+  }
+
   private moveSlingshotToPointer(pointerX: number, pointerY: number): void {
     if (this.freeMoveActive) {
       const minScreenY = 56
@@ -369,28 +387,30 @@ export class Game {
         this.platforms.arrowPads,
         this.platforms.upgrades,
       )
-      if (hit.bonusCollected) {
-        this.score.collectBonus()
-        if (hit.bonusAt) {
-          this.scorePopups.push({
-            x: hit.bonusAt.x,
-            y: hit.bonusAt.y + 18,
-            life: SCORE_POPUP_DURATION,
-            duration: SCORE_POPUP_DURATION,
-            text: `+${BONUS_PLATFORM_POINTS}`,
-          })
-        }
+      if (hit.bonusCollected && hit.bonusAt) {
+        const awarded = this.score.collectBonus(BONUS_PLATFORM_POINTS)
+        this.spawnScorePopup(hit.bonusAt.x, hit.bonusAt.y + 18, awarded, COLORS.platformBonus)
+      }
+      if (hit.bumperHit) {
+        const awarded = this.score.collectBonus(HAZARD_BONUS_POINTS)
+        const at = hit.bumperAt ?? { x: this.ball.x, y: this.ball.y }
+        this.spawnScorePopup(at.x, at.y + 12, awarded, COLORS.bumper)
+        this.score.bumpCombo()
+        this.audio.playBumper()
+        this.bumpFlightCombo()
+      }
+      if (hit.arrowHit) {
+        const awarded = this.score.collectBonus(HAZARD_BONUS_POINTS)
+        const at = hit.arrowAt ?? { x: this.ball.x, y: this.ball.y }
+        this.spawnScorePopup(at.x, at.y + 12, awarded, COLORS.arrowPad)
+        this.audio.playArrow()
       }
       if (hit.platformHit) {
+        this.score.bumpCombo()
         this.audio.playPlatformBounce()
         this.bumpFlightCombo()
       }
       if (hit.wallHit) this.audio.playWallBounce()
-      if (hit.bumperHit) {
-        this.audio.playBumper()
-        this.bumpFlightCombo()
-      }
-      if (hit.arrowHit) this.audio.playArrow()
       if (hit.upgradeCollected === "dual") {
         this.spawnPurpleBall()
         this.audio.playPowerup()
@@ -409,6 +429,14 @@ export class Game {
         this.audio.playPowerup()
       }
       if (hit.portalDeltaY !== 0) {
+        const awarded = this.score.collectBonus(HAZARD_BONUS_POINTS)
+        this.spawnScorePopup(
+          this.ball.x,
+          this.ball.y + 24,
+          awarded,
+          COLORS.portal,
+        )
+        this.score.bumpCombo()
         this.audio.playPortal()
         this.bumpFlightCombo()
         // Queue the soft-follow gap from this teleport for slow camera catch-up.
@@ -434,6 +462,7 @@ export class Game {
         this.started = true
         this.lastAimPull = null
         this.catchBurst = CATCH_BURST_DURATION
+        this.score.resetCombo()
         this.endFlightCatch()
         // Catch even without a held finger; only enter aim if already holding.
         if (pointer) {
@@ -471,7 +500,7 @@ export class Game {
         this.platforms.upgrades,
       )
       if (hit.platformHit) {
-        this.score.collectBonus(PURPLE_BALL_PLATFORM_POINTS)
+        this.score.collectFlat(PURPLE_BALL_PLATFORM_POINTS)
       }
       // Despawn far below for cleanup only — does not end the run
       if (b.y < killY - this.camera.height) {
@@ -749,7 +778,13 @@ export class Game {
       this.renderer.drawTitle(cam)
     }
 
-    this.renderer.drawHud(cam, this.score.current, this.elapsed, this.tipForState())
+    this.renderer.drawHud(
+      cam,
+      this.score.current,
+      this.elapsed,
+      this.tipForState(),
+      this.score.combo,
+    )
 
     if (this.state === "gameOver") {
       this.renderer.drawGameOver(
