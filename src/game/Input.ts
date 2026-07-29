@@ -1,7 +1,8 @@
-import type { PointerState } from "./types"
+import type { PointerState, Vec2 } from "./types"
 
 /**
- * Multi-touch pointer tracker (single-finger control used by gameplay).
+ * Multi-touch pointer tracker (single-finger control used by gameplay)
+ * plus WASD keyboard state for desktop slingshot movement.
  */
 export class Input {
   /** Active pointers keyed by pointerId. */
@@ -10,8 +11,25 @@ export class Input {
   private pressedQueue: PointerState[] = []
   /** Pointer ids that went up since last consumeReleases(). */
   private releasedQueue: number[] = []
+  /** Currently held WASD keys (normalized lowercase). */
+  private keys = new Set<string>()
 
   private canvas: HTMLCanvasElement
+  private onKeyDown = (e: KeyboardEvent): void => {
+    const key = normalizeMoveKey(e.key)
+    if (!key) return
+    this.keys.add(key)
+    e.preventDefault()
+  }
+  private onKeyUp = (e: KeyboardEvent): void => {
+    const key = normalizeMoveKey(e.key)
+    if (!key) return
+    this.keys.delete(key)
+    e.preventDefault()
+  }
+  private onBlur = (): void => {
+    this.keys.clear()
+  }
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -68,6 +86,10 @@ export class Input {
 
     el.addEventListener("pointerup", end, { passive: false })
     el.addEventListener("pointercancel", end, { passive: false })
+
+    window.addEventListener("keydown", this.onKeyDown)
+    window.addEventListener("keyup", this.onKeyUp)
+    window.addEventListener("blur", this.onBlur)
   }
 
   consumePresses(): PointerState[] {
@@ -90,6 +112,30 @@ export class Input {
     return [...this.pointers.values()]
   }
 
+  /** True when any WASD key is held. */
+  get hasKeyboardMove(): boolean {
+    return this.keys.size > 0
+  }
+
+  /**
+   * Unit-ish WASD vector in world space (Y up): A/D → x, W/S → y.
+   * Diagonal input is normalized so speed stays consistent.
+   */
+  keyboardMove(): Vec2 {
+    let x = 0
+    let y = 0
+    if (this.keys.has("a")) x -= 1
+    if (this.keys.has("d")) x += 1
+    if (this.keys.has("w")) y += 1
+    if (this.keys.has("s")) y -= 1
+    const len = Math.hypot(x, y)
+    if (len > 1) {
+      x /= len
+      y /= len
+    }
+    return { x, y }
+  }
+
   /**
    * Return CSS-pixel coordinates to match Camera / game logic.
    * Do not multiply by devicePixelRatio — canvas backing store is scaled
@@ -102,4 +148,14 @@ export class Input {
       y: clientY - rect.top,
     }
   }
+}
+
+function normalizeMoveKey(key: string): string | null {
+  const k = key.toLowerCase()
+  if (k === "w" || k === "a" || k === "s" || k === "d") return k
+  if (k === "arrowup") return "w"
+  if (k === "arrowleft") return "a"
+  if (k === "arrowdown") return "s"
+  if (k === "arrowright") return "d"
+  return null
 }

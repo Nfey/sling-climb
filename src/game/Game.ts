@@ -17,6 +17,7 @@ import {
   CATCH_BURST_DURATION,
   FREE_MOVE_DURATION,
   BONUS_PLATFORM_POINTS,
+  PLAYFIELD_MAX_WIDTH,
   POW_DURATION,
   POW_LAUNCH_MULT,
   PURPLE_BALL_PLATFORM_POINTS,
@@ -24,6 +25,7 @@ import {
   PURPLE_BALL_SPAWN_UP,
   SCORE_POPUP_DURATION,
   SLINGSHOT_FORK_WIDTH,
+  SLINGSHOT_KEYBOARD_SPEED,
 } from "./constants"
 import { Input } from "./Input"
 import { PlatformManager } from "./Platform"
@@ -108,7 +110,8 @@ export class Game {
 
   private resize(): void {
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    const width = window.innerWidth
+    // Cap playfield width on wide desktops; mobile stays full-bleed.
+    const width = Math.min(window.innerWidth, PLAYFIELD_MAX_WIDTH)
     const height = window.innerHeight
     this.canvas.width = Math.floor(width * dpr)
     this.canvas.height = Math.floor(height * dpr)
@@ -120,6 +123,8 @@ export class Game {
       this.slingshot.x = width * 0.5
       this.slingshot.y = 0
       this.ball.reset(this.slingshot.x, this.slingshot.y)
+    } else {
+      this.slingshot.setX(this.slingshot.x, width)
     }
     if (!this.freeMoveActive) {
       this.camera.followSlingshot(this.slingshot.y)
@@ -193,6 +198,26 @@ export class Game {
       )
     } else {
       this.slingshot.setX(pointerX, this.camera.width)
+    }
+  }
+
+  /** WASD / arrows while flying — X always; Y only during free-move. */
+  private moveSlingshotWithKeyboard(dt: number): void {
+    const move = this.input.keyboardMove()
+    if (move.x === 0 && move.y === 0) return
+
+    const speed = SLINGSHOT_KEYBOARD_SPEED
+    const nextX = this.slingshot.x + move.x * speed * dt
+
+    if (this.freeMoveActive) {
+      const minScreenY = 56
+      const maxScreenY = this.camera.killScreenY - 28
+      const minY = this.camera.screenToWorld(0, maxScreenY).y
+      const maxY = this.camera.screenToWorld(0, minScreenY).y
+      const nextY = this.slingshot.y + move.y * speed * dt
+      this.slingshot.setPosition(nextX, nextY, this.camera.width, minY, maxY)
+    } else {
+      this.slingshot.setX(nextX, this.camera.width)
     }
   }
 
@@ -289,11 +314,13 @@ export class Game {
       this.state = "flying"
       this.slingshot.frozen = false
 
+      // Pointer still wins when held; otherwise WASD / arrows move the slingshot.
       if (pointer) {
         this.moveSlingshotToPointer(pointer.x, pointer.y)
         this.aimPointerId = pointer.id
       } else {
         this.aimPointerId = null
+        this.moveSlingshotWithKeyboard(dt)
       }
 
       const hit = this.ball.update(
@@ -680,12 +707,12 @@ export class Game {
       return `POW · 2x launch · ${Math.ceil(this.powRemaining)}s`
     }
     if (this.freeMoveActive && this.state === "flying") {
-      return `Free move · ${Math.ceil(this.freeMoveRemaining)}s`
+      return `Free move · WASD · ${Math.ceil(this.freeMoveRemaining)}s`
     }
     if (this.powActive && this.state === "flying") {
       return `POW · ${Math.ceil(this.powRemaining)}s`
     }
-    if (this.state === "flying") return "Hold to move · catch the ball"
+    if (this.state === "flying") return "WASD or hold to move · catch the ball"
     if (this.state === "aiming") return "Release to launch"
     if (this.state === "ready") return "Drag to aim"
     return null

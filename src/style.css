@@ -1,5 +1,6 @@
 :root {
   --bg-deep: #ffffff;
+  --bg-gutter: #e6e6e6;
   --bg-mid: #ffffff;
   --ink: #111111;
   --accent: #2f6fed;
@@ -20,7 +21,7 @@ body,
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--bg-deep);
+  background: var(--bg-gutter);
   color: var(--ink);
   font-family: "DM Sans", system-ui, sans-serif;
   touch-action: none;
@@ -28,9 +29,18 @@ body,
   -webkit-user-select: none;
 }
 
+#app {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+}
+
 #game {
   display: block;
   width: 100%;
   height: 100%;
+  max-width: 430px;
+  background: var(--bg-deep);
   touch-action: none;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
 }

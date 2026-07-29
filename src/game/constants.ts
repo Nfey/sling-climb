@@ -9,6 +9,13 @@ export const SLINGSHOT_FORK_WIDTH = 44
 export const SLINGSHOT_FORK_HEIGHT = 52
 /** How long the catch burst / "Caught!" cue lasts (seconds). */
 export const CATCH_BURST_DURATION = 0.55
+/**
+ * Cap the playfield width on wide (desktop) viewports so the climb stays
+ * phone-scale; canvas is centered with gutters beside it.
+ */
+export const PLAYFIELD_MAX_WIDTH = 430
+/** Slingshot move speed with WASD while the ball is flying (px/s). */
+export const SLINGSHOT_KEYBOARD_SPEED = 560
 
 export const MAX_PULL = 140
 /** ~1/4 of the previous 34.5 launch multiplier. */
