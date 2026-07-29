@@ -7,6 +7,7 @@ import {
   PLATFORM_STUCK_HITS,
   PLATFORM_STUCK_NUDGE,
   PLATFORM_STUCK_VX,
+  PORTAL_SPEED_DAMPING,
   WALL_BOUNCE,
 } from "./constants"
 import type {
@@ -158,7 +159,8 @@ export class Ball {
     } else {
       this.x = worldWidth - this.radius - 0.5
     }
-    // Keep vx/vy so momentum continues through the portal
+    this.vx *= PORTAL_SPEED_DAMPING
+    this.vy *= PORTAL_SPEED_DAMPING
     this.squash = 0.35
     return this.y - prevY
   }
