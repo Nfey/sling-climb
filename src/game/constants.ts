@@ -50,10 +50,12 @@ export const PORTAL_HEIGHT = 96
 /** Vertical gap between successive staggered portals. */
 export const PORTAL_MIN_GAP = 140
 export const PORTAL_MAX_GAP = 240
-/** Base world-Y speed for camera/slingshot catch-up (px/s). */
+/** Base world-Y speed for camera catch-up after launches / POW (px/s). */
 export const CAMERA_CATCHUP_SPEED = 1600
-/** Extra catch-up speed per px the ball is beyond the soft follow target. */
+/** Extra catch-up speed per px beyond the soft follow target (launches). */
 export const CAMERA_CATCHUP_GAP_GAIN = 5
+/** Slower catch-up after portal teleports so exits stay readable (px/s). */
+export const CAMERA_PORTAL_CATCHUP_SPEED = 750
 /** Margin from the top of the screen the ball center must stay below (px). */
 export const CAMERA_TOP_MARGIN = 20
 

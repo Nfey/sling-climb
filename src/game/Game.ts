@@ -12,6 +12,7 @@ import {
   BULLET_WEDGE_PAD,
   CAMERA_CATCHUP_GAP_GAIN,
   CAMERA_CATCHUP_SPEED,
+  CAMERA_PORTAL_CATCHUP_SPEED,
   CAMERA_TOP_MARGIN,
   CATCH_BURST_DURATION,
   FREE_MOVE_DURATION,
@@ -58,6 +59,11 @@ export class Game {
   private powRemaining = 0
   /** Catch feedback burst timer (seconds remaining). */
   private catchBurst = 0
+  /**
+   * Soft-follow distance still owed to a portal teleport.
+   * Paid down slowly so portal exits stay readable; launch/POW gaps use fast follow.
+   */
+  private portalCatchupRemaining = 0
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -135,6 +141,7 @@ export class Game {
     this.freeMoveRemaining = 0
     this.powRemaining = 0
     this.catchBurst = 0
+    this.portalCatchupRemaining = 0
   }
 
   private frame(now: number): void {
@@ -299,6 +306,13 @@ export class Game {
       }
       if (hit.upgradeCollected === "pow") {
         this.powRemaining = POW_DURATION
+      }
+      if (hit.portalDeltaY !== 0) {
+        // Queue the soft-follow gap from this teleport for slow camera catch-up.
+        const softMaxAbove = this.camera.height * 0.32
+        const anchor = this.freeMoveActive ? this.camera.y : this.slingshot.y
+        const softGap = Math.max(0, this.ball.y - softMaxAbove - anchor)
+        this.portalCatchupRemaining = Math.max(this.portalCatchupRemaining, softGap)
       }
       // Portal teleports the ball immediately; camera/slingshot catch up
       // gradually via advanceWorld so the kill line doesn't jump onto the ball.
@@ -511,6 +525,7 @@ export class Game {
   private advanceWorld(dt: number): void {
     // Soft follow keeps the ball near the upper third; hard clamp never lets
     // it cross the top of the screen (important for POW launches).
+    // Portal-created gaps ease slowly; launch/POW gaps use the fast follow.
     const softMaxAbove = this.camera.height * 0.32
     const hardMaxAbove =
       this.camera.slingshotScreenY - this.ball.radius - CAMERA_TOP_MARGIN
@@ -521,12 +536,34 @@ export class Game {
       if (y < hardTarget) y = hardTarget
 
       const softTarget = this.ball.y - softMaxAbove
-      if (y < softTarget) {
-        const gap = softTarget - y
-        const speed = CAMERA_CATCHUP_SPEED + gap * CAMERA_CATCHUP_GAP_GAIN
-        y += Math.min(gap, speed * dt)
+      if (y >= softTarget) {
+        this.portalCatchupRemaining = 0
+        return y
       }
-      return y
+
+      const gap = softTarget - y
+      const portalPart = Math.min(gap, this.portalCatchupRemaining)
+      const launchPart = gap - portalPart
+
+      let step = 0
+      if (portalPart > 0) {
+        const portalStep = Math.min(
+          portalPart,
+          CAMERA_PORTAL_CATCHUP_SPEED * dt,
+        )
+        step += portalStep
+        this.portalCatchupRemaining = Math.max(
+          0,
+          this.portalCatchupRemaining - portalStep,
+        )
+      }
+      if (launchPart > 0) {
+        const launchSpeed =
+          CAMERA_CATCHUP_SPEED + launchPart * CAMERA_CATCHUP_GAP_GAIN
+        step += Math.min(launchPart, launchSpeed * dt)
+      }
+
+      return y + step
     }
 
     if (this.freeMoveActive) {
