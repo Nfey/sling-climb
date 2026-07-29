@@ -30,6 +30,8 @@ export interface BallUpdateResult {
   platformHit: boolean
   /** World-Y change from a portal teleport this frame (0 if none). */
   portalDeltaY: number
+  /** Side-wall bounce this frame (not a portal entry). */
+  wallHit: boolean
   /** Fresh bumper contact this frame (not continuous overlap). */
   bumperHit: boolean
   bumperAt: Vec2 | null
@@ -64,7 +66,7 @@ export class Ball {
   /** Near-vertical bounces on the same platform (anti-stuck). */
   private stuckHits = 0
   private stuckPlatformKey = ""
-  /** Bumper keys currently overlapping — used to score only on enter. */
+  /** Bumper keys currently overlapping — used to SFX/score only on enter. */
   private bumperOverlaps = new Set<string>()
 
   reset(x: number, y: number): void {
@@ -236,6 +238,7 @@ export class Ball {
       upgradeCollected: null,
       platformHit: false,
       portalDeltaY: 0,
+      wallHit: false,
       bumperHit: false,
       bumperAt: null,
       arrowHit: false,
@@ -260,6 +263,7 @@ export class Ball {
         this.x = this.radius
         this.vx = Math.abs(this.vx) * WALL_BOUNCE
         this.squash = 0.6
+        result.wallHit = true
       }
     } else if (this.x + this.radius > worldWidth) {
       const entry = this.vx >= 0 ? this.findPortalAt(portals, "right") : null
@@ -270,6 +274,7 @@ export class Ball {
         this.x = worldWidth - this.radius
         this.vx = -Math.abs(this.vx) * WALL_BOUNCE
         this.squash = 0.6
+        result.wallHit = true
       }
     }
 

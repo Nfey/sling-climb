@@ -30,6 +30,7 @@ import {
   SLINGSHOT_KEYBOARD_SPEED,
   COLORS,
 } from "./constants"
+import { GameAudio } from "./Audio"
 import { Input } from "./Input"
 import { PlatformManager } from "./Platform"
 import { Renderer } from "./Renderer"
@@ -45,6 +46,7 @@ export class Game {
   private slingshot = new Slingshot()
   private platforms = new PlatformManager()
   private score = new Score()
+  private audio = new GameAudio()
   private input: Input
   private renderer: Renderer
   private canvas: HTMLCanvasElement
@@ -73,6 +75,8 @@ export class Game {
    * Paid down slowly so portal exits stay readable; launch/POW gaps use fast follow.
    */
   private portalCatchupRemaining = 0
+  /** World Y when the current flight started (launch or after catch). */
+  private flightStartY = 0
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas
@@ -135,6 +139,7 @@ export class Game {
   }
 
   private resetRun(): void {
+    this.audio.resetFlight()
     const width = this.camera.width
     this.slingshot.reset(width * 0.5, 0)
     this.ball.reset(this.slingshot.x, this.slingshot.y)
@@ -155,6 +160,24 @@ export class Game {
     this.catchBurst = 0
     this.scorePopups = []
     this.portalCatchupRemaining = 0
+    this.flightStartY = 0
+  }
+
+  private syncAudioCombo(): void {
+    this.audio.setCombo(this.score.combo)
+  }
+
+  private beginFlight(launchPower = 0.7): void {
+    this.flightStartY = this.ball.y
+    this.syncAudioCombo()
+    this.audio.setClimb(0)
+    this.audio.startFlight()
+    this.audio.playLaunch(launchPower)
+  }
+
+  private endFlightCatch(): void {
+    this.audio.playCatch()
+    this.audio.resetFlight()
   }
 
   private frame(now: number): void {
@@ -244,6 +267,8 @@ export class Game {
     const presses = this.input.consumePresses()
     const releases = this.input.consumeReleases()
 
+    if (presses.length > 0) this.audio.unlock()
+
     if (this.aimPointerId != null && releases.includes(this.aimPointerId)) {
       // handled below in aiming
     }
@@ -306,6 +331,7 @@ export class Game {
 
         if (!ptr) {
           if (this.lastAimPull && Math.hypot(this.lastAimPull.x, this.lastAimPull.y) > 8) {
+            const power = this.slingshot.stretch
             const vel = this.slingshot.launchVelocity(this.lastAimPull, this.launchMult())
             this.ball.x = this.slingshot.x
             this.ball.y = this.slingshot.y
@@ -313,6 +339,7 @@ export class Game {
             this.state = "flying"
             this.slingshot.frozen = false
             this.slingshot.stretch = 0
+            this.beginFlight(power)
           } else {
             this.state = "ready"
             this.slingshot.stretch = 0
@@ -360,25 +387,37 @@ export class Game {
         const at = hit.bumperAt ?? { x: this.ball.x, y: this.ball.y }
         this.spawnScorePopup(at.x, at.y + 12, awarded, COLORS.bumper)
         this.score.bumpCombo()
+        this.syncAudioCombo()
+        this.audio.playBumper()
       }
       if (hit.arrowHit) {
         const awarded = this.score.collectBonus(HAZARD_BONUS_POINTS)
         const at = hit.arrowAt ?? { x: this.ball.x, y: this.ball.y }
         this.spawnScorePopup(at.x, at.y + 12, awarded, COLORS.arrowPad)
+        this.audio.playArrow()
       }
       if (hit.platformHit) {
         this.score.bumpCombo()
+        this.syncAudioCombo()
+        this.audio.playPlatformBounce()
       }
-      if (hit.upgradeCollected === "dual") this.spawnPurpleBall()
+      if (hit.wallHit) this.audio.playWallBounce()
+      if (hit.upgradeCollected === "dual") {
+        this.spawnPurpleBall()
+        this.audio.playPowerup()
+      }
       if (hit.upgradeCollected === "bullets") {
         this.bulletPowerRemaining = BULLET_POWER_DURATION
         this.bulletFireCooldown = 0
+        this.audio.playPowerup()
       }
       if (hit.upgradeCollected === "freeMove") {
         this.freeMoveRemaining = FREE_MOVE_DURATION
+        this.audio.playPowerup()
       }
       if (hit.upgradeCollected === "pow") {
         this.powRemaining = POW_DURATION
+        this.audio.playPowerup()
       }
       if (hit.portalDeltaY !== 0) {
         const awarded = this.score.collectBonus(HAZARD_BONUS_POINTS)
@@ -389,6 +428,8 @@ export class Game {
           COLORS.portal,
         )
         this.score.bumpCombo()
+        this.syncAudioCombo()
+        this.audio.playPortal()
         // Queue the soft-follow gap from this teleport for slow camera catch-up.
         const softMaxAbove = this.camera.height * 0.32
         const anchor = this.freeMoveActive ? this.camera.y : this.slingshot.y
@@ -399,6 +440,11 @@ export class Game {
       // gradually via advanceWorld so the kill line doesn't jump onto the ball.
       this.score.observe(this.ball.y)
 
+      // Climb drama: peak height gained since this flight started.
+      const climb = Math.max(0, this.ball.y - this.flightStartY)
+      this.audio.setClimb(climb)
+      this.audio.update(dt)
+
       this.advanceWorld(dt)
 
       if (this.ball.vy <= 0 && this.slingshot.canCatch(this.ball.x, this.ball.y)) {
@@ -408,6 +454,7 @@ export class Game {
         this.lastAimPull = null
         this.catchBurst = CATCH_BURST_DURATION
         this.score.resetCombo()
+        this.endFlightCatch()
         // Catch even without a held finger; only enter aim if already holding.
         if (pointer) {
           this.state = "aiming"
@@ -424,6 +471,8 @@ export class Game {
         this.ball.y < this.camera.killWorldY
       ) {
         this.score.commitHighScore()
+        this.audio.playGameOver()
+        this.audio.resetFlight()
         this.state = "gameOver"
       }
     }
