@@ -4,8 +4,7 @@ import {
   MAX_HEIGHT_KEY,
   SCORE_HEIGHT_EXP,
   SCORE_POINTS_EXP,
-  SCORE_SPEED_EXP,
-  SCORE_SPEED_REF,
+  SCORE_TIME_EXP,
 } from "./constants"
 
 export class Score {
@@ -110,22 +109,19 @@ export class Score {
   }
 
   /**
-   * End-of-run high score ≈ height × points / speed.
-   * Height is weighted a bit above points; a soft speed term barely moves
-   * the total (faster climb rate helps slightly).
+   * End-of-run high score ≈ height × points / time.
+   * Height is weighted a bit above points; total elapsed time only softens
+   * the total — faster for the same height/points scores higher.
    */
   computeFinalScore(elapsed: number): number {
     const height = Math.max(1, this.climbHeight)
     const points = Math.max(1, this.current)
-    const speed = Math.max(1, height / Math.max(elapsed, 0.25))
-    // Relative slowness vs a typical climb rate: ~1 at REF, higher when slower.
-    // Dividing by this^exp rewards speed only mildly (speed barely matters).
-    const slowness = Math.max(0.5, SCORE_SPEED_REF / speed)
+    const time = Math.max(1, elapsed)
     return Math.max(
       1,
       Math.round(
         (Math.pow(height, SCORE_HEIGHT_EXP) * Math.pow(points, SCORE_POINTS_EXP)) /
-          Math.pow(slowness, SCORE_SPEED_EXP),
+          Math.pow(time, SCORE_TIME_EXP),
       ),
     )
   }
