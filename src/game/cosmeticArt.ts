@@ -260,22 +260,53 @@ function drawWiffleBall(ctx: CanvasRenderingContext2D, radius: number): void {
 }
 
 function drawTennisBall(ctx: CanvasRenderingContext2D, radius: number): void {
-  const grd = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, 1, 0, 0, radius)
-  grd.addColorStop(0, "#ecfccb")
-  grd.addColorStop(0.6, "#bef264")
-  grd.addColorStop(1, "#65a30d")
-  ctx.fillStyle = grd
+  const base = ctx.createRadialGradient(-radius * 0.15, -radius * 0.1, radius * 0.05, 0, 0, radius)
+  base.addColorStop(0, "#c8f04a")
+  base.addColorStop(0.55, "#a8d830")
+  base.addColorStop(1, "#5f9010")
+  ctx.fillStyle = base
   ctx.beginPath()
   ctx.arc(0, 0, radius, 0, Math.PI * 2)
   ctx.fill()
-  ctx.strokeStyle = "#ffffff"
-  ctx.lineWidth = Math.max(2, radius * 0.14)
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(0, 0, radius, 0, Math.PI * 2)
+  ctx.clip()
+
+  const leftGlow = ctx.createRadialGradient(-radius * 0.42, -radius * 0.05, 0, -radius * 0.3, 0, radius * 0.9)
+  leftGlow.addColorStop(0, "rgba(228, 255, 130, 0.6)")
+  leftGlow.addColorStop(0.55, "rgba(200, 240, 74, 0.18)")
+  leftGlow.addColorStop(1, "rgba(200, 240, 74, 0)")
+  ctx.fillStyle = leftGlow
+  ctx.fillRect(-radius, -radius, radius * 2, radius * 2)
+
+  const edgeShadow = ctx.createRadialGradient(radius * 0.3, radius * 0.38, radius * 0.04, radius * 0.15, radius * 0.2, radius * 1.05)
+  edgeShadow.addColorStop(0, "rgba(45, 78, 8, 0.5)")
+  edgeShadow.addColorStop(0.55, "rgba(70, 110, 15, 0.22)")
+  edgeShadow.addColorStop(1, "rgba(70, 110, 15, 0)")
+  ctx.fillStyle = edgeShadow
+  ctx.fillRect(-radius, -radius, radius * 2, radius * 2)
+
+  ctx.strokeStyle = "#ecece8"
+  ctx.lineWidth = Math.max(2.5, radius * 0.16)
   ctx.lineCap = "round"
   for (const side of [-1, 1]) {
     ctx.beginPath()
     ctx.ellipse(side * radius * 0.08, 0, radius * 0.55, radius * 0.95, side * 0.35, 0, Math.PI * 2)
     ctx.stroke()
   }
+
+  ctx.fillStyle = "rgba(240, 255, 210, 0.78)"
+  ctx.beginPath()
+  ctx.arc(radius * 0.28, -radius * 0.32, radius * 0.11, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = "rgba(240, 255, 210, 0.55)"
+  ctx.beginPath()
+  ctx.arc(radius * 0.38, -radius * 0.17, radius * 0.055, 0, Math.PI * 2)
+  ctx.fill()
+
+  ctx.restore()
 }
 
 function drawPingPongBall(ctx: CanvasRenderingContext2D, radius: number): void {
