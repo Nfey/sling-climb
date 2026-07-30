@@ -102,8 +102,8 @@ export const UPGRADE_PICKUP_MIN_GAP = 260
 export const UPGRADE_PICKUP_MAX_GAP = 480
 
 /** Chance to place a collectible coin at each spawn step. */
-export const COIN_CHANCE = 0.55
-export const COIN_RADIUS = 11
+export const COIN_CHANCE = 0.55 / 15
+export const COIN_RADIUS = 15
 export const COIN_MIN_GAP = 90
 export const COIN_MAX_GAP = 170
 /** Lifetime coins banked per collected coin. */

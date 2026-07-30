@@ -739,7 +739,7 @@ export class Renderer {
       ctx.lineWidth = 2
       ctx.stroke()
       ctx.fillStyle = COLORS.coinRim
-      ctx.font = "800 11px 'Bricolage Grotesque', sans-serif"
+      ctx.font = "800 14px 'Bricolage Grotesque', sans-serif"
       ctx.textAlign = "center"
       ctx.textBaseline = "middle"
       ctx.fillText("$", s.x, s.y + 0.5)
