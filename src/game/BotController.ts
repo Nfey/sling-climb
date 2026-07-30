@@ -216,6 +216,10 @@ export class BotController {
       }
     }
 
+    if (snap.avoidCoins) {
+      launchAngle = this.nudgeAwayFromCoins(launchAngle, snap)
+    }
+
     // Pull is opposite the launch direction.
     const angle = launchAngle + Math.PI
     const len = MAX_PULL * power
@@ -248,6 +252,24 @@ export class BotController {
       if (r <= 0) return t
     }
     return targets[targets.length - 1] ?? null
+  }
+
+  /** Rotate launch angle away from coins sitting in the upward arc. */
+  private nudgeAwayFromCoins(launchAngle: number, snap: GameSnapshot): number {
+    let angle = launchAngle
+    for (const c of snap.coins) {
+      const dx = c.x - snap.slingshot.x
+      const dy = c.y - snap.slingshot.y
+      if (dy < 24) continue
+      const coinAngle = Math.atan2(dy, dx)
+      let diff = coinAngle - angle
+      while (diff > Math.PI) diff -= Math.PI * 2
+      while (diff < -Math.PI) diff += Math.PI * 2
+      if (Math.abs(diff) > 0.42) continue
+      const strength = 0.18 + (0.42 - Math.abs(diff)) * 0.55
+      angle -= Math.sign(diff) * strength
+    }
+    return angle
   }
 
   private clampPull(pull: Vec2): Vec2 {

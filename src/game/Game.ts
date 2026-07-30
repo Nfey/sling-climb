@@ -19,6 +19,7 @@ import {
   BONUS_PLATFORM_POINTS,
   DESKTOP_HINT_MIN_WIDTH,
   MAX_PULL,
+  MENU_DEMO_COIN_CHANCE,
   PLAYFIELD_MAX_WIDTH,
   POW_DURATION,
   POW_LAUNCH_MULT,
@@ -50,6 +51,7 @@ import {
 import type {
   BulletData,
   BotAimTarget,
+  CoinData,
   GameSnapshot,
   GameState,
   MainMenuHitAreas,
@@ -159,7 +161,17 @@ export class Game implements BotGameApi {
       width: this.camera.width,
       height: this.camera.height,
       targets: this.collectBotTargets(),
+      coins: this.collectBotCoins(),
+      avoidCoins: this.menuDemo,
     }
+  }
+
+  /** Coins near the slingshot for menu-demo bot avoidance. */
+  private collectBotCoins(): CoinData[] {
+    if (!this.menuDemo) return []
+    const slingY = this.slingshot.y
+    const maxY = slingY + this.camera.height * 1.5
+    return this.platforms.coins.filter((c) => c.y > slingY - 30 && c.y <= maxY)
   }
 
   /** Nearby hazards / bonuses above the pouch for seek-style bots. */
@@ -306,7 +318,9 @@ export class Game implements BotGameApi {
     this.ball.reset(this.slingshot.x, this.slingshot.y)
     this.bonusBalls = []
     this.bullets = []
-    this.platforms.reset(width, this.slingshot.y)
+    this.platforms.reset(width, this.slingshot.y, {
+      coinChance: this.menuDemo ? MENU_DEMO_COIN_CHANCE : undefined,
+    })
     this.score.reset(this.slingshot.y)
     this.camera.followSlingshot(this.slingshot.y)
     this.state = toMenu ? "menu" : "ready"

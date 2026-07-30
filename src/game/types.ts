@@ -24,6 +24,10 @@ export interface GameSnapshot {
   height: number
   /** Interesting aim points above the slingshot for seek bots. */
   targets: BotAimTarget[]
+  /** Nearby coins the bot may steer away from (menu demo). */
+  coins: CoinData[]
+  /** When true, the bot nudges aim to miss coins. */
+  avoidCoins: boolean
 }
 
 /** World-space aim hint used by seek-style autopilots. */
