@@ -47,9 +47,18 @@ export interface ScreenRect {
   h: number
 }
 
-/** Interactive regions returned by the main-menu draw pass. */
+/** Which overlay is shown while the attract-mode menu is active. */
+export type MenuScreen = "title" | "shop"
+
+/** Interactive regions on the title menu (Play / Shop). */
 export interface MainMenuHitAreas {
   play: ScreenRect
+  shop: ScreenRect
+}
+
+/** Interactive regions on the cosmetics shop screen. */
+export interface ShopHitAreas {
+  back: ScreenRect
   slingshotPrev: ScreenRect
   slingshotNext: ScreenRect
   slingshotPicker: ScreenRect

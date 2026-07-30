@@ -25,6 +25,7 @@ import type {
   PortalData,
   ScorePopup,
   ScreenRect,
+  ShopHitAreas,
   TurretShotData,
   UpgradePickupData,
   Vec2,
@@ -875,7 +876,7 @@ export class Renderer {
   }
 
   /**
-   * Title screen with top-right coins, bests, bottom-corner variant pickers, and a Play button.
+   * Title screen with top-right coins, bests, Play, and a Shop button.
    * Returns interactive regions for hit-testing.
    */
   drawMainMenu(
@@ -884,19 +885,10 @@ export class Renderer {
     bestHeight: number,
     lifetimeCoins: number,
     anim: number,
-    slingshotStyle: SlingshotStyle,
     backgroundStyle: BackgroundStyle,
-    ballStyle: BallStyle,
-    slingshotLocked: boolean,
-    backgroundLocked: boolean,
-    ballLocked: boolean,
-    slingshotPrice: number | null,
-    backgroundPrice: number | null,
-    backgroundUnlockHint: string | null,
-    ballUnlockHint: string | null,
   ): MainMenuHitAreas {
     const ctx = this.ctx
-    const { width, height } = camera
+    const { width } = camera
     const cx = width / 2
     const theme = getBackgroundTheme(backgroundStyle)
     let y = camera.slingshotScreenY - 168
@@ -904,19 +896,7 @@ export class Renderer {
     ctx.fillStyle = theme.menuOverlay
     ctx.fillRect(0, 0, width, camera.killScreenY)
 
-    // Lifetime coins — top-right corner (above title content).
-    {
-      const coinY = 28 + safeAreaInsetTop()
-      const coinRight = width - 20
-      ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
-      const coinLabel = String(lifetimeCoins)
-      const coinTextW = ctx.measureText(coinLabel).width
-      drawMenuCoinIcon(ctx, coinRight - coinTextW - 14, coinY, 9)
-      ctx.fillStyle = COLORS.coinRim
-      ctx.textAlign = "right"
-      ctx.textBaseline = "middle"
-      ctx.fillText(coinLabel, coinRight, coinY + 1)
-    }
+    drawLifetimeCoins(ctx, width, lifetimeCoins)
 
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
@@ -964,17 +944,26 @@ export class Renderer {
     }
 
     const pulse = 0.92 + Math.sin(anim * 3.2) * 0.08
-    const btnW = 168
+    const btnW = 120
     const btnH = 52
+    const btnGap = 12
+    const pairW = btnW * 2 + btnGap
+    const pairX = cx - pairW / 2
     const play: ScreenRect = {
-      x: cx - btnW / 2,
+      x: pairX,
+      y: y - btnH / 2,
+      w: btnW,
+      h: btnH,
+    }
+    const shop: ScreenRect = {
+      x: pairX + btnW + btnGap,
       y: y - btnH / 2,
       w: btnW,
       h: btnH,
     }
 
     ctx.save()
-    ctx.translate(cx, y)
+    ctx.translate(play.x + btnW / 2, y)
     ctx.scale(pulse, pulse)
     ctx.fillStyle = COLORS.accent
     ctx.beginPath()
@@ -985,115 +974,191 @@ export class Renderer {
     ctx.fillText("Play", 0, 1)
     ctx.restore()
 
+    ctx.fillStyle = "rgba(255, 255, 255, 0.78)"
+    ctx.beginPath()
+    roundRect(ctx, shop.x, shop.y, shop.w, shop.h, 14)
+    ctx.fill()
+    ctx.strokeStyle = COLORS.accent
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    roundRect(ctx, shop.x, shop.y, shop.w, shop.h, 14)
+    ctx.stroke()
+    ctx.fillStyle = COLORS.accent
+    ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText("Shop", shop.x + btnW / 2, y + 1)
+
     y += 48
     ctx.fillStyle = theme.inkDim
     ctx.font = "500 13px 'DM Sans', sans-serif"
     ctx.fillText("or tap anywhere to start", cx, y)
 
-    // Bottom-corner variant pickers (below kill line)
-    const bottomTop = camera.killScreenY
-    const bottomH = height - bottomTop
-    const pickerH = Math.min(72, bottomH - 8)
-    const pickerY = bottomTop + (bottomH - pickerH) / 2
+    ctx.textBaseline = "alphabetic"
+    return { play, shop }
+  }
+
+  /**
+   * Cosmetics shop: stacked variant pickers with buy chips and a Back button.
+   */
+  drawShop(
+    camera: Camera,
+    lifetimeCoins: number,
+    slingshotStyle: SlingshotStyle,
+    backgroundStyle: BackgroundStyle,
+    ballStyle: BallStyle,
+    slingshotLocked: boolean,
+    backgroundLocked: boolean,
+    ballLocked: boolean,
+    slingshotPrice: number | null,
+    backgroundPrice: number | null,
+    backgroundUnlockHint: string | null,
+    ballUnlockHint: string | null,
+  ): ShopHitAreas {
+    const ctx = this.ctx
+    const { width, height } = camera
+    const cx = width / 2
+    const theme = getBackgroundTheme(backgroundStyle)
+
+    ctx.fillStyle = theme.menuOverlay
+    ctx.fillRect(0, 0, width, height)
+
+    drawLifetimeCoins(ctx, width, lifetimeCoins)
+
+    const topPad = 36 + safeAreaInsetTop()
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    ctx.fillStyle = theme.ink
+    ctx.font = "800 34px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText("Shop", cx, topPad + 8)
+
     const arrowW = 34
     const iconBox = 48
     const pickerW = arrowW + iconBox + arrowW
-    const margin = 12
+    const pickerH = 64
+    const rowGap = 56
+    const labelOffset = 22
+    const rowsTop = topPad + 56
+    const rows = [
+      {
+        kind: "slingshot" as const,
+        label: "Slingshot",
+        style: slingshotStyle,
+        locked: slingshotLocked,
+        hint: null as string | null,
+        price: slingshotPrice,
+      },
+      {
+        kind: "background" as const,
+        label: "Background",
+        style: backgroundStyle,
+        locked: backgroundLocked,
+        hint: backgroundLocked ? backgroundUnlockHint : null,
+        price: backgroundPrice,
+      },
+      {
+        kind: "ball" as const,
+        label: "Ball",
+        style: ballStyle,
+        locked: ballLocked,
+        hint: ballLocked ? ballUnlockHint : null,
+        price: null as number | null,
+      },
+    ]
 
-    const slingshotRow = drawCornerVariantPicker(
-      ctx,
-      margin,
-      pickerY,
-      pickerW,
-      pickerH,
-      arrowW,
-      iconBox,
-      "slingshot",
-      slingshotStyle,
-      slingshotLocked,
-      this.time,
-    )
+    const pickers: Array<{
+      prev: ScreenRect
+      next: ScreenRect
+      picker: ScreenRect
+      icon: ScreenRect
+      price: number | null
+      locked: boolean
+    }> = []
 
-    const backgroundRow = drawCornerVariantPicker(
-      ctx,
-      cx - pickerW / 2,
-      pickerY,
-      pickerW,
-      pickerH,
-      arrowW,
-      iconBox,
-      "background",
-      backgroundStyle,
-      backgroundLocked,
-      this.time,
-      backgroundLocked ? backgroundUnlockHint : null,
-    )
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]!
+      const pickerY = rowsTop + i * (pickerH + rowGap)
+      ctx.fillStyle = theme.inkDim
+      ctx.font = "700 12px 'DM Sans', sans-serif"
+      ctx.textAlign = "center"
+      ctx.fillText(row.label, cx, pickerY - labelOffset)
 
-    const ballRow = drawCornerVariantPicker(
-      ctx,
-      width - margin - pickerW,
-      pickerY,
-      pickerW,
-      pickerH,
-      arrowW,
-      iconBox,
-      "ball",
-      ballStyle,
-      ballLocked,
-      this.time,
-      ballLocked ? ballUnlockHint : null,
-    )
+      const drawn = drawCornerVariantPicker(
+        ctx,
+        cx - pickerW / 2,
+        pickerY,
+        pickerW,
+        pickerH,
+        arrowW,
+        iconBox,
+        row.kind,
+        row.style,
+        row.locked,
+        this.time,
+        row.hint,
+      )
+      pickers.push({
+        prev: drawn.prev,
+        next: drawn.next,
+        picker: { x: cx - pickerW / 2, y: pickerY, w: pickerW, h: pickerH },
+        icon: drawn.icon,
+        price: row.price,
+        locked: row.locked,
+      })
+    }
+
+    const slingshotRow = pickers[0]!
+    const backgroundRow = pickers[1]!
+    const ballRow = pickers[2]!
 
     let buySlingshot: ScreenRect | null = null
-    if (slingshotPrice != null && slingshotLocked) {
-      const buyW = 112
-      const buyH = 26
-      const buyX = slingshotRow.icon.x + (slingshotRow.icon.w - buyW) / 2
-      const buyY = slingshotRow.icon.y + slingshotRow.icon.h + 4
-      buySlingshot = { x: buyX, y: buyY, w: buyW, h: buyH }
-      const canAfford = lifetimeCoins >= slingshotPrice
-      ctx.fillStyle = canAfford ? COLORS.coin : "rgba(17, 17, 17, 0.1)"
-      ctx.beginPath()
-      roundRect(ctx, buyX, buyY, buyW, buyH, 8)
-      ctx.fill()
-      ctx.fillStyle = canAfford ? COLORS.coinRim : COLORS.inkDim
-      ctx.font = "800 12px 'Bricolage Grotesque', sans-serif"
-      ctx.textAlign = "center"
-      ctx.fillText(`${slingshotPrice}`, buyX + buyW / 2 - 8, buyY + buyH / 2 + 1)
-      drawMenuCoinIcon(ctx, buyX + buyW / 2 + 14, buyY + buyH / 2, 6)
+    if (slingshotRow.price != null && slingshotRow.locked) {
+      buySlingshot = drawBuyChip(
+        ctx,
+        slingshotRow.icon,
+        slingshotRow.price,
+        lifetimeCoins,
+      )
     }
 
     let buyBackground: ScreenRect | null = null
-    if (backgroundPrice != null && backgroundLocked) {
-      const buyW = 112
-      const buyH = 26
-      const buyX = backgroundRow.icon.x + (backgroundRow.icon.w - buyW) / 2
-      const buyY = backgroundRow.icon.y + backgroundRow.icon.h + 4
-      buyBackground = { x: buyX, y: buyY, w: buyW, h: buyH }
-      const canAfford = lifetimeCoins >= backgroundPrice
-      ctx.fillStyle = canAfford ? COLORS.coin : "rgba(17, 17, 17, 0.1)"
-      ctx.beginPath()
-      roundRect(ctx, buyX, buyY, buyW, buyH, 8)
-      ctx.fill()
-      ctx.fillStyle = canAfford ? COLORS.coinRim : COLORS.inkDim
-      ctx.font = "800 12px 'Bricolage Grotesque', sans-serif"
-      ctx.textAlign = "center"
-      ctx.fillText(`${backgroundPrice}`, buyX + buyW / 2 - 8, buyY + buyH / 2 + 1)
-      drawMenuCoinIcon(ctx, buyX + buyW / 2 + 14, buyY + buyH / 2, 6)
+    if (backgroundRow.price != null && backgroundRow.locked) {
+      buyBackground = drawBuyChip(
+        ctx,
+        backgroundRow.icon,
+        backgroundRow.price,
+        lifetimeCoins,
+      )
     }
+
+    const backW = 140
+    const backH = 44
+    const back: ScreenRect = {
+      x: cx - backW / 2,
+      y: Math.min(height - backH - 20, ballRow.picker.y + ballRow.picker.h + 36),
+      w: backW,
+      h: backH,
+    }
+    ctx.fillStyle = COLORS.accent
+    ctx.beginPath()
+    roundRect(ctx, back.x, back.y, back.w, back.h, 12)
+    ctx.fill()
+    ctx.fillStyle = "#ffffff"
+    ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    ctx.fillText("Back", cx, back.y + back.h / 2 + 1)
 
     ctx.textBaseline = "alphabetic"
     return {
-      play,
+      back,
       slingshotPrev: slingshotRow.prev,
       slingshotNext: slingshotRow.next,
-      slingshotPicker: { x: margin, y: pickerY, w: pickerW, h: pickerH },
+      slingshotPicker: slingshotRow.picker,
       backgroundPrev: backgroundRow.prev,
       backgroundNext: backgroundRow.next,
-      backgroundPicker: { x: cx - pickerW / 2, y: pickerY, w: pickerW, h: pickerH },
+      backgroundPicker: backgroundRow.picker,
       ballPrev: ballRow.prev,
       ballNext: ballRow.next,
-      ballPicker: { x: width - margin - pickerW, y: pickerY, w: pickerW, h: pickerH },
+      ballPicker: ballRow.picker,
       buySlingshot,
       buyBackground,
     }
@@ -1360,6 +1425,50 @@ function hitRect(px: number, py: number, rect: ScreenRect): boolean {
 }
 
 export { hitRect }
+
+/** Lifetime coin total in the top-right corner of menu overlays. */
+function drawLifetimeCoins(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  lifetimeCoins: number,
+): void {
+  const coinY = 28 + safeAreaInsetTop()
+  const coinRight = width - 20
+  ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
+  const coinLabel = String(lifetimeCoins)
+  const coinTextW = ctx.measureText(coinLabel).width
+  drawMenuCoinIcon(ctx, coinRight - coinTextW - 14, coinY, 9)
+  ctx.fillStyle = COLORS.coinRim
+  ctx.textAlign = "right"
+  ctx.textBaseline = "middle"
+  ctx.fillText(coinLabel, coinRight, coinY + 1)
+}
+
+/** Coin-price buy chip under a locked picker icon. */
+function drawBuyChip(
+  ctx: CanvasRenderingContext2D,
+  icon: ScreenRect,
+  price: number,
+  lifetimeCoins: number,
+): ScreenRect {
+  const buyW = 112
+  const buyH = 26
+  const buyX = icon.x + (icon.w - buyW) / 2
+  const buyY = icon.y + icon.h + 4
+  const buy: ScreenRect = { x: buyX, y: buyY, w: buyW, h: buyH }
+  const canAfford = lifetimeCoins >= price
+  ctx.fillStyle = canAfford ? COLORS.coin : "rgba(17, 17, 17, 0.1)"
+  ctx.beginPath()
+  roundRect(ctx, buyX, buyY, buyW, buyH, 8)
+  ctx.fill()
+  ctx.fillStyle = canAfford ? COLORS.coinRim : COLORS.inkDim
+  ctx.font = "800 12px 'Bricolage Grotesque', sans-serif"
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  ctx.fillText(`${price}`, buyX + buyW / 2 - 8, buyY + buyH / 2 + 1)
+  drawMenuCoinIcon(ctx, buyX + buyW / 2 + 14, buyY + buyH / 2, 6)
+  return buy
+}
 
 /** Small gold coin glyph for the main-menu lifetime total. */
 function drawMenuCoinIcon(
