@@ -18,6 +18,7 @@ import {
   FREE_MOVE_DURATION,
   BONUS_PLATFORM_POINTS,
   DESKTOP_HINT_MIN_WIDTH,
+  TIP_HIDE_CLIMB_HEIGHT,
   MAX_PULL,
   MENU_DEMO_COIN_CHANCE,
   PLAYFIELD_MAX_WIDTH,
@@ -1199,6 +1200,7 @@ export class Game implements BotGameApi {
       return null
     }
     if (this.config.mode === "bot") return null
+    if (this.score.climbHeight >= TIP_HIDE_CLIMB_HEIGHT) return null
     if (!this.started) {
       return this.config.mode === "playable"
         ? "Drag to aim · release to fire"

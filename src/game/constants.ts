@@ -19,6 +19,8 @@ export const PLAYFIELD_MAX_WIDTH = 430
  * Touch-only copy is used below this breakpoint.
  */
 export const DESKTOP_HINT_MIN_WIDTH = 768
+/** Climb height (world px) at/above which in-game control tips are hidden. */
+export const TIP_HIDE_CLIMB_HEIGHT = 3000
 /** Slingshot move speed with WASD while the ball is flying (px/s). */
 export const SLINGSHOT_KEYBOARD_SPEED = 560
 
