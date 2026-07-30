@@ -899,7 +899,11 @@ export class Renderer {
     const { width, height } = camera
     const cx = width / 2
     const theme = getBackgroundTheme(backgroundStyle)
-    let y = camera.slingshotScreenY - 168
+    const showBests = highScore > 0 || bestHeight > 0
+    // Anchor Play at vertical screen center; stack title/stats above it.
+    const playY = height / 2
+    const titleToPlay = showBests ? 166 : 114
+    let y = playY - titleToPlay
 
     ctx.fillStyle = theme.menuOverlay
     ctx.fillRect(0, 0, width, camera.killScreenY)
@@ -916,8 +920,6 @@ export class Renderer {
     ctx.font = "500 15px 'DM Sans', sans-serif"
     ctx.fillText("Pull back to launch · catch to climb", cx, y)
     y += 40
-
-    const showBests = highScore > 0 || bestHeight > 0
 
     if (showBests || lifetimeCoins >= 0) {
       const rowW = Math.min(280, width - 48)
@@ -965,13 +967,13 @@ export class Renderer {
     const btnH = 52
     const play: ScreenRect = {
       x: cx - btnW / 2,
-      y: y - btnH / 2,
+      y: playY - btnH / 2,
       w: btnW,
       h: btnH,
     }
 
     ctx.save()
-    ctx.translate(cx, y)
+    ctx.translate(cx, playY)
     ctx.scale(pulse, pulse)
     ctx.fillStyle = COLORS.accent
     ctx.beginPath()
@@ -982,7 +984,7 @@ export class Renderer {
     ctx.fillText("Play", 0, 1)
     ctx.restore()
 
-    y += 48
+    y = playY + 48
     ctx.fillStyle = theme.inkDim
     ctx.font = "500 13px 'DM Sans', sans-serif"
     ctx.fillText("or tap anywhere to start", cx, y)
