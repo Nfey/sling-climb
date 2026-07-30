@@ -609,13 +609,16 @@ export class Renderer {
     bestHeight = 0,
   ): void {
     const ctx = this.ctx
-    const bestRowY = 36
-    const scoreY = 62
+    // Clear the iOS status bar / notch (viewport-fit=cover).
+    const top = safeAreaInsetTop()
+    const labelY = 22 + top
+    const bestRowY = 36 + top
+    const scoreY = 62 + top
 
     ctx.textAlign = "left"
     ctx.fillStyle = COLORS.inkDim
     ctx.font = "500 12px 'DM Sans', sans-serif"
-    ctx.fillText("SCORE", 20, 22)
+    ctx.fillText("SCORE", 20, labelY)
 
     if (highScore > 0) {
       ctx.fillStyle = COLORS.accent
@@ -636,7 +639,7 @@ export class Renderer {
     ctx.textAlign = "right"
     ctx.fillStyle = COLORS.inkDim
     ctx.font = "500 12px 'DM Sans', sans-serif"
-    ctx.fillText("HEIGHT", camera.width - 20, 22)
+    ctx.fillText("HEIGHT", camera.width - 20, labelY)
 
     if (bestHeight > 0) {
       ctx.fillStyle = COLORS.accent
@@ -842,6 +845,18 @@ export class Renderer {
       y: sling.y + (pull.y / len) * clamped,
     }
   }
+}
+
+/**
+ * Resolved `env(safe-area-inset-top)` from CSS (`--safe-top`).
+ * Used so the HUD clears the iOS status bar under viewport-fit=cover.
+ */
+function safeAreaInsetTop(): number {
+  const raw = getComputedStyle(document.documentElement)
+    .getPropertyValue("--safe-top")
+    .trim()
+  const px = Number.parseFloat(raw)
+  return Number.isFinite(px) ? px : 0
 }
 
 /** Compact altitude label for HUD and left-side marks (climb px above start). */
