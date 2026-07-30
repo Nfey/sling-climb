@@ -686,7 +686,6 @@ export class Renderer {
 
     ctx.save()
     ctx.translate(s.x, s.y)
-    ctx.rotate(ball.spin)
     ctx.scale(scaleX, scaleY)
 
     if (ball.isBonus) {
@@ -702,7 +701,9 @@ export class Renderer {
       ctx.lineWidth = 2
       ctx.stroke()
     } else {
-      drawBallStyle(ctx, ballStyle, ball.radius, this.time)
+      drawBallStyle(ctx, ballStyle, ball.radius, this.time, "lighting")
+      ctx.rotate(ball.spin)
+      drawBallStyle(ctx, ballStyle, ball.radius, this.time, "pattern")
     }
     ctx.restore()
   }
