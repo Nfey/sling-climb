@@ -200,7 +200,7 @@ export class Game implements BotGameApi {
       out.push({ x: a.x, y: a.y, kind: "arrow", weight: 2.2 })
     }
     for (const p of this.platforms.platforms) {
-      if (!p.bonus) continue
+      if (p.kind !== "bonus") continue
       const cy = p.y + p.height * 0.5
       if (cy <= slingY + 40 || cy > maxY) continue
       out.push({
@@ -692,6 +692,7 @@ export class Game implements BotGameApi {
         }
       }
 
+      this.platforms.updateMovingPlatforms(dt)
       const hit = this.ball.update(
         dt,
         this.camera.width,
@@ -816,6 +817,7 @@ export class Game implements BotGameApi {
 
     // Update purple bonus balls (no game-over on kill line)
     const killY = this.camera.killWorldY
+    this.platforms.updateMovingPlatforms(dt)
     for (let i = this.bonusBalls.length - 1; i >= 0; i--) {
       const b = this.bonusBalls[i]!
       const hit = b.update(

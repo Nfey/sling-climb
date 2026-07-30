@@ -49,6 +49,14 @@ export const SLINGSHOT_SCREEN_FRAC = 2 / 3
 export const KILL_LINE_OFFSET = 28
 
 export const BONUS_PLATFORM_CHANCE = 0.18
+/** Grey platforms that disappear after one bounce. */
+export const CRUMBLING_PLATFORM_CHANCE = 0.08
+/** Green platforms that oscillate side to side. */
+export const MOVING_PLATFORM_CHANCE = 0.1
+/** Half-width of the side-to-side sweep for moving platforms (px). */
+export const MOVING_PLATFORM_AMPLITUDE = 48
+/** Angular speed of moving platform oscillation (rad/s). */
+export const MOVING_PLATFORM_SPEED = 0.8
 /** Points for landing on a purple bonus platform (before combo). */
 export const BONUS_PLATFORM_POINTS = 200
 /** Points for bumper, arrow pad, or portal (before combo). */
@@ -199,6 +207,10 @@ export const COLORS = {
   platformEdge: "#8b6b3f",
   platformBonus: "#8b5cf6",
   platformBonusEdge: "#6d28d9",
+  platformCrumbling: "#9ca3af",
+  platformCrumblingEdge: "#6b7280",
+  platformMoving: "#22c55e",
+  platformMovingEdge: "#15803d",
   ball: "#f0d9a0",
   ballStroke: "#d4b06a",
   ballPurple: "#c4b5fd",

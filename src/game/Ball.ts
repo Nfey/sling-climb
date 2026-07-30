@@ -331,6 +331,7 @@ export class Ball {
     // One-way platforms: boost upward on contact from above; keep horizontal velocity
     if (this.vy < 0) {
       for (const p of platforms) {
+        if (p.active === false) continue
         const left = p.x
         const right = p.x + p.width
         const top = p.y + p.height
@@ -351,7 +352,8 @@ export class Ball {
           result.platformHit = true
 
           // Break perfect vertical bounce loops on the same platform
-          const key = `${p.x.toFixed(1)}:${p.y.toFixed(1)}:${p.width.toFixed(1)}`
+          const anchorX = p.originX ?? p.x
+          const key = `${anchorX.toFixed(1)}:${p.y.toFixed(1)}:${p.width.toFixed(1)}`
           if (Math.abs(this.vx) < PLATFORM_STUCK_VX) {
             if (key === this.stuckPlatformKey) this.stuckHits += 1
             else {
@@ -367,8 +369,10 @@ export class Ball {
             this.clearStuckTracking()
           }
 
-          if (!this.isBonus && p.bonus) {
-            p.bonus = false
+          if (p.kind === "crumbling") {
+            p.active = false
+          } else if (!this.isBonus && p.kind === "bonus") {
+            p.kind = "normal"
             result.bonusCollected = true
             result.bonusAt = { x: p.x + p.width * 0.5, y: p.y + p.height }
           }
