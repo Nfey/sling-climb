@@ -124,6 +124,11 @@ function drawSoccerPentagon(
 function drawSoccerBall(ctx: CanvasRenderingContext2D, radius: number, phase: BallDrawPhase): void {
   if (phase !== "pattern") {
     drawClassicBall(ctx, radius, "#ffffff", "#f8fafc", "#cbd5e1")
+    ctx.beginPath()
+    ctx.arc(0, 0, radius, 0, Math.PI * 2)
+    ctx.strokeStyle = "#374151"
+    ctx.lineWidth = Math.max(2, radius * 0.12)
+    ctx.stroke()
   }
   if (phase !== "lighting") {
     ctx.fillStyle = "#111827"
@@ -132,12 +137,8 @@ function drawSoccerBall(ctx: CanvasRenderingContext2D, radius: number, phase: Ba
       const a = (i / 5) * Math.PI * 2 - Math.PI / 2
       const px = Math.cos(a) * radius * 0.42
       const py = Math.sin(a) * radius * 0.42
-      // Point each pentagon toward the ball center so none frames the white gap.
-      drawSoccerPentagon(ctx, px, py, pentR, a + Math.PI)
+      drawSoccerPentagon(ctx, px, py, pentR, a)
     }
-    ctx.strokeStyle = "#374151"
-    ctx.lineWidth = Math.max(2, radius * 0.12)
-    ctx.stroke()
   }
 }
 
