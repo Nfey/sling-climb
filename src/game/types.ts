@@ -53,10 +53,14 @@ export interface MainMenuHitAreas {
   slingshotPrev: ScreenRect
   slingshotNext: ScreenRect
   slingshotPicker: ScreenRect
+  backgroundPrev: ScreenRect
+  backgroundNext: ScreenRect
+  backgroundPicker: ScreenRect
   ballPrev: ScreenRect
   ballNext: ScreenRect
   ballPicker: ScreenRect
   buySlingshot: ScreenRect | null
+  buyBackground: ScreenRect | null
 }
 
 export interface PointerState {

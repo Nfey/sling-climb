@@ -25,7 +25,7 @@ import type {
   Vec2,
 } from "./types"
 import type { Slingshot } from "./Slingshot"
-import type { BallStyle, SlingshotStyle } from "./cosmetics"
+import type { BallStyle, BackgroundStyle, SlingshotStyle } from "./cosmetics"
 import {
   drawBallStyle,
   drawSlingshotBands,
@@ -33,10 +33,13 @@ import {
   drawSlingshotIconStyle,
   slingshotAccentColor,
 } from "./cosmeticArt"
+import { drawBackgroundPreview, drawBackgroundStyle } from "./backgroundArt"
+import { getBackgroundTheme } from "./backgrounds"
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D
   private time = 0
+  private currentBackgroundStyle: BackgroundStyle = "classic"
 
   constructor(canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d")
@@ -44,58 +47,60 @@ export class Renderer {
     this.ctx = ctx
   }
 
-  begin(camera: Camera, dt: number, startHeight: number): void {
+  begin(camera: Camera, dt: number, startHeight: number, backgroundStyle: BackgroundStyle = "classic"): void {
+    this.currentBackgroundStyle = backgroundStyle
     this.time += dt
     const ctx = this.ctx
     const dpr = camera.dpr
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, camera.width, camera.height)
-    this.drawBackground(camera, startHeight)
+    this.drawBackground(camera, startHeight, backgroundStyle)
   }
 
-  private drawBackground(camera: Camera, startHeight: number): void {
+  private drawBackground(camera: Camera, startHeight: number, backgroundStyle: BackgroundStyle): void {
     const ctx = this.ctx
     const { width, height } = camera
     const killY = camera.killScreenY
-    this.drawSkyBands(camera, startHeight, killY)
+    const theme = getBackgroundTheme(backgroundStyle)
 
-    // Soft hash for a bit of depth on white
-    ctx.save()
-    ctx.globalAlpha = 0.04
-    ctx.strokeStyle = COLORS.ink
-    ctx.lineWidth = 1
-    const offset = (this.time * 12 + camera.y * 0.15) % 28
-    for (let y = -28; y < height + 28; y += 28) {
-      ctx.beginPath()
-      ctx.moveTo(0, y + offset)
-      ctx.lineTo(width, y + offset + 8)
-      ctx.stroke()
+    if (backgroundStyle === "classic") {
+      this.drawSkyBands(camera, startHeight, height)
+
+      // Soft hash for a bit of depth on white
+      ctx.save()
+      ctx.globalAlpha = 0.04
+      ctx.strokeStyle = COLORS.ink
+      ctx.lineWidth = 1
+      const offset = (this.time * 12 + camera.y * 0.15) % 28
+      for (let y = -28; y < height + 28; y += 28) {
+        ctx.beginPath()
+        ctx.moveTo(0, y + offset)
+        ctx.lineTo(width, y + offset + 8)
+        ctx.stroke()
+      }
+      ctx.restore()
+    } else {
+      drawBackgroundStyle(ctx, camera, backgroundStyle, this.time, height)
     }
-    ctx.restore()
 
-    // Reserved powerup zone below kill line
-    ctx.fillStyle = COLORS.reserved
-    ctx.fillRect(0, killY, width, height - killY)
-
-    ctx.strokeStyle = COLORS.reservedLine
+    ctx.strokeStyle = theme.dividerLine
     ctx.lineWidth = 1
     ctx.beginPath()
     ctx.moveTo(16, killY)
     ctx.lineTo(width - 16, killY)
     ctx.stroke()
-
   }
 
   /** Horizontal sky fills keyed to 5k climb bands (repeats every 100k). */
   private drawSkyBands(
     camera: Camera,
     startHeight: number,
-    killY: number,
+    bgHeight: number,
   ): void {
     const ctx = this.ctx
     const { width } = camera
     const topWorld = camera.screenToWorld(0, -24).y
-    const bottomWorld = camera.screenToWorld(0, killY + 24).y
+    const bottomWorld = camera.screenToWorld(0, bgHeight + 24).y
     const climbMin = Math.min(topWorld, bottomWorld) - startHeight
     const climbMax = Math.max(topWorld, bottomWorld) - startHeight
     const spacing = SKY_ZONE_SPACING
@@ -107,7 +112,7 @@ export class Renderer {
       const syTop = camera.worldToScreen({ x: 0, y: worldHigh }).y
       const syBottom = camera.worldToScreen({ x: 0, y: worldLow }).y
       const y0 = Math.max(0, syTop)
-      const y1 = Math.min(killY, syBottom)
+      const y1 = Math.min(bgHeight, syBottom)
       if (y1 <= y0) continue
 
       ctx.fillStyle = skyZoneColor(climb)
@@ -130,12 +135,13 @@ export class Renderer {
     if (climb <= 0) climb = spacing
 
     ctx.save()
+    const theme = getBackgroundTheme(this.currentBackgroundStyle)
     for (; climb <= climbTop; climb += spacing) {
       const worldY = startHeight + climb
       const sy = camera.worldToScreen({ x: 0, y: worldY }).y
       if (sy > camera.killScreenY || sy < 56) continue
 
-      ctx.strokeStyle = COLORS.heightMarker
+      ctx.strokeStyle = theme.heightMarker
       ctx.lineWidth = 1
       ctx.setLineDash([5, 7])
       ctx.beginPath()
@@ -150,7 +156,7 @@ export class Renderer {
       ctx.lineTo(28, sy)
       ctx.stroke()
 
-      ctx.fillStyle = COLORS.heightMarkerLabel
+      ctx.fillStyle = theme.heightMarkerLabel
       ctx.font = "600 11px 'DM Sans', sans-serif"
       ctx.textAlign = "left"
       ctx.textBaseline = "middle"
@@ -630,6 +636,7 @@ export class Renderer {
     bestHeight = 0,
   ): void {
     const ctx = this.ctx
+    const theme = getBackgroundTheme(this.currentBackgroundStyle)
     // Clear the iOS status bar / notch (viewport-fit=cover).
     const top = safeAreaInsetTop()
     const labelY = 22 + top
@@ -637,7 +644,7 @@ export class Renderer {
     const scoreY = 62 + top
 
     ctx.textAlign = "left"
-    ctx.fillStyle = COLORS.inkDim
+    ctx.fillStyle = theme.inkDim
     ctx.font = "500 12px 'DM Sans', sans-serif"
     ctx.fillText("SCORE", 20, labelY)
 
@@ -647,7 +654,7 @@ export class Renderer {
       ctx.fillText(String(highScore), 20, bestRowY)
     }
 
-    ctx.fillStyle = COLORS.ink
+    ctx.fillStyle = theme.ink
     ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
     ctx.fillText(String(score), 20, scoreY)
 
@@ -658,7 +665,7 @@ export class Renderer {
     }
 
     ctx.textAlign = "right"
-    ctx.fillStyle = COLORS.inkDim
+    ctx.fillStyle = theme.inkDim
     ctx.font = "500 12px 'DM Sans', sans-serif"
     ctx.fillText("HEIGHT", camera.width - 20, labelY)
 
@@ -668,13 +675,13 @@ export class Renderer {
       ctx.fillText(formatHeightLabel(bestHeight), camera.width - 20, bestRowY)
     }
 
-    ctx.fillStyle = COLORS.ink
+    ctx.fillStyle = theme.ink
     ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
     ctx.fillText(formatHeightLabel(climbHeight), camera.width - 20, scoreY)
 
     if (tip) {
       ctx.textAlign = "center"
-      ctx.fillStyle = COLORS.inkDim
+      ctx.fillStyle = theme.inkDim
       ctx.font = "500 14px 'DM Sans', sans-serif"
       const y = camera.slingshotScreenY - 56
       ctx.fillText(tip, camera.width / 2, y)
@@ -795,29 +802,34 @@ export class Renderer {
     lifetimeCoins: number,
     anim: number,
     slingshotStyle: SlingshotStyle,
+    backgroundStyle: BackgroundStyle,
     ballStyle: BallStyle,
     slingshotLocked: boolean,
+    backgroundLocked: boolean,
     ballLocked: boolean,
     slingshotPrice: number | null,
+    backgroundPrice: number | null,
+    backgroundUnlockHint: string | null,
     ballUnlockHint: string | null,
   ): MainMenuHitAreas {
     const ctx = this.ctx
     const { width, height } = camera
     const cx = width / 2
+    const theme = getBackgroundTheme(backgroundStyle)
     let y = camera.slingshotScreenY - 168
 
-    ctx.fillStyle = COLORS.menuOverlay
+    ctx.fillStyle = theme.menuOverlay
     ctx.fillRect(0, 0, width, camera.killScreenY)
 
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
 
-    ctx.fillStyle = COLORS.ink
+    ctx.fillStyle = theme.ink
     ctx.font = "800 44px 'Bricolage Grotesque', sans-serif"
     ctx.fillText("Sling Climb", cx, y)
     y += 36
 
-    ctx.fillStyle = COLORS.inkDim
+    ctx.fillStyle = theme.inkDim
     ctx.font = "500 15px 'DM Sans', sans-serif"
     ctx.fillText("Pull back to launch · catch to climb", cx, y)
     y += 40
@@ -828,7 +840,7 @@ export class Renderer {
       const rowW = Math.min(280, width - 48)
       const rowX = cx - rowW / 2
       const rowH = showBests ? 96 : 52
-      ctx.fillStyle = "rgba(255, 255, 255, 0.55)"
+      ctx.fillStyle = theme.statsCard
       ctx.beginPath()
       roundRect(ctx, rowX, y - 22, rowW, rowH, 12)
       ctx.fill()
@@ -837,7 +849,7 @@ export class Renderer {
         const leftX = rowX + rowW * 0.28
         const rightX = rowX + rowW * 0.72
 
-        ctx.fillStyle = COLORS.inkDim
+        ctx.fillStyle = theme.inkDim
         ctx.font = "500 11px 'DM Sans', sans-serif"
         ctx.fillText("BEST SCORE", leftX, y - 8)
         ctx.fillText("BEST HEIGHT", rightX, y - 8)
@@ -888,7 +900,7 @@ export class Renderer {
     ctx.restore()
 
     y += 48
-    ctx.fillStyle = COLORS.inkDim
+    ctx.fillStyle = theme.inkDim
     ctx.font = "500 13px 'DM Sans', sans-serif"
     ctx.fillText("or tap anywhere to start", cx, y)
 
@@ -914,6 +926,21 @@ export class Renderer {
       slingshotStyle,
       slingshotLocked,
       this.time,
+    )
+
+    const backgroundRow = drawCornerVariantPicker(
+      ctx,
+      cx - pickerW / 2,
+      pickerY,
+      pickerW,
+      pickerH,
+      arrowW,
+      iconBox,
+      "background",
+      backgroundStyle,
+      backgroundLocked,
+      this.time,
+      backgroundLocked ? backgroundUnlockHint : null,
     )
 
     const ballRow = drawCornerVariantPicker(
@@ -950,16 +977,39 @@ export class Renderer {
       drawMenuCoinIcon(ctx, buyX + buyW / 2 + 14, buyY + buyH / 2, 6)
     }
 
+    let buyBackground: ScreenRect | null = null
+    if (backgroundPrice != null && backgroundLocked) {
+      const buyW = 112
+      const buyH = 26
+      const buyX = backgroundRow.icon.x + (backgroundRow.icon.w - buyW) / 2
+      const buyY = backgroundRow.icon.y + backgroundRow.icon.h + 4
+      buyBackground = { x: buyX, y: buyY, w: buyW, h: buyH }
+      const canAfford = lifetimeCoins >= backgroundPrice
+      ctx.fillStyle = canAfford ? COLORS.coin : "rgba(17, 17, 17, 0.1)"
+      ctx.beginPath()
+      roundRect(ctx, buyX, buyY, buyW, buyH, 8)
+      ctx.fill()
+      ctx.fillStyle = canAfford ? COLORS.coinRim : COLORS.inkDim
+      ctx.font = "800 12px 'Bricolage Grotesque', sans-serif"
+      ctx.textAlign = "center"
+      ctx.fillText(`${backgroundPrice}`, buyX + buyW / 2 - 8, buyY + buyH / 2 + 1)
+      drawMenuCoinIcon(ctx, buyX + buyW / 2 + 14, buyY + buyH / 2, 6)
+    }
+
     ctx.textBaseline = "alphabetic"
     return {
       play,
       slingshotPrev: slingshotRow.prev,
       slingshotNext: slingshotRow.next,
       slingshotPicker: { x: margin, y: pickerY, w: pickerW, h: pickerH },
+      backgroundPrev: backgroundRow.prev,
+      backgroundNext: backgroundRow.next,
+      backgroundPicker: { x: cx - pickerW / 2, y: pickerY, w: pickerW, h: pickerH },
       ballPrev: ballRow.prev,
       ballNext: ballRow.next,
       ballPicker: { x: width - margin - pickerW, y: pickerY, w: pickerW, h: pickerH },
       buySlingshot,
+      buyBackground,
     }
   }
 
@@ -1126,8 +1176,8 @@ function drawCornerVariantPicker(
   h: number,
   arrowW: number,
   iconBox: number,
-  kind: "slingshot" | "ball",
-  style: SlingshotStyle | BallStyle,
+  kind: "slingshot" | "ball" | "background",
+  style: SlingshotStyle | BallStyle | BackgroundStyle,
   locked: boolean,
   time: number,
   unlockHint: string | null = null,
@@ -1158,6 +1208,8 @@ function drawCornerVariantPicker(
   ctx.translate(iconCx, iconCy)
   if (kind === "slingshot") {
     drawSlingshotIconStyle(ctx, 0, 0, iconBox * 0.72, style as SlingshotStyle, time)
+  } else if (kind === "background") {
+    drawBackgroundPreview(ctx, iconBox, style as BackgroundStyle, time)
   } else {
     drawBallStyle(ctx, style as BallStyle, iconBox * 0.32, time)
   }
