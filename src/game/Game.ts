@@ -58,7 +58,6 @@ import {
   DEFAULT_COSMETIC_ID,
 } from "./cosmetics"
 import type {
-  BallTrailNode,
   BulletData,
   BotAimTarget,
   CoinData,
@@ -78,7 +77,6 @@ export class Game implements BotGameApi {
   private bonusBalls: Ball[] = []
   private bullets: BulletData[] = []
   private turretShots: TurretShotData[] = []
-  private ballTrails: BallTrailNode[] = []
   private slingshot = new Slingshot()
   private score: Score
   private cosmetics: CosmeticsStore
@@ -332,7 +330,6 @@ export class Game implements BotGameApi {
     this.bonusBalls = []
     this.bullets = []
     this.turretShots = []
-    this.ballTrails = []
     this.platforms.reset(width, this.slingshot.y, {
       coinChance: this.menuDemo ? MENU_DEMO_COIN_CHANCE : undefined,
     })
@@ -739,7 +736,6 @@ export class Game implements BotGameApi {
         this.platforms.upgrades,
         this.platforms.coins,
         this.turretShots,
-        this.ballTrails,
       )
       if (hit.bonusCollected && hit.bonusAt) {
         const awarded = this.score.collectBonus(BONUS_PLATFORM_POINTS)
@@ -869,7 +865,6 @@ export class Game implements BotGameApi {
         this.platforms.upgrades,
         this.platforms.coins,
         this.turretShots,
-        this.ballTrails,
       )
       if (hit.platformHit) {
         this.score.collectFlat(PURPLE_BALL_PLATFORM_POINTS)
@@ -884,9 +879,6 @@ export class Game implements BotGameApi {
     this.updateWallTurrets(dt)
 
     this.platforms.update(this.camera.y, this.camera.height, this.camera.killWorldY)
-    this.ballTrails = this.ballTrails.filter(
-      (n) => n.y + n.radius > this.camera.killWorldY,
-    )
     if (!this.freeMoveActive) {
       this.camera.followSlingshot(this.slingshot.y)
     }
@@ -1162,7 +1154,6 @@ export class Game implements BotGameApi {
     this.renderer.drawCoins(cam, this.platforms.coins, this.anim)
     this.renderer.drawPortals(cam, this.platforms.portals, this.anim)
     this.renderer.drawWallTurrets(cam, this.platforms.turrets, this.anim)
-    this.renderer.drawBallTrails(cam, this.ballTrails)
     this.renderer.drawTurretShots(cam, this.turretShots)
     this.renderer.drawBullets(cam, this.bullets)
 

@@ -98,11 +98,8 @@ export const TURRET_FIRE_INTERVAL_MIN = 2.4
 export const TURRET_FIRE_INTERVAL_MAX = 4.2
 export const TURRET_SHOT_SPEED = 175
 export const TURRET_SHOT_RADIUS = 7
-/** Seconds the ball leaves collidable trail nodes after a turret hit. */
-export const BALL_TRAIL_DURATION = 1
-export const BALL_TRAIL_NODE_RADIUS = 11
-/** Minimum world-space spacing between deposited trail nodes. */
-export const BALL_TRAIL_SPACING = 9
+/** Upward speed added when a turret shot hits the ball (px/s). */
+export const TURRET_SHOT_KNOCK_UP = 420
 /** Speed multiplier applied to the ball when exiting a portal (0–1). */
 export const PORTAL_SPEED_DAMPING = 0.85
 /** Base world-Y speed for camera catch-up after launches / POW (px/s). */
@@ -286,8 +283,6 @@ export const COLORS = {
   turretBarrel: "#475569",
   turretShot: "#ef4444",
   turretShotCore: "#fecaca",
-  ballTrail: "#dc2626",
-  ballTrailGlow: "rgba(220, 38, 38, 0.35)",
 }
 
 /**

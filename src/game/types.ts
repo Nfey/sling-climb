@@ -166,13 +166,6 @@ export interface TurretShotData {
   radius: number
 }
 
-/** Collidable residue deposited along a ball's path after a turret hit. */
-export interface BallTrailNode {
-  x: number
-  y: number
-  radius: number
-}
-
 /** Floating score label that rises and fades above a scoring event. */
 export interface ScorePopup {
   x: number

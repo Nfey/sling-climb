@@ -16,7 +16,6 @@ import type { Ball } from "./Ball"
 import type { Camera } from "./Camera"
 import type {
   ArrowPadData,
-  BallTrailNode,
   BulletData,
   BumperData,
   CoinData,
@@ -434,9 +433,6 @@ export class Renderer {
       if (s.y < -40 || s.y > camera.height + 40) continue
 
       const r = TURRET_BODY_RADIUS
-      const cosA = Math.cos(t.aimAngle)
-      const sinA = Math.sin(t.aimAngle)
-      const inward = t.side === "left" ? 1 : -1
 
       ctx.save()
       ctx.translate(s.x, s.y)
@@ -455,26 +451,19 @@ export class Renderer {
       ctx.fill()
       ctx.stroke()
 
-      // Barrel
-      const edgeX = inward * cosA * r
-      const edgeY = sinA * r
-      const tipX = edgeX + inward * cosA * TURRET_BARREL_LENGTH
-      const tipY = edgeY + sinA * TURRET_BARREL_LENGTH
-      const perpX = -sinA * (TURRET_BARREL_WIDTH * 0.5)
-      const perpY = cosA * (TURRET_BARREL_WIDTH * 0.5)
-
+      // Barrel — flat rectangle pivoted from the semicircle edge in 2D
+      ctx.save()
+      ctx.rotate(t.side === "left" ? t.aimAngle : Math.PI - t.aimAngle)
       ctx.fillStyle = COLORS.turretBarrel
-      ctx.beginPath()
-      ctx.moveTo(edgeX + perpX, edgeY + perpY)
-      ctx.lineTo(edgeX - perpX, edgeY - perpY)
-      ctx.lineTo(tipX - perpX, tipY - perpY)
-      ctx.lineTo(tipX + perpX, tipY + perpY)
-      ctx.closePath()
-      ctx.fill()
+      ctx.fillRect(r, -TURRET_BARREL_WIDTH * 0.5, TURRET_BARREL_LENGTH, TURRET_BARREL_WIDTH)
       ctx.strokeStyle = COLORS.turretRim
-      ctx.stroke()
+      ctx.strokeRect(r, -TURRET_BARREL_WIDTH * 0.5, TURRET_BARREL_LENGTH, TURRET_BARREL_WIDTH)
+      ctx.restore()
 
       // Muzzle glow when near firing
+      const muzzleAngle = t.side === "left" ? t.aimAngle : Math.PI - t.aimAngle
+      const tipX = Math.cos(muzzleAngle) * (r + TURRET_BARREL_LENGTH)
+      const tipY = Math.sin(muzzleAngle) * (r + TURRET_BARREL_LENGTH)
       if (t.fireCooldown < 0.25) {
         ctx.fillStyle = COLORS.turretShot
         ctx.globalAlpha = 0.35 + Math.sin(anim * 18) * 0.15
@@ -506,24 +495,6 @@ export class Renderer {
       ctx.fillStyle = grd
       ctx.beginPath()
       ctx.arc(s.x, s.y, shot.radius, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.restore()
-    }
-  }
-
-  drawBallTrails(camera: Camera, trails: BallTrailNode[]): void {
-    const ctx = this.ctx
-    for (const node of trails) {
-      const s = camera.worldToScreen({ x: node.x, y: node.y })
-      if (s.y < -20 || s.y > camera.height + 20) continue
-      ctx.save()
-      ctx.fillStyle = COLORS.ballTrailGlow
-      ctx.beginPath()
-      ctx.arc(s.x, s.y, node.radius + 2, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.fillStyle = COLORS.ballTrail
-      ctx.beginPath()
-      ctx.arc(s.x, s.y, node.radius, 0, Math.PI * 2)
       ctx.fill()
       ctx.restore()
     }
