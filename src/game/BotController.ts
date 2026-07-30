@@ -93,13 +93,9 @@ export class BotController {
   }
 
   private trackBall(dt: number, game: BotGameApi, snap: GameSnapshot): void {
-    let targetX = isPerfectTrack(this.style)
+    const targetX = isPerfectTrack(this.style)
       ? snap.ball.x
       : this.sampleDelayedX(snap.ball.x) + this.trackBias
-
-    if (snap.avoidCoins) {
-      targetX = this.steerAwayFromCoins(targetX, snap)
-    }
 
     if (isPerfectTrack(this.style)) {
       game.setSlingX(targetX)
@@ -256,23 +252,6 @@ export class BotController {
       if (r <= 0) return t
     }
     return targets[targets.length - 1] ?? null
-  }
-
-  /** Shift slingshot tracking so the tether pulls the ball away from nearby coins. */
-  private steerAwayFromCoins(targetX: number, snap: GameSnapshot): number {
-    const { ball, coins, slingshot } = snap
-    let steer = 0
-    for (const c of coins) {
-      const dx = c.x - ball.x
-      const dy = c.y - ball.y
-      if (Math.abs(dy) > 110) continue
-      const reach = c.radius + 28
-      const dist = Math.hypot(dx, dy)
-      if (dist > reach) continue
-      const strength = (1 - dist / reach) * 52
-      steer -= Math.sign(dx || c.x - slingshot.x) * strength
-    }
-    return targetX + steer
   }
 
   /** Rotate launch angle away from coins sitting in the upward arc. */
