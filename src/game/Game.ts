@@ -40,10 +40,22 @@ import { BotController, type BotGameApi } from "./BotController"
 import { defaultConfig, type GameConfig } from "./config"
 import { Input } from "./Input"
 import { PlatformManager } from "./Platform"
-import { Renderer } from "./Renderer"
+import { Renderer, hitRect } from "./Renderer"
 import { Score } from "./Score"
 import { Slingshot } from "./Slingshot"
-import type { BulletData, BotAimTarget, GameSnapshot, GameState, ScorePopup, Vec2 } from "./types"
+import {
+  CosmeticsStore,
+  DEFAULT_COSMETIC_ID,
+} from "./cosmetics"
+import type {
+  BulletData,
+  BotAimTarget,
+  GameSnapshot,
+  GameState,
+  MainMenuHitAreas,
+  ScorePopup,
+  Vec2,
+} from "./types"
 
 export type FrameController = { update(dt: number, game: BotGameApi): void }
 
@@ -54,6 +66,7 @@ export class Game implements BotGameApi {
   private bullets: BulletData[] = []
   private slingshot = new Slingshot()
   private score: Score
+  private cosmetics: CosmeticsStore
   private platforms = new PlatformManager()
   private audio = new GameAudio()
   private input: Input
@@ -68,6 +81,8 @@ export class Game implements BotGameApi {
    * Demo score never commits to the player's high-score records.
    */
   private menuDemo = false
+  /** Hit regions from the previous menu draw pass (screen space). */
+  private menuHitAreas: MainMenuHitAreas | null = null
 
   private state: GameState = "menu"
   private started = false
@@ -104,6 +119,7 @@ export class Game implements BotGameApi {
     this.canvas = canvas
     this.config = defaultConfig(config)
     this.score = new Score(this.config.persistScores !== false)
+    this.cosmetics = new CosmeticsStore(this.config.persistScores !== false)
     // Unlock audio inside the real gesture handlers (pointer/key), not rAF.
     this.input = new Input(
       canvas,
@@ -489,11 +505,50 @@ export class Game implements BotGameApi {
       this.controller.update(dt, this)
     }
 
-    // Attract-mode menu: any tap starts a real player run (fresh world).
+    // Attract-mode menu: variant buttons, shop, or tap-to-play.
     if (this.menuDemo) {
       const menuPresses = this.input.consumePresses()
       this.input.consumeReleases()
       if (menuPresses.length > 0) {
+        const p = menuPresses[0]!
+        const areas = this.menuHitAreas
+        const bestHeight = this.score.bestMaxHeight
+
+        if (areas) {
+          if (hitRect(p.x, p.y, areas.slingshotPrev)) {
+            this.cosmetics.cycleSlingshotMenu(-1)
+            return
+          }
+          if (hitRect(p.x, p.y, areas.slingshotNext)) {
+            this.cosmetics.cycleSlingshotMenu(1)
+            return
+          }
+          if (hitRect(p.x, p.y, areas.ballPrev)) {
+            this.cosmetics.cycleBallMenu(-1, bestHeight)
+            return
+          }
+          if (hitRect(p.x, p.y, areas.ballNext)) {
+            this.cosmetics.cycleBallMenu(1, bestHeight)
+            return
+          }
+          if (
+            areas.buySlingshot &&
+            hitRect(p.x, p.y, areas.buySlingshot)
+          ) {
+            const id = this.cosmetics.equippedSlingshotId
+            if (id !== DEFAULT_COSMETIC_ID) {
+              this.cosmetics.purchaseSlingshot(id, (amount) =>
+                this.score.spendCoins(amount),
+              )
+            }
+            return
+          }
+          if (hitRect(p.x, p.y, areas.play)) {
+            this.beginFromMenu()
+            return
+          }
+        }
+
         this.beginFromMenu()
       }
     }
@@ -1027,7 +1082,17 @@ export class Game implements BotGameApi {
           : 0
 
     const slingStyle = this.freeMoveActive ? "freeMove" : this.powActive ? "pow" : "normal"
-    this.renderer.drawSlingshot(cam, this.slingshot, pouch, pulse, slingStyle)
+    const inMenu = this.menuDemo || this.state === "menu"
+    const slingshotSkin = this.cosmetics.getSlingshotSkin(inMenu)
+    const ballSkin = this.cosmetics.getBallSkin(this.score.bestMaxHeight, inMenu)
+    this.renderer.drawSlingshot(
+      cam,
+      this.slingshot,
+      pouch,
+      pulse,
+      slingStyle,
+      slingshotSkin,
+    )
     if (this.catchBurst > 0) {
       this.renderer.drawCatchBurst(
         cam,
@@ -1044,15 +1109,28 @@ export class Game implements BotGameApi {
     for (const b of this.bonusBalls) {
       this.renderer.drawBall(cam, b)
     }
-    this.renderer.drawBall(cam, this.ball)
+    this.renderer.drawBall(cam, this.ball, ballSkin)
 
     if (this.menuDemo || this.state === "menu") {
-      this.renderer.drawMainMenu(
+      const equippedId = this.cosmetics.equippedSlingshotId
+      const slingshotOwned =
+        equippedId === DEFAULT_COSMETIC_ID ||
+        this.cosmetics.isSlingshotOwned(equippedId)
+      const ballUnlocked = this.cosmetics.unlockedBallVariants(
+        this.score.bestMaxHeight,
+      ).length
+
+      this.menuHitAreas = this.renderer.drawMainMenu(
         cam,
         this.score.highScore,
         this.score.bestMaxHeight,
         this.score.lifetimeCoins,
         this.anim,
+        this.cosmetics.previewSlingshotLabel(),
+        this.cosmetics.previewBallLabel(),
+        this.cosmetics.previewSlingshotPrice(),
+        slingshotOwned,
+        ballUnlocked,
       )
       return
     }

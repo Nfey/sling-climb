@@ -145,6 +145,14 @@ export class Score {
     return added
   }
 
+  /** Spend coins from the lifetime bank. Returns true when affordable. */
+  spendCoins(amount: number): boolean {
+    if (amount <= 0 || this.lifetimeCoins < amount) return false
+    this.lifetimeCoins -= amount
+    if (this.persistScores) this.saveNumber(COIN_KEY, this.lifetimeCoins)
+    return true
+  }
+
   bumpCombo(): void {
     this.combo += 1
   }

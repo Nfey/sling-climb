@@ -16,6 +16,7 @@ import type {
   BulletData,
   BumperData,
   CoinData,
+  MainMenuHitAreas,
   PlatformData,
   PortalData,
   ScorePopup,
@@ -24,6 +25,8 @@ import type {
   Vec2,
 } from "./types"
 import type { Slingshot } from "./Slingshot"
+import type { BallSkin, SlingshotSkin } from "./cosmetics"
+import { BALL_VARIANTS } from "./cosmetics"
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D
@@ -396,6 +399,7 @@ export class Renderer {
     pouch: Vec2 | null,
     pulse = 0,
     style: "normal" | "freeMove" | "pow" = "normal",
+    skin?: SlingshotSkin,
   ): void {
     const ctx = this.ctx
     const base = camera.worldToScreen(sling.base)
@@ -405,13 +409,13 @@ export class Renderer {
     const pouchScreen = pouch ? camera.worldToScreen(pouch) : rest
     const freeMove = style === "freeMove"
     const pow = style === "pow"
-    const body = pow ? COLORS.powPickup : COLORS.slingshot
-    const band = pow ? "#991b1b" : COLORS.band
+    const body = pow ? COLORS.powPickup : skin?.body ?? COLORS.slingshot
+    const band = pow ? "#991b1b" : skin?.band ?? COLORS.band
     const glow = freeMove
       ? COLORS.freeMovePickup
       : pow
         ? COLORS.powPickup
-        : COLORS.accent
+        : skin?.accent ?? COLORS.accent
 
     // Soft glow when ready to catch / holding / powered
     if (pulse > 0 || freeMove || pow) {
@@ -569,7 +573,7 @@ export class Renderer {
     ctx.globalAlpha = 1
   }
 
-  drawBall(camera: Camera, ball: Ball): void {
+  drawBall(camera: Camera, ball: Ball, skin?: BallSkin): void {
     const ctx = this.ctx
     const s = camera.worldToScreen({ x: ball.x, y: ball.y })
     const squash = ball.squash
@@ -586,16 +590,21 @@ export class Renderer {
       grd.addColorStop(0.55, COLORS.ballPurple)
       grd.addColorStop(1, COLORS.ballPurpleStroke)
     } else {
-      grd.addColorStop(0, "#fff6dd")
-      grd.addColorStop(0.55, COLORS.ball)
-      grd.addColorStop(1, COLORS.ballStroke)
+      const highlight = skin?.highlight ?? "#fff6dd"
+      const fill = skin?.fill ?? COLORS.ball
+      const stroke = skin?.stroke ?? COLORS.ballStroke
+      grd.addColorStop(0, highlight)
+      grd.addColorStop(0.55, fill)
+      grd.addColorStop(1, stroke)
     }
     ctx.fillStyle = grd
     ctx.beginPath()
     ctx.arc(0, 0, ball.radius, 0, Math.PI * 2)
     ctx.fill()
 
-    ctx.strokeStyle = ball.isBonus ? "rgba(76, 29, 149, 0.35)" : "rgba(90, 60, 30, 0.25)"
+    ctx.strokeStyle = ball.isBonus
+      ? "rgba(76, 29, 149, 0.35)"
+      : skin?.strokeAlpha ?? "rgba(90, 60, 30, 0.25)"
     ctx.lineWidth = 2
     ctx.stroke()
     ctx.restore()
@@ -766,8 +775,8 @@ export class Renderer {
   }
 
   /**
-   * Title screen with bests and a Play button.
-   * Returns the Play button rect in screen space for hit-testing.
+   * Title screen with bests, variant pickers, shop, and a Play button.
+   * Returns interactive regions for hit-testing.
    */
   drawMainMenu(
     camera: Camera,
@@ -775,11 +784,16 @@ export class Renderer {
     bestHeight: number,
     lifetimeCoins: number,
     anim: number,
-  ): ScreenRect {
+    slingshotLabel: string,
+    ballLabel: string,
+    slingshotPrice: number | null,
+    slingshotOwned: boolean,
+    ballUnlockedCount: number,
+  ): MainMenuHitAreas {
     const ctx = this.ctx
     const { width } = camera
     const cx = width / 2
-    let y = camera.slingshotScreenY - 168
+    let y = camera.slingshotScreenY - 210
 
     ctx.fillStyle = COLORS.menuOverlay
     ctx.fillRect(0, 0, width, camera.killScreenY)
@@ -790,23 +804,23 @@ export class Renderer {
     ctx.fillStyle = COLORS.ink
     ctx.font = "800 44px 'Bricolage Grotesque', sans-serif"
     ctx.fillText("Sling Climb", cx, y)
-    y += 36
+    y += 34
 
     ctx.fillStyle = COLORS.inkDim
-    ctx.font = "500 15px 'DM Sans', sans-serif"
+    ctx.font = "500 14px 'DM Sans', sans-serif"
     ctx.fillText("Pull back to launch · catch to climb", cx, y)
-    y += 40
+    y += 32
 
     const showBests = highScore > 0 || bestHeight > 0
-    const showCoins = lifetimeCoins > 0
+    const showCoins = true
 
     if (showBests || showCoins) {
-      const rowW = Math.min(280, width - 48)
+      const rowW = Math.min(300, width - 40)
       const rowX = cx - rowW / 2
-      const rowH = showBests && showCoins ? 96 : 52
+      const rowH = showBests && showCoins ? 88 : 48
       ctx.fillStyle = "rgba(255, 255, 255, 0.55)"
       ctx.beginPath()
-      roundRect(ctx, rowX, y - 22, rowW, rowH, 12)
+      roundRect(ctx, rowX, y - 18, rowW, rowH, 12)
       ctx.fill()
 
       if (showBests) {
@@ -814,39 +828,95 @@ export class Renderer {
         const rightX = rowX + rowW * 0.72
 
         ctx.fillStyle = COLORS.inkDim
-        ctx.font = "500 11px 'DM Sans', sans-serif"
-        ctx.fillText("BEST SCORE", leftX, y - 8)
-        ctx.fillText("BEST HEIGHT", rightX, y - 8)
+        ctx.font = "500 10px 'DM Sans', sans-serif"
+        ctx.fillText("BEST SCORE", leftX, y - 6)
+        ctx.fillText("BEST HEIGHT", rightX, y - 6)
 
         ctx.fillStyle = COLORS.accent
-        ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
-        ctx.fillText(highScore > 0 ? String(highScore) : "—", leftX, y + 14)
+        ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
+        ctx.fillText(highScore > 0 ? String(highScore) : "—", leftX, y + 12)
         ctx.fillText(
           bestHeight > 0 ? formatHeightLabel(bestHeight) : "—",
           rightX,
-          y + 14,
+          y + 12,
         )
-        y += showCoins ? 48 : 56
+        y += showCoins ? 44 : 52
       }
 
       if (showCoins) {
-        const coinCy = showBests ? y : y + 4
-        drawMenuCoinIcon(ctx, cx - 28, coinCy, 9)
+        const coinCy = showBests ? y : y + 2
+        drawMenuCoinIcon(ctx, cx - 28, coinCy, 8)
         ctx.fillStyle = COLORS.coinRim
-        ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
+        ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
         ctx.textAlign = "left"
         ctx.fillText(String(lifetimeCoins), cx - 12, coinCy + 1)
         ctx.textAlign = "center"
-        y = coinCy + 34
+        y = coinCy + 30
       }
     } else {
-      y += 12
+      y += 8
+    }
+
+    y += 10
+    const pickerW = Math.min(300, width - 36)
+    const pickerX = cx - pickerW / 2
+    const rowH = 38
+    const arrowW = 36
+
+    const slingshotRow = drawVariantPicker(
+      ctx,
+      pickerX,
+      y,
+      pickerW,
+      rowH,
+      arrowW,
+      "Slingshot",
+      slingshotLabel,
+      slingshotOwned ? null : slingshotPrice,
+    )
+    y += rowH + 8
+
+    const ballRow = drawVariantPicker(
+      ctx,
+      pickerX,
+      y,
+      pickerW,
+      rowH,
+      arrowW,
+      "Ball",
+      ballLabel,
+      null,
+      ballUnlockedCount,
+      BALL_VARIANTS.length,
+      bestHeight,
+    )
+    y += rowH + 14
+
+    let buySlingshot: ScreenRect | null = null
+    if (slingshotPrice != null && !slingshotOwned) {
+      const buyW = 148
+      const buyH = 36
+      buySlingshot = {
+        x: cx - buyW / 2,
+        y: y - buyH / 2,
+        w: buyW,
+        h: buyH,
+      }
+      const canAfford = lifetimeCoins >= slingshotPrice
+      ctx.fillStyle = canAfford ? COLORS.coin : "rgba(17, 17, 17, 0.12)"
+      ctx.beginPath()
+      roundRect(ctx, buySlingshot.x, buySlingshot.y, buyW, buyH, 10)
+      ctx.fill()
+      ctx.fillStyle = canAfford ? COLORS.coinRim : COLORS.inkDim
+      ctx.font = "800 15px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText(`Buy · ${slingshotPrice} coins`, cx, y + 1)
+      y += 32
     }
 
     const pulse = 0.92 + Math.sin(anim * 3.2) * 0.08
     const btnW = 168
-    const btnH = 52
-    const btn: ScreenRect = {
+    const btnH = 50
+    const play: ScreenRect = {
       x: cx - btnW / 2,
       y: y - btnH / 2,
       w: btnW,
@@ -865,13 +935,20 @@ export class Renderer {
     ctx.fillText("Play", 0, 1)
     ctx.restore()
 
-    y += 48
+    y += 44
     ctx.fillStyle = COLORS.inkDim
-    ctx.font = "500 13px 'DM Sans', sans-serif"
+    ctx.font = "500 12px 'DM Sans', sans-serif"
     ctx.fillText("or tap anywhere to start", cx, y)
 
     ctx.textBaseline = "alphabetic"
-    return btn
+    return {
+      play,
+      slingshotPrev: slingshotRow.prev,
+      slingshotNext: slingshotRow.next,
+      ballPrev: ballRow.prev,
+      ballNext: ballRow.next,
+      buySlingshot,
+    }
   }
 
   drawGameOver(
@@ -1028,6 +1105,79 @@ function formatHeightLabel(climb: number): string {
   }
   return String(Math.round(climb))
 }
+
+function drawVariantPicker(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  arrowW: number,
+  kind: string,
+  label: string,
+  price: number | null,
+  unlockedCount?: number,
+  totalUnlockable?: number,
+  bestHeight?: number,
+): { prev: ScreenRect; next: ScreenRect } {
+  ctx.fillStyle = "rgba(255, 255, 255, 0.62)"
+  ctx.beginPath()
+  roundRect(ctx, x, y, w, h, 10)
+  ctx.fill()
+
+  const prev: ScreenRect = { x, y, w: arrowW, h }
+  const next: ScreenRect = { x: x + w - arrowW, y, w: arrowW, h }
+
+  ctx.fillStyle = COLORS.accent
+  ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  ctx.fillText("‹", x + arrowW / 2, y + h / 2 + 1)
+  ctx.fillText("›", x + w - arrowW / 2, y + h / 2 + 1)
+
+  ctx.fillStyle = COLORS.inkDim
+  ctx.font = "500 10px 'DM Sans', sans-serif"
+  ctx.fillText(kind.toUpperCase(), x + w / 2, y + 11)
+
+  ctx.fillStyle = COLORS.ink
+  ctx.font = "700 15px 'Bricolage Grotesque', sans-serif"
+  ctx.fillText(label, x + w / 2, y + h / 2 + 5)
+
+  if (price != null) {
+    ctx.fillStyle = COLORS.coinRim
+    ctx.font = "600 10px 'DM Sans', sans-serif"
+    ctx.fillText(`${price} coins`, x + w / 2, y + h - 8)
+  } else if (
+    unlockedCount != null &&
+    totalUnlockable != null &&
+    bestHeight != null &&
+    unlockedCount < totalUnlockable
+  ) {
+    const nextUnlock = BALL_VARIANTS.find((v) => bestHeight < v.unlockHeight)
+    if (nextUnlock) {
+      ctx.fillStyle = COLORS.inkDim
+      ctx.font = "500 10px 'DM Sans', sans-serif"
+      ctx.fillText(
+        `Next at ${formatHeightLabel(nextUnlock.unlockHeight)}`,
+        x + w / 2,
+        y + h - 8,
+      )
+    }
+  }
+
+  return { prev, next }
+}
+
+function hitRect(px: number, py: number, rect: ScreenRect): boolean {
+  return (
+    px >= rect.x &&
+    px <= rect.x + rect.w &&
+    py >= rect.y &&
+    py <= rect.y + rect.h
+  )
+}
+
+export { hitRect }
 
 /** Small gold coin glyph for the main-menu lifetime total. */
 function drawMenuCoinIcon(
