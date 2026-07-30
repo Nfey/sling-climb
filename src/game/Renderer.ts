@@ -34,10 +34,12 @@ import {
   slingshotAccentColor,
 } from "./cosmeticArt"
 import { drawBackgroundPreview, drawBackgroundStyle } from "./backgroundArt"
+import { getBackgroundTheme } from "./backgrounds"
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D
   private time = 0
+  private currentBackgroundStyle: BackgroundStyle = "classic"
 
   constructor(canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d")
@@ -46,6 +48,7 @@ export class Renderer {
   }
 
   begin(camera: Camera, dt: number, startHeight: number, backgroundStyle: BackgroundStyle = "classic"): void {
+    this.currentBackgroundStyle = backgroundStyle
     this.time += dt
     const ctx = this.ctx
     const dpr = camera.dpr
@@ -58,9 +61,10 @@ export class Renderer {
     const ctx = this.ctx
     const { width, height } = camera
     const killY = camera.killScreenY
+    const theme = getBackgroundTheme(backgroundStyle)
 
     if (backgroundStyle === "classic") {
-      this.drawSkyBands(camera, startHeight, killY)
+      this.drawSkyBands(camera, startHeight, height)
 
       // Soft hash for a bit of depth on white
       ctx.save()
@@ -76,32 +80,27 @@ export class Renderer {
       }
       ctx.restore()
     } else {
-      drawBackgroundStyle(ctx, camera, backgroundStyle, this.time, killY)
+      drawBackgroundStyle(ctx, camera, backgroundStyle, this.time, height)
     }
 
-    // Reserved powerup zone below kill line
-    ctx.fillStyle = COLORS.reserved
-    ctx.fillRect(0, killY, width, height - killY)
-
-    ctx.strokeStyle = COLORS.reservedLine
+    ctx.strokeStyle = theme.dividerLine
     ctx.lineWidth = 1
     ctx.beginPath()
     ctx.moveTo(16, killY)
     ctx.lineTo(width - 16, killY)
     ctx.stroke()
-
   }
 
   /** Horizontal sky fills keyed to 5k climb bands (repeats every 100k). */
   private drawSkyBands(
     camera: Camera,
     startHeight: number,
-    killY: number,
+    bgHeight: number,
   ): void {
     const ctx = this.ctx
     const { width } = camera
     const topWorld = camera.screenToWorld(0, -24).y
-    const bottomWorld = camera.screenToWorld(0, killY + 24).y
+    const bottomWorld = camera.screenToWorld(0, bgHeight + 24).y
     const climbMin = Math.min(topWorld, bottomWorld) - startHeight
     const climbMax = Math.max(topWorld, bottomWorld) - startHeight
     const spacing = SKY_ZONE_SPACING
@@ -113,7 +112,7 @@ export class Renderer {
       const syTop = camera.worldToScreen({ x: 0, y: worldHigh }).y
       const syBottom = camera.worldToScreen({ x: 0, y: worldLow }).y
       const y0 = Math.max(0, syTop)
-      const y1 = Math.min(killY, syBottom)
+      const y1 = Math.min(bgHeight, syBottom)
       if (y1 <= y0) continue
 
       ctx.fillStyle = skyZoneColor(climb)
@@ -136,12 +135,13 @@ export class Renderer {
     if (climb <= 0) climb = spacing
 
     ctx.save()
+    const theme = getBackgroundTheme(this.currentBackgroundStyle)
     for (; climb <= climbTop; climb += spacing) {
       const worldY = startHeight + climb
       const sy = camera.worldToScreen({ x: 0, y: worldY }).y
       if (sy > camera.killScreenY || sy < 56) continue
 
-      ctx.strokeStyle = COLORS.heightMarker
+      ctx.strokeStyle = theme.heightMarker
       ctx.lineWidth = 1
       ctx.setLineDash([5, 7])
       ctx.beginPath()
@@ -156,7 +156,7 @@ export class Renderer {
       ctx.lineTo(28, sy)
       ctx.stroke()
 
-      ctx.fillStyle = COLORS.heightMarkerLabel
+      ctx.fillStyle = theme.heightMarkerLabel
       ctx.font = "600 11px 'DM Sans', sans-serif"
       ctx.textAlign = "left"
       ctx.textBaseline = "middle"
@@ -621,6 +621,7 @@ export class Renderer {
     bestHeight = 0,
   ): void {
     const ctx = this.ctx
+    const theme = getBackgroundTheme(this.currentBackgroundStyle)
     // Clear the iOS status bar / notch (viewport-fit=cover).
     const top = safeAreaInsetTop()
     const labelY = 22 + top
@@ -628,7 +629,7 @@ export class Renderer {
     const scoreY = 62 + top
 
     ctx.textAlign = "left"
-    ctx.fillStyle = COLORS.inkDim
+    ctx.fillStyle = theme.inkDim
     ctx.font = "500 12px 'DM Sans', sans-serif"
     ctx.fillText("SCORE", 20, labelY)
 
@@ -638,7 +639,7 @@ export class Renderer {
       ctx.fillText(String(highScore), 20, bestRowY)
     }
 
-    ctx.fillStyle = COLORS.ink
+    ctx.fillStyle = theme.ink
     ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
     ctx.fillText(String(score), 20, scoreY)
 
@@ -649,7 +650,7 @@ export class Renderer {
     }
 
     ctx.textAlign = "right"
-    ctx.fillStyle = COLORS.inkDim
+    ctx.fillStyle = theme.inkDim
     ctx.font = "500 12px 'DM Sans', sans-serif"
     ctx.fillText("HEIGHT", camera.width - 20, labelY)
 
@@ -659,13 +660,13 @@ export class Renderer {
       ctx.fillText(formatHeightLabel(bestHeight), camera.width - 20, bestRowY)
     }
 
-    ctx.fillStyle = COLORS.ink
+    ctx.fillStyle = theme.ink
     ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
     ctx.fillText(formatHeightLabel(climbHeight), camera.width - 20, scoreY)
 
     if (tip) {
       ctx.textAlign = "center"
-      ctx.fillStyle = COLORS.inkDim
+      ctx.fillStyle = theme.inkDim
       ctx.font = "500 14px 'DM Sans', sans-serif"
       const y = camera.slingshotScreenY - 56
       ctx.fillText(tip, camera.width / 2, y)
@@ -799,20 +800,21 @@ export class Renderer {
     const ctx = this.ctx
     const { width, height } = camera
     const cx = width / 2
+    const theme = getBackgroundTheme(backgroundStyle)
     let y = camera.slingshotScreenY - 168
 
-    ctx.fillStyle = COLORS.menuOverlay
+    ctx.fillStyle = theme.menuOverlay
     ctx.fillRect(0, 0, width, camera.killScreenY)
 
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
 
-    ctx.fillStyle = COLORS.ink
+    ctx.fillStyle = theme.ink
     ctx.font = "800 44px 'Bricolage Grotesque', sans-serif"
     ctx.fillText("Sling Climb", cx, y)
     y += 36
 
-    ctx.fillStyle = COLORS.inkDim
+    ctx.fillStyle = theme.inkDim
     ctx.font = "500 15px 'DM Sans', sans-serif"
     ctx.fillText("Pull back to launch · catch to climb", cx, y)
     y += 40
@@ -823,7 +825,7 @@ export class Renderer {
       const rowW = Math.min(280, width - 48)
       const rowX = cx - rowW / 2
       const rowH = showBests ? 96 : 52
-      ctx.fillStyle = "rgba(255, 255, 255, 0.55)"
+      ctx.fillStyle = theme.statsCard
       ctx.beginPath()
       roundRect(ctx, rowX, y - 22, rowW, rowH, 12)
       ctx.fill()
@@ -832,7 +834,7 @@ export class Renderer {
         const leftX = rowX + rowW * 0.28
         const rightX = rowX + rowW * 0.72
 
-        ctx.fillStyle = COLORS.inkDim
+        ctx.fillStyle = theme.inkDim
         ctx.font = "500 11px 'DM Sans', sans-serif"
         ctx.fillText("BEST SCORE", leftX, y - 8)
         ctx.fillText("BEST HEIGHT", rightX, y - 8)
@@ -883,7 +885,7 @@ export class Renderer {
     ctx.restore()
 
     y += 48
-    ctx.fillStyle = COLORS.inkDim
+    ctx.fillStyle = theme.inkDim
     ctx.font = "500 13px 'DM Sans', sans-serif"
     ctx.fillText("or tap anywhere to start", cx, y)
 

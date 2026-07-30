@@ -6,39 +6,39 @@ export function drawBackgroundStyle(
   camera: Camera,
   style: BackgroundStyle,
   time: number,
-  killY: number,
+  bgHeight: number,
 ): void {
   const { width } = camera
   switch (style) {
     case "sky":
-      drawSky(ctx, width, killY, camera.y, time)
+      drawSky(ctx, width, bgHeight, camera.y, time)
       break
     case "space":
-      drawSpace(ctx, width, killY, camera.y, time)
+      drawSpace(ctx, width, bgHeight, camera.y, time)
       break
     case "rain":
-      drawRain(ctx, width, killY, camera.y, time)
+      drawRain(ctx, width, bgHeight, camera.y, time)
       break
     case "cute":
-      drawCute(ctx, width, killY, camera.y, time)
+      drawCute(ctx, width, bgHeight, camera.y, time)
       break
     case "emo":
-      drawEmo(ctx, width, killY, camera.y, time)
+      drawEmo(ctx, width, bgHeight, camera.y, time)
       break
     case "anime":
-      drawAnime(ctx, width, killY, camera.y, time)
+      drawAnime(ctx, width, bgHeight, camera.y, time)
       break
     case "grunge":
-      drawGrunge(ctx, width, killY, camera.y, time)
+      drawGrunge(ctx, width, bgHeight, camera.y, time)
       break
     case "sunset":
-      drawSunset(ctx, width, killY, camera.y, time)
+      drawSunset(ctx, width, bgHeight, camera.y, time)
       break
     case "neon":
-      drawNeon(ctx, width, killY, camera.y, time)
+      drawNeon(ctx, width, bgHeight, camera.y, time)
       break
     case "aurora":
-      drawAurora(ctx, width, killY, camera.y, time)
+      drawAurora(ctx, width, bgHeight, camera.y, time)
       break
   }
 }
@@ -158,30 +158,43 @@ function drawSpace(
 function drawRain(
   ctx: CanvasRenderingContext2D,
   width: number,
-  killY: number,
+  bgHeight: number,
   camY: number,
   time: number,
 ): void {
-  fillGradient(ctx, width, killY, [
-    [0, "#475569"],
-    [0.6, "#64748b"],
-    [1, "#94a3b8"],
+  fillGradient(ctx, width, bgHeight, [
+    [0, "#94a3b8"],
+    [0.45, "#b0bec9"],
+    [0.75, "#cbd5e1"],
+    [1, "#e2e8f0"],
   ])
 
-  ctx.strokeStyle = "rgba(148, 163, 184, 0.55)"
-  ctx.lineWidth = 1.2
-  const offset = (time * 420 + camY * 0.5) % 24
-  for (let x = -8; x < width + 8; x += 14) {
-    for (let y = -24 + offset; y < killY + 24; y += 24) {
-      ctx.beginPath()
-      ctx.moveTo(x, y)
-      ctx.lineTo(x - 3, y + 12)
-      ctx.stroke()
-    }
+  ctx.fillStyle = "rgba(255, 255, 255, 0.35)"
+  for (let i = 0; i < 5; i++) {
+    const cx = pseudoRandom(i * 29 + 3) * width
+    const cy = bgHeight * (0.08 + pseudoRandom(i * 17) * 0.35)
+    drawCloud(ctx, cx, cy, 36 + i * 8)
+  }
+  ctx.fillStyle = "rgba(248, 250, 252, 0.28)"
+  for (let i = 0; i < 4; i++) {
+    const cx = pseudoRandom(i * 41 + 7) * width
+    const cy = bgHeight * (0.25 + pseudoRandom(i * 23) * 0.4)
+    drawCloud(ctx, cx, cy, 48 + i * 6)
   }
 
-  ctx.fillStyle = "rgba(255, 255, 255, 0.06)"
-  ctx.fillRect(0, 0, width, killY * 0.25)
+  ctx.strokeStyle = "rgba(100, 116, 139, 0.18)"
+  ctx.lineWidth = 1
+  const offset = (time * 55 + camY * 0.08) % 48
+  const dropCount = 28
+  for (let i = 0; i < dropCount; i++) {
+    const x = pseudoRandom(i * 13 + 5) * width
+    const baseY = pseudoRandom(i * 31 + 11) * bgHeight
+    const y = (baseY + offset * (0.6 + pseudoRandom(i * 7) * 0.4)) % (bgHeight + 20) - 10
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(x - 1.5, y + 7)
+    ctx.stroke()
+  }
 }
 
 function drawCute(

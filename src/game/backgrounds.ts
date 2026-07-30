@@ -28,7 +28,6 @@ export interface BackgroundVariant {
 /** Unlockable environment themes (classic is always free). */
 export const BACKGROUND_VARIANTS: readonly BackgroundVariant[] = [
   { id: "sky", name: "Sky", style: "sky", unlock: { kind: "points", value: 2_500 } },
-  { id: "space", name: "Space", style: "space", unlock: { kind: "height", value: 2_500 } },
   { id: "rain", name: "Rain", style: "rain", unlock: { kind: "points", value: 5_000 } },
   { id: "cute", name: "Cute", style: "cute", unlock: { kind: "coins", value: 15 } },
   { id: "emo", name: "Emo", style: "emo", unlock: { kind: "points", value: 10_000 } },
@@ -36,6 +35,7 @@ export const BACKGROUND_VARIANTS: readonly BackgroundVariant[] = [
   { id: "grunge", name: "Grunge", style: "grunge", unlock: { kind: "points", value: 15_000 } },
   { id: "sunset", name: "Sunset", style: "sunset", unlock: { kind: "height", value: 12_500 } },
   { id: "neon", name: "Neon", style: "neon", unlock: { kind: "coins", value: 30 } },
+  { id: "space", name: "Space", style: "space", unlock: { kind: "height", value: 40_000 } },
   { id: "aurora", name: "Aurora", style: "aurora", unlock: { kind: "height", value: 50_000 } },
 ]
 
@@ -79,5 +79,52 @@ export function isBackgroundVariantUnlocked(
       return highScore >= variant.unlock.value
     case "coins":
       return ownedIds.has(variant.id)
+  }
+}
+
+export interface BackgroundTheme {
+  dark: boolean
+  ink: string
+  inkDim: string
+  menuOverlay: string
+  statsCard: string
+  dividerLine: string
+  heightMarker: string
+  heightMarkerLabel: string
+}
+
+const DARK_BACKGROUNDS: ReadonlySet<BackgroundStyle> = new Set([
+  "space",
+  "emo",
+  "neon",
+  "aurora",
+])
+
+export function isDarkBackground(style: BackgroundStyle): boolean {
+  return DARK_BACKGROUNDS.has(style)
+}
+
+export function getBackgroundTheme(style: BackgroundStyle): BackgroundTheme {
+  if (isDarkBackground(style)) {
+    return {
+      dark: true,
+      ink: "#f8fafc",
+      inkDim: "rgba(248, 250, 252, 0.65)",
+      menuOverlay: "rgba(0, 0, 0, 0.38)",
+      statsCard: "rgba(0, 0, 0, 0.35)",
+      dividerLine: "rgba(255, 255, 255, 0.12)",
+      heightMarker: "rgba(255, 255, 255, 0.22)",
+      heightMarkerLabel: "rgba(255, 255, 255, 0.45)",
+    }
+  }
+  return {
+    dark: false,
+    ink: "#111111",
+    inkDim: "rgba(17, 17, 17, 0.55)",
+    menuOverlay: "rgba(255, 255, 255, 0.52)",
+    statsCard: "rgba(255, 255, 255, 0.55)",
+    dividerLine: "rgba(0, 0, 0, 0.12)",
+    heightMarker: "rgba(17, 17, 17, 0.22)",
+    heightMarkerLabel: "rgba(17, 17, 17, 0.45)",
   }
 }
