@@ -28,9 +28,6 @@ export function drawBackgroundStyle(
     case "anime":
       drawAnime(ctx, width, bgHeight, camera.y, time)
       break
-    case "grunge":
-      drawGrunge(ctx, width, bgHeight, camera.y, time)
-      break
     case "sunset":
       drawSunset(ctx, width, bgHeight, camera.y, time)
       break
@@ -340,42 +337,6 @@ function drawPetal(
   ctx.ellipse(0, 0, r, r * 0.5, 0, 0, Math.PI * 2)
   ctx.fill()
   ctx.restore()
-}
-
-function drawGrunge(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  killY: number,
-  camY: number,
-  _time: number,
-): void {
-  fillGradient(ctx, width, killY, [
-    [0, "#9a3412"],
-    [0.4, "#c2410c"],
-    [0.75, "#ea580c"],
-    [1, "#fdba74"],
-  ])
-
-  const seed = Math.floor(camY / 300)
-  ctx.globalAlpha = 0.12
-  for (let i = 0; i < 40; i++) {
-    ctx.fillStyle = pseudoRandom(seed + i) > 0.5 ? "#451a03" : "#292524"
-    const rx = pseudoRandom(seed + i * 3) * width
-    const ry = pseudoRandom(seed + i * 5) * killY
-    const rw = 20 + pseudoRandom(seed + i * 7) * 80
-    const rh = 4 + pseudoRandom(seed + i * 11) * 12
-    ctx.fillRect(rx, ry, rw, rh)
-  }
-  ctx.globalAlpha = 1
-
-  ctx.strokeStyle = "rgba(69, 26, 3, 0.25)"
-  ctx.lineWidth = 2
-  for (let y = 0; y < killY; y += 32) {
-    ctx.beginPath()
-    ctx.moveTo(0, y + (seed % 16))
-    ctx.lineTo(width, y + 16 + (seed % 16))
-    ctx.stroke()
-  }
 }
 
 function drawSunset(
