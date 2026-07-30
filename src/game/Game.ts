@@ -64,6 +64,8 @@ import type {
   GameSnapshot,
   GameState,
   MainMenuHitAreas,
+  MenuScreen,
+  ShopHitAreas,
   ScorePopup,
   TurretShotData,
   Vec2,
@@ -94,8 +96,12 @@ export class Game implements BotGameApi {
    * Demo score never commits to the player's high-score records.
    */
   private menuDemo = false
-  /** Hit regions from the previous menu draw pass (screen space). */
+  /** Title overlay vs cosmetics shop while attract-mode menu is active. */
+  private menuScreen: MenuScreen = "title"
+  /** Hit regions from the previous title-menu draw pass (screen space). */
   private menuHitAreas: MainMenuHitAreas | null = null
+  /** Hit regions from the previous shop draw pass (screen space). */
+  private shopHitAreas: ShopHitAreas | null = null
 
   private state: GameState = "menu"
   private started = false
@@ -361,6 +367,8 @@ export class Game implements BotGameApi {
   /** Audible perfect-seek backdrop behind the main-menu overlay. */
   private enterMenuDemo(): void {
     this.menuDemo = true
+    this.menuScreen = "title"
+    this.shopHitAreas = null
     this.audio.setMasterVolume(MENU_DEMO_MASTER_VOLUME)
     if (!this.menuDemoBot) {
       this.menuDemoBot = new BotController("perfect-seek")
@@ -373,6 +381,8 @@ export class Game implements BotGameApi {
   /** Leave the title menu and enter a fresh playable ready state. */
   private beginFromMenu(): void {
     this.menuDemo = false
+    this.menuScreen = "title"
+    this.shopHitAreas = null
     this.controller = null
     this.audio.setMasterVolume(DEFAULT_MASTER_VOLUME)
     this.audio.unlock()
@@ -531,68 +541,86 @@ export class Game implements BotGameApi {
       this.controller.update(dt, this)
     }
 
-    // Attract-mode menu: variant buttons, shop, or tap-to-play.
+    // Attract-mode menu: title (Play / Shop) or cosmetics shop.
     if (this.menuDemo) {
       const menuPresses = this.input.consumePresses()
       this.input.consumeReleases()
       if (menuPresses.length > 0) {
         const p = menuPresses[0]!
-        const areas = this.menuHitAreas
 
+        if (this.menuScreen === "shop") {
+          const areas = this.shopHitAreas
+          if (areas) {
+            if (hitRect(p.x, p.y, areas.back)) {
+              this.menuScreen = "title"
+              this.shopHitAreas = null
+              return
+            }
+            if (hitRect(p.x, p.y, areas.slingshotPrev)) {
+              this.cosmetics.cycleSlingshotMenu(-1)
+              return
+            }
+            if (hitRect(p.x, p.y, areas.slingshotNext)) {
+              this.cosmetics.cycleSlingshotMenu(1)
+              return
+            }
+            if (hitRect(p.x, p.y, areas.ballPrev)) {
+              this.cosmetics.cycleBallMenu(-1)
+              return
+            }
+            if (hitRect(p.x, p.y, areas.ballNext)) {
+              this.cosmetics.cycleBallMenu(1)
+              return
+            }
+            if (hitRect(p.x, p.y, areas.backgroundPrev)) {
+              this.cosmetics.cycleBackgroundMenu(-1)
+              return
+            }
+            if (hitRect(p.x, p.y, areas.backgroundNext)) {
+              this.cosmetics.cycleBackgroundMenu(1)
+              return
+            }
+            if (
+              areas.buySlingshot &&
+              hitRect(p.x, p.y, areas.buySlingshot)
+            ) {
+              const id = this.cosmetics.equippedSlingshotId
+              if (id !== DEFAULT_COSMETIC_ID) {
+                this.cosmetics.purchaseSlingshot(id, (amount) =>
+                  this.score.spendCoins(amount),
+                )
+              }
+              return
+            }
+            if (
+              areas.buyBackground &&
+              hitRect(p.x, p.y, areas.buyBackground)
+            ) {
+              const id = this.cosmetics.equippedBackgroundId
+              if (id !== DEFAULT_COSMETIC_ID) {
+                this.cosmetics.purchaseBackground(id, (amount) =>
+                  this.score.spendCoins(amount),
+                )
+              }
+              return
+            }
+            if (
+              hitRect(p.x, p.y, areas.slingshotPicker) ||
+              hitRect(p.x, p.y, areas.backgroundPicker) ||
+              hitRect(p.x, p.y, areas.ballPicker)
+            ) {
+              return
+            }
+          }
+          // Taps outside shop controls stay in the shop.
+          return
+        }
+
+        const areas = this.menuHitAreas
         if (areas) {
-          if (hitRect(p.x, p.y, areas.slingshotPrev)) {
-            this.cosmetics.cycleSlingshotMenu(-1)
-            return
-          }
-          if (hitRect(p.x, p.y, areas.slingshotNext)) {
-            this.cosmetics.cycleSlingshotMenu(1)
-            return
-          }
-          if (hitRect(p.x, p.y, areas.ballPrev)) {
-            this.cosmetics.cycleBallMenu(-1)
-            return
-          }
-          if (hitRect(p.x, p.y, areas.ballNext)) {
-            this.cosmetics.cycleBallMenu(1)
-            return
-          }
-          if (hitRect(p.x, p.y, areas.backgroundPrev)) {
-            this.cosmetics.cycleBackgroundMenu(-1)
-            return
-          }
-          if (hitRect(p.x, p.y, areas.backgroundNext)) {
-            this.cosmetics.cycleBackgroundMenu(1)
-            return
-          }
-          if (
-            areas.buySlingshot &&
-            hitRect(p.x, p.y, areas.buySlingshot)
-          ) {
-            const id = this.cosmetics.equippedSlingshotId
-            if (id !== DEFAULT_COSMETIC_ID) {
-              this.cosmetics.purchaseSlingshot(id, (amount) =>
-                this.score.spendCoins(amount),
-              )
-            }
-            return
-          }
-          if (
-            areas.buyBackground &&
-            hitRect(p.x, p.y, areas.buyBackground)
-          ) {
-            const id = this.cosmetics.equippedBackgroundId
-            if (id !== DEFAULT_COSMETIC_ID) {
-              this.cosmetics.purchaseBackground(id, (amount) =>
-                this.score.spendCoins(amount),
-              )
-            }
-            return
-          }
-          if (
-            hitRect(p.x, p.y, areas.slingshotPicker) ||
-            hitRect(p.x, p.y, areas.backgroundPicker) ||
-            hitRect(p.x, p.y, areas.ballPicker)
-          ) {
+          if (hitRect(p.x, p.y, areas.shop)) {
+            this.menuScreen = "shop"
+            this.menuHitAreas = null
             return
           }
           if (hitRect(p.x, p.y, areas.play)) {
@@ -1223,27 +1251,44 @@ export class Game implements BotGameApi {
     this.renderer.drawBall(cam, this.ball, ballStyle)
 
     if (this.menuDemo || this.state === "menu") {
-      const slingshotLocked = this.cosmetics.isSlingshotSelectionLocked()
-      const backgroundLocked = this.cosmetics.isBackgroundSelectionLocked(bestHeight, highScore)
-      const ballLocked = this.cosmetics.isBallSelectionLocked(bestHeight, highScore)
-
-      this.menuHitAreas = this.renderer.drawMainMenu(
-        cam,
-        highScore,
-        bestHeight,
-        this.score.lifetimeCoins,
-        this.anim,
-        this.cosmetics.getSelectedSlingshotStyle(),
-        this.cosmetics.getSelectedBackgroundStyle(),
-        this.cosmetics.getSelectedBallStyle(),
-        slingshotLocked,
-        backgroundLocked,
-        ballLocked,
-        slingshotLocked ? this.cosmetics.previewSlingshotPrice() : null,
-        backgroundLocked ? this.cosmetics.previewBackgroundPrice() : null,
-        backgroundLocked ? this.cosmetics.getSelectedBackgroundUnlockHint() : null,
-        ballLocked ? this.cosmetics.getSelectedBallUnlockHint() : null,
-      )
+      if (this.menuScreen === "shop") {
+        const slingshotLocked = this.cosmetics.isSlingshotSelectionLocked()
+        const backgroundLocked = this.cosmetics.isBackgroundSelectionLocked(
+          bestHeight,
+          highScore,
+        )
+        const ballLocked = this.cosmetics.isBallSelectionLocked(
+          bestHeight,
+          highScore,
+        )
+        this.menuHitAreas = null
+        this.shopHitAreas = this.renderer.drawShop(
+          cam,
+          this.score.lifetimeCoins,
+          this.cosmetics.getSelectedSlingshotStyle(),
+          this.cosmetics.getSelectedBackgroundStyle(),
+          this.cosmetics.getSelectedBallStyle(),
+          slingshotLocked,
+          backgroundLocked,
+          ballLocked,
+          slingshotLocked ? this.cosmetics.previewSlingshotPrice() : null,
+          backgroundLocked ? this.cosmetics.previewBackgroundPrice() : null,
+          backgroundLocked
+            ? this.cosmetics.getSelectedBackgroundUnlockHint()
+            : null,
+          ballLocked ? this.cosmetics.getSelectedBallUnlockHint() : null,
+        )
+      } else {
+        this.shopHitAreas = null
+        this.menuHitAreas = this.renderer.drawMainMenu(
+          cam,
+          highScore,
+          bestHeight,
+          this.score.lifetimeCoins,
+          this.anim,
+          this.cosmetics.getSelectedBackgroundStyle(),
+        )
+      }
       return
     }
 
