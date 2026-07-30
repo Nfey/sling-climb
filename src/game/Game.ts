@@ -714,7 +714,6 @@ export class Game implements BotGameApi {
         }
       }
 
-      this.platforms.updateMovingPlatforms(dt)
       const hit = this.ball.update(
         dt,
         this.camera.width,
