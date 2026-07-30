@@ -127,11 +127,8 @@ export class Ball {
   }
 
   private updateSpin(dt: number): void {
-    const speed = Math.hypot(this.vx, this.vy)
-    if (speed < 1) return
-    const direction = Math.sign(this.vx)
-    if (direction === 0) return
-    this.spin += direction * speed * BALL_SPIN_SCALE * dt
+    if (Math.abs(this.vx) < 1) return
+    this.spin += this.vx * BALL_SPIN_SCALE * dt
   }
 
   private clearStuckTracking(): void {
