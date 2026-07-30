@@ -56,18 +56,19 @@ export const BONUS_PLATFORM_CHANCE = 0.18
 /** Grey platforms that disappear after one bounce. */
 export const CRUMBLING_PLATFORM_CHANCE = 0.08
 /** Green platforms that oscillate side to side. */
-export const MOVING_PLATFORM_CHANCE = 0.1
+export const MOVING_PLATFORM_CHANCE = 0.08
+/** Fraction of spawn slots left empty (vertical gap only, no platform). */
+export const EMPTY_PLATFORM_SKIP_CHANCE = 0.1
 /**
- * Brown platforms — reduced by grey+green additions so overall platform
- * density matches the pre-variant climb.
+ * Brown platforms — reduced by grey+green additions and empty skips so
+ * overall platform density matches the pre-variant climb.
  */
 export const NORMAL_PLATFORM_CHANCE =
   1 -
   BONUS_PLATFORM_CHANCE -
   CRUMBLING_PLATFORM_CHANCE -
   MOVING_PLATFORM_CHANCE -
-  CRUMBLING_PLATFORM_CHANCE -
-  MOVING_PLATFORM_CHANCE
+  EMPTY_PLATFORM_SKIP_CHANCE
 /** Half-width of the side-to-side sweep for moving platforms (px). */
 export const MOVING_PLATFORM_AMPLITUDE = 48
 /** Angular speed of moving platform oscillation (rad/s). */
