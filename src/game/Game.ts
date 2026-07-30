@@ -39,7 +39,7 @@ import { PlatformManager } from "./Platform"
 import { Renderer } from "./Renderer"
 import { Score } from "./Score"
 import { Slingshot } from "./Slingshot"
-import type { BulletData, GameSnapshot, GameState, ScorePopup, Vec2 } from "./types"
+import type { BulletData, BotAimTarget, GameSnapshot, GameState, ScorePopup, Vec2 } from "./types"
 
 export type FrameController = { update(dt: number, game: BotGameApi): void }
 
@@ -131,7 +131,47 @@ export class Game implements BotGameApi {
       killWorldY: this.camera.killWorldY,
       width: this.camera.width,
       height: this.camera.height,
+      targets: this.collectBotTargets(),
     }
+  }
+
+  /** Nearby hazards / bonuses above the pouch for seek-style bots. */
+  private collectBotTargets(): BotAimTarget[] {
+    const slingY = this.slingshot.y
+    const maxY = slingY + this.camera.height * 1.35
+    const width = this.camera.width
+    const out: BotAimTarget[] = []
+
+    for (const p of this.platforms.portals) {
+      const midY = p.y + p.height * 0.5
+      if (midY <= slingY + 50 || midY > maxY) continue
+      out.push({
+        x: p.side === "left" ? 18 : width - 18,
+        y: midY,
+        kind: "portal",
+        weight: 4,
+      })
+    }
+    for (const b of this.platforms.bumpers) {
+      if (b.y <= slingY + 40 || b.y > maxY) continue
+      out.push({ x: b.x, y: b.y, kind: "bumper", weight: 2.5 })
+    }
+    for (const a of this.platforms.arrowPads) {
+      if (a.y <= slingY + 40 || a.y > maxY) continue
+      out.push({ x: a.x, y: a.y, kind: "arrow", weight: 2.2 })
+    }
+    for (const p of this.platforms.platforms) {
+      if (!p.bonus) continue
+      const cy = p.y + p.height * 0.5
+      if (cy <= slingY + 40 || cy > maxY) continue
+      out.push({
+        x: p.x + p.width * 0.5,
+        y: cy,
+        kind: "bonus",
+        weight: 1.4,
+      })
+    }
+    return out
   }
 
   setSlingX(x: number): void {

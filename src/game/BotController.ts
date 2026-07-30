@@ -1,6 +1,6 @@
 import { MAX_PULL } from "./constants"
 import type { BotStyle } from "./config"
-import type { GameSnapshot, Vec2 } from "./types"
+import type { BotAimTarget, GameSnapshot, Vec2 } from "./types"
 
 /** Minimal surface the autopilot needs from Game. */
 export interface BotGameApi {
@@ -13,9 +13,22 @@ export interface BotGameApi {
   readonly autoRestart: boolean
 }
 
+function isHumanLike(style: BotStyle): boolean {
+  return style === "human" || style === "human-seek"
+}
+
+function isPerfectTrack(style: BotStyle): boolean {
+  return style === "perfect" || style === "perfect-seek"
+}
+
+function isSeekStyle(style: BotStyle): boolean {
+  return style === "perfect-seek" || style === "human-seek"
+}
+
 /**
- * Keeps the slingshot under the ball and fires random (or noisy) aims.
- * `perfect` tracks instantly; `human` lags and softens aim.
+ * Keeps the slingshot under the ball and fires aims.
+ * `perfect` / `human` — original random aims (unchanged).
+ * `perfect-seek` / `human-seek` — full pulls, diagonal bias, aim at hazards.
  */
 export class BotController {
   private style: BotStyle
@@ -75,17 +88,16 @@ export class BotController {
 
     // Ball loaded: ready or aiming
     if (snap.state === "ready" || snap.state === "aiming") {
-      this.runAimCycle(dt, game)
+      this.runAimCycle(dt, game, snap)
     }
   }
 
   private trackBall(dt: number, game: BotGameApi, snap: GameSnapshot): void {
-    const targetX =
-      this.style === "perfect"
-        ? snap.ball.x
-        : this.sampleDelayedX(snap.ball.x) + this.trackBias
+    const targetX = isPerfectTrack(this.style)
+      ? snap.ball.x
+      : this.sampleDelayedX(snap.ball.x) + this.trackBias
 
-    if (this.style === "perfect") {
+    if (isPerfectTrack(this.style)) {
       game.setSlingX(targetX)
       return
     }
@@ -111,14 +123,19 @@ export class BotController {
     return this.delayedX
   }
 
-  private runAimCycle(dt: number, game: BotGameApi): void {
+  private runAimCycle(dt: number, game: BotGameApi, snap: GameSnapshot): void {
     if (this.phase === "idle" || this.phase === "cooldown") {
       this.phaseT += dt
-      const wait = this.phase === "cooldown" ? 0.12 : this.style === "human" ? 0.22 : 0.1
+      const wait =
+        this.phase === "cooldown" ? 0.12 : isHumanLike(this.style) ? 0.22 : 0.1
       if (this.phaseT < wait) return
 
-      this.pendingPull = this.randomPull()
-      this.aimHold = this.style === "human" ? 0.22 + Math.random() * 0.2 : 0.12 + Math.random() * 0.1
+      this.pendingPull = isSeekStyle(this.style)
+        ? this.seekPull(snap)
+        : this.randomPull()
+      this.aimHold = isHumanLike(this.style)
+        ? 0.22 + Math.random() * 0.2
+        : 0.12 + Math.random() * 0.1
       this.phase = "aiming"
       this.phaseT = 0
       game.beginAimPull(this.pendingPull)
@@ -127,7 +144,7 @@ export class BotController {
 
     // aiming
     this.phaseT += dt
-    if (this.style === "human") {
+    if (isHumanLike(this.style)) {
       // Slight wobble while holding
       const wobble = {
         x: this.pendingPull.x + Math.sin(this.clock * 9) * 4,
@@ -145,6 +162,7 @@ export class BotController {
     }
   }
 
+  /** Original random aim — keep behavior identical for perfect / human. */
   private randomPull(): Vec2 {
     const angle =
       this.style === "perfect"
@@ -160,6 +178,76 @@ export class BotController {
       x: Math.cos(angle) * len,
       y: Math.sin(angle) * len,
     })
+  }
+
+  /**
+   * Seek variant: mostly full pulls, avoid straight-up / flat sides,
+   * and often aim toward portals / bumpers / arrows / bonus platforms.
+   */
+  private seekPull(snap: GameSnapshot): Vec2 {
+    const power =
+      Math.random() < 0.82
+        ? 0.9 + Math.random() * 0.1
+        : 0.72 + Math.random() * 0.18
+
+    let launchAngle: number | null = null
+    const target = this.pickSeekTarget(snap.targets)
+    if (target) {
+      const dx = target.x - snap.slingshot.x
+      // Bias slightly above the target so arcs still climb into it.
+      const dy = Math.max(36, target.y - snap.slingshot.y)
+      if (Math.hypot(dx, dy) > 20) {
+        launchAngle = Math.atan2(dy, dx)
+      }
+    }
+
+    if (launchAngle == null) {
+      // Two diagonal lobes off vertical — avoid straight up and flat sides.
+      const side = Math.random() < 0.5 ? -1 : 1
+      const fromVertical = 0.38 + Math.random() * 0.48 // ~22°–49°
+      launchAngle = Math.PI * 0.5 + side * fromVertical
+    } else {
+      // Nudge pure vertical / near-horizontal target aims toward a usable arc.
+      const fromUp = launchAngle - Math.PI * 0.5
+      if (Math.abs(fromUp) < 0.18) {
+        launchAngle += (Math.random() < 0.5 ? -1 : 1) * (0.28 + Math.random() * 0.2)
+      } else if (Math.abs(fromUp) > 1.15) {
+        launchAngle = Math.PI * 0.5 + Math.sign(fromUp || 1) * (0.55 + Math.random() * 0.25)
+      }
+    }
+
+    // Pull is opposite the launch direction.
+    const angle = launchAngle + Math.PI
+    const len = MAX_PULL * power
+    let pull = this.clampPull({
+      x: Math.cos(angle) * len,
+      y: Math.sin(angle) * len,
+    })
+
+    // Human-seek: light aim noise (perfect-seek stays locked).
+    if (this.style === "human-seek") {
+      pull = this.clampPull({
+        x: pull.x + (Math.random() - 0.5) * 16,
+        y: pull.y + (Math.random() - 0.5) * 10,
+      })
+    }
+
+    return pull
+  }
+
+  private pickSeekTarget(targets: BotAimTarget[]): BotAimTarget | null {
+    if (targets.length === 0) return null
+    // Usually chase something interesting when it exists.
+    if (Math.random() > 0.78) return null
+
+    let total = 0
+    for (const t of targets) total += t.weight
+    let r = Math.random() * total
+    for (const t of targets) {
+      r -= t.weight
+      if (r <= 0) return t
+    }
+    return targets[targets.length - 1] ?? null
   }
 
   private clampPull(pull: Vec2): Vec2 {

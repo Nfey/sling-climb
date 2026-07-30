@@ -1,5 +1,17 @@
 export type GameMode = "normal" | "playable" | "bot"
-export type BotStyle = "perfect" | "human"
+/** Base bots plus seek variants that prefer full pulls and aim at hazards. */
+export type BotStyle = "perfect" | "human" | "perfect-seek" | "human-seek"
+
+const BOT_STYLES: readonly BotStyle[] = [
+  "perfect",
+  "human",
+  "perfect-seek",
+  "human-seek",
+]
+
+export function isBotStyle(value: string | null): value is BotStyle {
+  return value != null && (BOT_STYLES as readonly string[]).includes(value)
+}
 
 export interface GameConfig {
   mode: GameMode
@@ -38,7 +50,7 @@ export function configFromSearch(search = window.location.search): GameConfig {
   const record = params.get("record") === "1" || params.get("record") === "true"
   const installUrl = params.get("installUrl") ?? undefined
 
-  if (bot === "perfect" || bot === "human") {
+  if (isBotStyle(bot)) {
     return defaultConfig({
       mode: "bot",
       botStyle: bot,

@@ -46,8 +46,11 @@ npm run dev -- --host
 #   http://localhost:5173/?bot=perfect
 # Human-like lag + noisy aims:
 #   http://localhost:5173/?bot=human
+# Seek variants (full pulls, diagonal bias, aim at portals/hazards):
+#   http://localhost:5173/?bot=perfect-seek
+#   http://localhost:5173/?bot=human-seek
 # Auto-start WebM recording:
-#   http://localhost:5173/?bot=human&record=1
+#   http://localhost:5173/?bot=human-seek&record=1
 ```
 
 Use the **Record** / **Stop & save** control (top-right) to download a `.webm` (Chrome/Edge recommended). You can also screen-record the tab for TikTok/Reels MP4s. The bot auto-restarts on game over and does not write high scores.
