@@ -129,12 +129,14 @@ function drawSoccerBall(ctx: CanvasRenderingContext2D, radius: number): void {
 function drawBaseball(ctx: CanvasRenderingContext2D, radius: number): void {
   drawClassicBall(ctx, radius, "#ffffff", "#f8fafc", "#e2e8f0")
 
-  // Each seam follows one branch of a hyperbola with a vertical conjugate axis:
-  //   (r² − y²)/a² − x²/b² = 1  →  x = ±b·√((r² − y²)/a² − 1)
-  // Bulges widest at the equator (y = 0) and meets the opposite seam near the poles.
-  const a = radius * 0.2
-  const b = radius * 0.17
-  const yLimit = Math.sqrt(radius * radius - a * a)
+  // Diagonal inward-curving seams from a hyperbola whose conjugate axis runs at 45°.
+  // In primed coords: x′²/a² − y′²/b² = 1  →  x′ = s·a·√(1 + (y′/b)²)
+  // Pinches toward the ball center at y′ = 0 and opens toward the poles, then
+  // rotate the primed frame by 45° so the pinch aligns with the diagonal in the icon.
+  const a = radius * 0.1
+  const b = radius * 0.42
+  const cos = Math.SQRT1_2
+  const sin = Math.SQRT1_2
 
   ctx.strokeStyle = "#dc2626"
   ctx.lineWidth = Math.max(1.5, radius * 0.1)
@@ -144,13 +146,14 @@ function drawBaseball(ctx: CanvasRenderingContext2D, radius: number): void {
   for (const side of [-1, 1] as const) {
     ctx.beginPath()
     let started = false
-    const steps = 72
+    const steps = 80
+    const yMax = radius * 0.94
     for (let i = 0; i <= steps; i++) {
-      const y = -yLimit + (i / steps) * yLimit * 2
-      const numer = (radius * radius - y * y) / (a * a) - 1
-      if (numer <= 0) continue
-      const x = side * b * Math.sqrt(numer)
-      if (x * x + y * y > radius * radius * 0.995) continue
+      const yp = -yMax + (i / steps) * yMax * 2
+      const xp = side * a * Math.sqrt(1 + (yp * yp) / (b * b))
+      const x = xp * cos - yp * sin
+      const y = xp * sin + yp * cos
+      if (x * x + y * y > radius * radius * 0.992) continue
       if (!started) {
         ctx.moveTo(x, y)
         started = true
