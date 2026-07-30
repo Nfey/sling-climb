@@ -1,5 +1,6 @@
 import { Ball } from "./Ball"
 import { Camera } from "./Camera"
+import { turretMuzzleWorld } from "./turret"
 import {
   BULLET_BEAM_HALF_WIDTH,
   BULLET_FIRE_INTERVAL,
@@ -33,7 +34,6 @@ import {
   SLINGSHOT_KEYBOARD_SPEED,
   TURRET_AIM_ARC,
   TURRET_AIM_SPEED,
-  TURRET_BARREL_LENGTH,
   TURRET_BODY_RADIUS,
   TURRET_FIRE_INTERVAL_MAX,
   TURRET_FIRE_INTERVAL_MIN,
@@ -1044,25 +1044,22 @@ export class Game implements BotGameApi {
         TURRET_FIRE_INTERVAL_MIN +
         Math.random() * (TURRET_FIRE_INTERVAL_MAX - TURRET_FIRE_INTERVAL_MIN)
 
-      const cosA = Math.cos(turret.aimAngle)
-      const sinA = Math.sin(turret.aimAngle)
-      const inward = turret.side === "left" ? 1 : -1
       const cx =
         turret.side === "left"
           ? TURRET_BODY_RADIUS
           : width - TURRET_BODY_RADIUS
-      const edgeX = cx + inward * cosA * TURRET_BODY_RADIUS
-      const edgeY = turret.y + sinA * TURRET_BODY_RADIUS
-      const dirX = inward * cosA
-      const dirY = sinA
-      const spawnX = edgeX + dirX * TURRET_BARREL_LENGTH
-      const spawnY = edgeY + dirY * TURRET_BARREL_LENGTH
+      const muzzle = turretMuzzleWorld(
+        turret.side,
+        turret.aimAngle,
+        cx,
+        turret.y,
+      )
 
       this.turretShots.push({
-        x: spawnX,
-        y: spawnY,
-        vx: dirX * TURRET_SHOT_SPEED,
-        vy: dirY * TURRET_SHOT_SPEED,
+        x: muzzle.x,
+        y: muzzle.y,
+        vx: muzzle.dirX * TURRET_SHOT_SPEED,
+        vy: muzzle.dirY * TURRET_SHOT_SPEED,
         radius: TURRET_SHOT_RADIUS,
       })
     }

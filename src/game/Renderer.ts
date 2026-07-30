@@ -12,6 +12,7 @@ import {
   TURRET_BODY_RADIUS,
   skyZoneColor,
 } from "./constants"
+import { turretMuzzleAngle } from "./turret"
 import type { Ball } from "./Ball"
 import type { Camera } from "./Camera"
 import type {
@@ -453,7 +454,7 @@ export class Renderer {
 
       // Barrel — flat rectangle pivoted from the semicircle edge in 2D
       ctx.save()
-      ctx.rotate(t.side === "left" ? t.aimAngle : Math.PI - t.aimAngle)
+      ctx.rotate(turretMuzzleAngle(t.side, t.aimAngle))
       ctx.fillStyle = COLORS.turretBarrel
       ctx.fillRect(r, -TURRET_BARREL_WIDTH * 0.5, TURRET_BARREL_LENGTH, TURRET_BARREL_WIDTH)
       ctx.strokeStyle = COLORS.turretRim
@@ -461,7 +462,7 @@ export class Renderer {
       ctx.restore()
 
       // Muzzle glow when near firing
-      const muzzleAngle = t.side === "left" ? t.aimAngle : Math.PI - t.aimAngle
+      const muzzleAngle = turretMuzzleAngle(t.side, t.aimAngle)
       const tipX = Math.cos(muzzleAngle) * (r + TURRET_BARREL_LENGTH)
       const tipY = Math.sin(muzzleAngle) * (r + TURRET_BARREL_LENGTH)
       if (t.fireCooldown < 0.25) {

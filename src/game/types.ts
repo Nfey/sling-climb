@@ -147,7 +147,7 @@ export interface WallTurretData {
   side: "left" | "right"
   /** World Y of the turret center. */
   y: number
-  /** Current barrel angle from horizontal into the playfield (radians, Y up). */
+  /** Current barrel sweep angle (radians, canvas rotation from the wall). */
   aimAngle: number
   /** Sweep phase accumulator (radians). */
   phase: number
