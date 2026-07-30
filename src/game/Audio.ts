@@ -17,6 +17,8 @@ export class GameAudio {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
   private unlocked = false
+  /** When true, skip SFX (menu attract demo). */
+  private muted = false
 
   /** Hits since last catch — driven by Score.combo. */
   private combo = 1
@@ -38,7 +40,16 @@ export class GameAudio {
    * AudioContext.resume() when deferred to requestAnimationFrame.
    * Safe to call repeatedly until the context is running.
    */
+  /** Silence all SFX (used by the main-menu attract demo). */
+  setMuted(muted: boolean): void {
+    this.muted = muted
+    if (muted) this.resetFlight()
+    if (this.master) this.master.gain.value = muted ? 0 : 0.55
+  }
+
   unlock(): void {
+    // Always open AudioContext on a real gesture — mute only silences output.
+    // Gating unlock on muted would miss the gesture stack before the menu exits.
     const ctx = this.ensureCtx()
     if (!ctx || !this.master) return
     if (ctx.state === "running") {
@@ -73,7 +84,7 @@ export class GameAudio {
       if (!AC) return null
       this.ctx = new AC()
       this.master = this.ctx.createGain()
-      this.master.gain.value = 0.55
+      this.master.gain.value = this.muted ? 0 : 0.55
       this.master.connect(this.ctx.destination)
     }
     return this.ctx
@@ -108,6 +119,7 @@ export class GameAudio {
   /** Begin flight loop (soft points arpeggio). */
   startFlight(): void {
     this.flying = true
+    if (this.muted) return
     this.ensureCtx()
     this.startPointsLoop()
   }
@@ -124,6 +136,7 @@ export class GameAudio {
 
   /** Rubber-band snap on launch. `power` is 0..1 slingshot stretch. */
   playLaunch(power = 0.7): void {
+    if (this.muted) return
     const ctx = this.ensureCtx()
     if (!ctx || !this.master) return
     const t = ctx.currentTime
@@ -152,14 +165,17 @@ export class GameAudio {
   }
 
   playPlatformBounce(): void {
+    if (this.muted) return
     this.playBoing(220, 0.14, "sine")
   }
 
   playWallBounce(): void {
+    if (this.muted) return
     this.playBoing(320, 0.08, "triangle")
   }
 
   playBumper(): void {
+    if (this.muted) return
     const ctx = this.ensureCtx()
     if (!ctx || !this.master) return
     const t = ctx.currentTime
@@ -190,6 +206,7 @@ export class GameAudio {
   }
 
   playArrow(): void {
+    if (this.muted) return
     const ctx = this.ensureCtx()
     if (!ctx || !this.master) return
     const t = ctx.currentTime
@@ -221,6 +238,7 @@ export class GameAudio {
   }
 
   playPortal(): void {
+    if (this.muted) return
     const ctx = this.ensureCtx()
     if (!ctx || !this.master) return
     const t = ctx.currentTime
@@ -247,6 +265,7 @@ export class GameAudio {
   }
 
   playPowerup(): void {
+    if (this.muted) return
     const ctx = this.ensureCtx()
     if (!ctx || !this.master) return
     const master = this.master
@@ -274,6 +293,7 @@ export class GameAudio {
   }
 
   playCatch(): void {
+    if (this.muted) return
     const ctx = this.ensureCtx()
     if (!ctx || !this.master) return
     const t = ctx.currentTime
@@ -297,6 +317,7 @@ export class GameAudio {
   }
 
   playGameOver(): void {
+    if (this.muted) return
     const ctx = this.ensureCtx()
     if (!ctx || !this.master) return
     const t = ctx.currentTime
