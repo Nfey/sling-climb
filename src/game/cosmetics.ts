@@ -215,7 +215,7 @@ export class CosmeticsStore {
     return BALL_VARIANTS.filter((v) => bestHeight >= v.unlockHeight)
   }
 
-  /** Cycle slingshot preview through default + all shop variants (owned or not). */
+  /** Cycle slingshot selector through default + all shop variants. */
   cycleSlingshotMenu(delta: number): void {
     const allIds = [DEFAULT_COSMETIC_ID, ...SLINGSHOT_VARIANTS.map((v) => v.id)]
     const current = allIds.indexOf(this.equippedSlingshotId)
@@ -227,9 +227,9 @@ export class CosmeticsStore {
     this.saveEquipped()
   }
 
-  cycleBallMenu(delta: number, bestHeight: number): void {
-    const unlocked = this.unlockedBallVariants(bestHeight)
-    const allIds = [DEFAULT_COSMETIC_ID, ...unlocked.map((v) => v.id)]
+  /** Cycle ball selector through default + all height variants. */
+  cycleBallMenu(delta: number): void {
+    const allIds = [DEFAULT_COSMETIC_ID, ...BALL_VARIANTS.map((v) => v.id)]
     const current = allIds.indexOf(this.equippedBallId)
     const next =
       current >= 0
@@ -261,9 +261,8 @@ export class CosmeticsStore {
     this.saveEquipped()
   }
 
-  getSlingshotSkin(preview = false): SlingshotSkin {
+  getSlingshotSkin(): SlingshotSkin {
     if (
-      !preview &&
       this.equippedSlingshotId !== DEFAULT_COSMETIC_ID &&
       !this.isSlingshotOwned(this.equippedSlingshotId)
     ) {
@@ -274,9 +273,8 @@ export class CosmeticsStore {
     return variant?.skin ?? DEFAULT_SLINGSHOT_SKIN
   }
 
-  getBallSkin(bestHeight: number, preview = false): BallSkin {
+  getBallSkin(bestHeight: number): BallSkin {
     if (
-      !preview &&
       this.equippedBallId !== DEFAULT_COSMETIC_ID &&
       !this.isBallUnlocked(this.equippedBallId, bestHeight)
     ) {
@@ -287,14 +285,31 @@ export class CosmeticsStore {
     return variant?.skin ?? DEFAULT_BALL_SKIN
   }
 
-  previewSlingshotLabel(): string {
-    if (this.equippedSlingshotId === DEFAULT_COSMETIC_ID) return "Classic"
-    return SLINGSHOT_VARIANTS.find((v) => v.id === this.equippedSlingshotId)?.name ?? "Classic"
+  /** Skin shown in the selector icon (includes locked selections). */
+  getSelectedSlingshotSkin(): SlingshotSkin {
+    if (this.equippedSlingshotId === DEFAULT_COSMETIC_ID) return DEFAULT_SLINGSHOT_SKIN
+    const variant = SLINGSHOT_VARIANTS.find((v) => v.id === this.equippedSlingshotId)
+    return variant?.skin ?? DEFAULT_SLINGSHOT_SKIN
   }
 
-  previewBallLabel(): string {
-    if (this.equippedBallId === DEFAULT_COSMETIC_ID) return "Classic"
-    return BALL_VARIANTS.find((v) => v.id === this.equippedBallId)?.name ?? "Classic"
+  getSelectedBallSkin(): BallSkin {
+    if (this.equippedBallId === DEFAULT_COSMETIC_ID) return DEFAULT_BALL_SKIN
+    const variant = BALL_VARIANTS.find((v) => v.id === this.equippedBallId)
+    return variant?.skin ?? DEFAULT_BALL_SKIN
+  }
+
+  isSlingshotSelectionLocked(): boolean {
+    return (
+      this.equippedSlingshotId !== DEFAULT_COSMETIC_ID &&
+      !this.isSlingshotOwned(this.equippedSlingshotId)
+    )
+  }
+
+  isBallSelectionLocked(bestHeight: number): boolean {
+    return (
+      this.equippedBallId !== DEFAULT_COSMETIC_ID &&
+      !this.isBallUnlocked(this.equippedBallId, bestHeight)
+    )
   }
 
   previewSlingshotPrice(): number | null {
@@ -323,12 +338,6 @@ export class CosmeticsStore {
 
     this.equippedSlingshotId =
       this.loadString(EQUIPPED_SLINGSHOT_KEY) ?? DEFAULT_COSMETIC_ID
-    if (
-      this.equippedSlingshotId !== DEFAULT_COSMETIC_ID &&
-      !this.isSlingshotOwned(this.equippedSlingshotId)
-    ) {
-      this.equippedSlingshotId = DEFAULT_COSMETIC_ID
-    }
 
     this.equippedBallId = this.loadString(EQUIPPED_BALL_KEY) ?? DEFAULT_COSMETIC_ID
   }

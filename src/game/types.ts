@@ -48,8 +48,10 @@ export interface MainMenuHitAreas {
   play: ScreenRect
   slingshotPrev: ScreenRect
   slingshotNext: ScreenRect
+  slingshotPicker: ScreenRect
   ballPrev: ScreenRect
   ballNext: ScreenRect
+  ballPicker: ScreenRect
   buySlingshot: ScreenRect | null
 }
 

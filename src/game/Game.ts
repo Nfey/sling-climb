@@ -512,7 +512,6 @@ export class Game implements BotGameApi {
       if (menuPresses.length > 0) {
         const p = menuPresses[0]!
         const areas = this.menuHitAreas
-        const bestHeight = this.score.bestMaxHeight
 
         if (areas) {
           if (hitRect(p.x, p.y, areas.slingshotPrev)) {
@@ -524,11 +523,11 @@ export class Game implements BotGameApi {
             return
           }
           if (hitRect(p.x, p.y, areas.ballPrev)) {
-            this.cosmetics.cycleBallMenu(-1, bestHeight)
+            this.cosmetics.cycleBallMenu(-1)
             return
           }
           if (hitRect(p.x, p.y, areas.ballNext)) {
-            this.cosmetics.cycleBallMenu(1, bestHeight)
+            this.cosmetics.cycleBallMenu(1)
             return
           }
           if (
@@ -541,6 +540,12 @@ export class Game implements BotGameApi {
                 this.score.spendCoins(amount),
               )
             }
+            return
+          }
+          if (
+            hitRect(p.x, p.y, areas.slingshotPicker) ||
+            hitRect(p.x, p.y, areas.ballPicker)
+          ) {
             return
           }
           if (hitRect(p.x, p.y, areas.play)) {
@@ -1082,9 +1087,9 @@ export class Game implements BotGameApi {
           : 0
 
     const slingStyle = this.freeMoveActive ? "freeMove" : this.powActive ? "pow" : "normal"
-    const inMenu = this.menuDemo || this.state === "menu"
-    const slingshotSkin = this.cosmetics.getSlingshotSkin(inMenu)
-    const ballSkin = this.cosmetics.getBallSkin(this.score.bestMaxHeight, inMenu)
+    const bestHeight = this.score.bestMaxHeight
+    const slingshotSkin = this.cosmetics.getSlingshotSkin()
+    const ballSkin = this.cosmetics.getBallSkin(bestHeight)
     this.renderer.drawSlingshot(
       cam,
       this.slingshot,
@@ -1112,25 +1117,19 @@ export class Game implements BotGameApi {
     this.renderer.drawBall(cam, this.ball, ballSkin)
 
     if (this.menuDemo || this.state === "menu") {
-      const equippedId = this.cosmetics.equippedSlingshotId
-      const slingshotOwned =
-        equippedId === DEFAULT_COSMETIC_ID ||
-        this.cosmetics.isSlingshotOwned(equippedId)
-      const ballUnlocked = this.cosmetics.unlockedBallVariants(
-        this.score.bestMaxHeight,
-      ).length
+      const slingshotLocked = this.cosmetics.isSlingshotSelectionLocked()
 
       this.menuHitAreas = this.renderer.drawMainMenu(
         cam,
         this.score.highScore,
-        this.score.bestMaxHeight,
+        bestHeight,
         this.score.lifetimeCoins,
         this.anim,
-        this.cosmetics.previewSlingshotLabel(),
-        this.cosmetics.previewBallLabel(),
-        this.cosmetics.previewSlingshotPrice(),
-        slingshotOwned,
-        ballUnlocked,
+        this.cosmetics.getSelectedSlingshotSkin(),
+        this.cosmetics.getSelectedBallSkin(),
+        slingshotLocked,
+        this.cosmetics.isBallSelectionLocked(bestHeight),
+        slingshotLocked ? this.cosmetics.previewSlingshotPrice() : null,
       )
       return
     }

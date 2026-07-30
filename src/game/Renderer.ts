@@ -26,7 +26,6 @@ import type {
 } from "./types"
 import type { Slingshot } from "./Slingshot"
 import type { BallSkin, SlingshotSkin } from "./cosmetics"
-import { BALL_VARIANTS } from "./cosmetics"
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D
@@ -775,7 +774,7 @@ export class Renderer {
   }
 
   /**
-   * Title screen with bests, variant pickers, shop, and a Play button.
+   * Title screen with bests, bottom-corner variant pickers, and a Play button.
    * Returns interactive regions for hit-testing.
    */
   drawMainMenu(
@@ -784,16 +783,16 @@ export class Renderer {
     bestHeight: number,
     lifetimeCoins: number,
     anim: number,
-    slingshotLabel: string,
-    ballLabel: string,
+    slingshotIconSkin: SlingshotSkin,
+    ballIconSkin: BallSkin,
+    slingshotLocked: boolean,
+    ballLocked: boolean,
     slingshotPrice: number | null,
-    slingshotOwned: boolean,
-    ballUnlockedCount: number,
   ): MainMenuHitAreas {
     const ctx = this.ctx
-    const { width } = camera
+    const { width, height } = camera
     const cx = width / 2
-    let y = camera.slingshotScreenY - 210
+    let y = camera.slingshotScreenY - 168
 
     ctx.fillStyle = COLORS.menuOverlay
     ctx.fillRect(0, 0, width, camera.killScreenY)
@@ -804,23 +803,22 @@ export class Renderer {
     ctx.fillStyle = COLORS.ink
     ctx.font = "800 44px 'Bricolage Grotesque', sans-serif"
     ctx.fillText("Sling Climb", cx, y)
-    y += 34
+    y += 36
 
     ctx.fillStyle = COLORS.inkDim
-    ctx.font = "500 14px 'DM Sans', sans-serif"
+    ctx.font = "500 15px 'DM Sans', sans-serif"
     ctx.fillText("Pull back to launch · catch to climb", cx, y)
-    y += 32
+    y += 40
 
     const showBests = highScore > 0 || bestHeight > 0
-    const showCoins = true
 
-    if (showBests || showCoins) {
-      const rowW = Math.min(300, width - 40)
+    if (showBests || lifetimeCoins >= 0) {
+      const rowW = Math.min(280, width - 48)
       const rowX = cx - rowW / 2
-      const rowH = showBests && showCoins ? 88 : 48
+      const rowH = showBests ? 96 : 52
       ctx.fillStyle = "rgba(255, 255, 255, 0.55)"
       ctx.beginPath()
-      roundRect(ctx, rowX, y - 18, rowW, rowH, 12)
+      roundRect(ctx, rowX, y - 22, rowW, rowH, 12)
       ctx.fill()
 
       if (showBests) {
@@ -828,94 +826,36 @@ export class Renderer {
         const rightX = rowX + rowW * 0.72
 
         ctx.fillStyle = COLORS.inkDim
-        ctx.font = "500 10px 'DM Sans', sans-serif"
-        ctx.fillText("BEST SCORE", leftX, y - 6)
-        ctx.fillText("BEST HEIGHT", rightX, y - 6)
+        ctx.font = "500 11px 'DM Sans', sans-serif"
+        ctx.fillText("BEST SCORE", leftX, y - 8)
+        ctx.fillText("BEST HEIGHT", rightX, y - 8)
 
         ctx.fillStyle = COLORS.accent
-        ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
-        ctx.fillText(highScore > 0 ? String(highScore) : "—", leftX, y + 12)
+        ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
+        ctx.fillText(highScore > 0 ? String(highScore) : "—", leftX, y + 14)
         ctx.fillText(
           bestHeight > 0 ? formatHeightLabel(bestHeight) : "—",
           rightX,
-          y + 12,
+          y + 14,
         )
-        y += showCoins ? 44 : 52
+        y += 56
       }
 
-      if (showCoins) {
-        const coinCy = showBests ? y : y + 2
-        drawMenuCoinIcon(ctx, cx - 28, coinCy, 8)
-        ctx.fillStyle = COLORS.coinRim
-        ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
-        ctx.textAlign = "left"
-        ctx.fillText(String(lifetimeCoins), cx - 12, coinCy + 1)
-        ctx.textAlign = "center"
-        y = coinCy + 30
-      }
+      const coinCy = showBests ? y : y + 4
+      drawMenuCoinIcon(ctx, cx - 28, coinCy, 9)
+      ctx.fillStyle = COLORS.coinRim
+      ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
+      ctx.textAlign = "left"
+      ctx.fillText(String(lifetimeCoins), cx - 12, coinCy + 1)
+      ctx.textAlign = "center"
+      y = coinCy + 34
     } else {
-      y += 8
-    }
-
-    y += 10
-    const pickerW = Math.min(300, width - 36)
-    const pickerX = cx - pickerW / 2
-    const rowH = 38
-    const arrowW = 36
-
-    const slingshotRow = drawVariantPicker(
-      ctx,
-      pickerX,
-      y,
-      pickerW,
-      rowH,
-      arrowW,
-      "Slingshot",
-      slingshotLabel,
-      slingshotOwned ? null : slingshotPrice,
-    )
-    y += rowH + 8
-
-    const ballRow = drawVariantPicker(
-      ctx,
-      pickerX,
-      y,
-      pickerW,
-      rowH,
-      arrowW,
-      "Ball",
-      ballLabel,
-      null,
-      ballUnlockedCount,
-      BALL_VARIANTS.length,
-      bestHeight,
-    )
-    y += rowH + 14
-
-    let buySlingshot: ScreenRect | null = null
-    if (slingshotPrice != null && !slingshotOwned) {
-      const buyW = 148
-      const buyH = 36
-      buySlingshot = {
-        x: cx - buyW / 2,
-        y: y - buyH / 2,
-        w: buyW,
-        h: buyH,
-      }
-      const canAfford = lifetimeCoins >= slingshotPrice
-      ctx.fillStyle = canAfford ? COLORS.coin : "rgba(17, 17, 17, 0.12)"
-      ctx.beginPath()
-      roundRect(ctx, buySlingshot.x, buySlingshot.y, buyW, buyH, 10)
-      ctx.fill()
-      ctx.fillStyle = canAfford ? COLORS.coinRim : COLORS.inkDim
-      ctx.font = "800 15px 'Bricolage Grotesque', sans-serif"
-      ctx.fillText(`Buy · ${slingshotPrice} coins`, cx, y + 1)
-      y += 32
+      y += 12
     }
 
     const pulse = 0.92 + Math.sin(anim * 3.2) * 0.08
     const btnW = 168
-    const btnH = 50
+    const btnH = 52
     const play: ScreenRect = {
       x: cx - btnW / 2,
       y: y - btnH / 2,
@@ -935,18 +875,75 @@ export class Renderer {
     ctx.fillText("Play", 0, 1)
     ctx.restore()
 
-    y += 44
+    y += 48
     ctx.fillStyle = COLORS.inkDim
-    ctx.font = "500 12px 'DM Sans', sans-serif"
+    ctx.font = "500 13px 'DM Sans', sans-serif"
     ctx.fillText("or tap anywhere to start", cx, y)
+
+    // Bottom-corner variant pickers (below kill line)
+    const bottomTop = camera.killScreenY
+    const bottomH = height - bottomTop
+    const pickerH = Math.min(72, bottomH - 8)
+    const pickerY = bottomTop + (bottomH - pickerH) / 2
+    const arrowW = 34
+    const iconBox = 48
+    const pickerW = arrowW + iconBox + arrowW
+    const margin = 12
+
+    const slingshotRow = drawCornerVariantPicker(
+      ctx,
+      margin,
+      pickerY,
+      pickerW,
+      pickerH,
+      arrowW,
+      iconBox,
+      "slingshot",
+      slingshotIconSkin,
+      slingshotLocked,
+    )
+
+    const ballRow = drawCornerVariantPicker(
+      ctx,
+      width - margin - pickerW,
+      pickerY,
+      pickerW,
+      pickerH,
+      arrowW,
+      iconBox,
+      "ball",
+      ballIconSkin,
+      ballLocked,
+    )
+
+    let buySlingshot: ScreenRect | null = null
+    if (slingshotPrice != null && slingshotLocked) {
+      const buyW = 112
+      const buyH = 26
+      const buyX = slingshotRow.icon.x + (slingshotRow.icon.w - buyW) / 2
+      const buyY = slingshotRow.icon.y + slingshotRow.icon.h + 4
+      buySlingshot = { x: buyX, y: buyY, w: buyW, h: buyH }
+      const canAfford = lifetimeCoins >= slingshotPrice
+      ctx.fillStyle = canAfford ? COLORS.coin : "rgba(17, 17, 17, 0.1)"
+      ctx.beginPath()
+      roundRect(ctx, buyX, buyY, buyW, buyH, 8)
+      ctx.fill()
+      ctx.fillStyle = canAfford ? COLORS.coinRim : COLORS.inkDim
+      ctx.font = "800 12px 'Bricolage Grotesque', sans-serif"
+      ctx.textAlign = "center"
+      ctx.fillText(`${slingshotPrice}`, buyX + buyW / 2 - 8, buyY + buyH / 2 + 1)
+      drawMenuCoinIcon(ctx, buyX + buyW / 2 + 14, buyY + buyH / 2, 6)
+    }
 
     ctx.textBaseline = "alphabetic"
     return {
       play,
       slingshotPrev: slingshotRow.prev,
       slingshotNext: slingshotRow.next,
+      slingshotPicker: { x: margin, y: pickerY, w: pickerW, h: pickerH },
       ballPrev: ballRow.prev,
       ballNext: ballRow.next,
+      ballPicker: { x: width - margin - pickerW, y: pickerY, w: pickerW, h: pickerH },
       buySlingshot,
     }
   }
@@ -1106,66 +1103,154 @@ function formatHeightLabel(climb: number): string {
   return String(Math.round(climb))
 }
 
-function drawVariantPicker(
+function drawCornerVariantPicker(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   w: number,
   h: number,
   arrowW: number,
-  kind: string,
-  label: string,
-  price: number | null,
-  unlockedCount?: number,
-  totalUnlockable?: number,
-  bestHeight?: number,
-): { prev: ScreenRect; next: ScreenRect } {
-  ctx.fillStyle = "rgba(255, 255, 255, 0.62)"
+  iconBox: number,
+  kind: "slingshot" | "ball",
+  skin: SlingshotSkin | BallSkin,
+  locked: boolean,
+): { prev: ScreenRect; next: ScreenRect; icon: ScreenRect } {
+  ctx.fillStyle = "rgba(255, 255, 255, 0.78)"
   ctx.beginPath()
-  roundRect(ctx, x, y, w, h, 10)
+  roundRect(ctx, x, y, w, h, 12)
   ctx.fill()
+  ctx.strokeStyle = "rgba(17, 17, 17, 0.08)"
+  ctx.lineWidth = 1
+  ctx.stroke()
 
   const prev: ScreenRect = { x, y, w: arrowW, h }
   const next: ScreenRect = { x: x + w - arrowW, y, w: arrowW, h }
+  const icon: ScreenRect = { x: x + arrowW, y, w: iconBox, h }
 
   ctx.fillStyle = COLORS.accent
-  ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+  ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
   ctx.textAlign = "center"
   ctx.textBaseline = "middle"
   ctx.fillText("‹", x + arrowW / 2, y + h / 2 + 1)
   ctx.fillText("›", x + w - arrowW / 2, y + h / 2 + 1)
 
-  ctx.fillStyle = COLORS.inkDim
-  ctx.font = "500 10px 'DM Sans', sans-serif"
-  ctx.fillText(kind.toUpperCase(), x + w / 2, y + 11)
+  const iconCx = icon.x + icon.w / 2
+  const iconCy = icon.y + h / 2
 
-  ctx.fillStyle = COLORS.ink
-  ctx.font = "700 15px 'Bricolage Grotesque', sans-serif"
-  ctx.fillText(label, x + w / 2, y + h / 2 + 5)
-
-  if (price != null) {
-    ctx.fillStyle = COLORS.coinRim
-    ctx.font = "600 10px 'DM Sans', sans-serif"
-    ctx.fillText(`${price} coins`, x + w / 2, y + h - 8)
-  } else if (
-    unlockedCount != null &&
-    totalUnlockable != null &&
-    bestHeight != null &&
-    unlockedCount < totalUnlockable
-  ) {
-    const nextUnlock = BALL_VARIANTS.find((v) => bestHeight < v.unlockHeight)
-    if (nextUnlock) {
-      ctx.fillStyle = COLORS.inkDim
-      ctx.font = "500 10px 'DM Sans', sans-serif"
-      ctx.fillText(
-        `Next at ${formatHeightLabel(nextUnlock.unlockHeight)}`,
-        x + w / 2,
-        y + h - 8,
-      )
-    }
+  if (kind === "slingshot") {
+    drawSlingshotIcon(ctx, iconCx, iconCy, iconBox * 0.72, skin as SlingshotSkin)
+  } else {
+    drawBallIcon(ctx, iconCx, iconCy, iconBox * 0.32, skin as BallSkin)
   }
 
-  return { prev, next }
+  if (locked) {
+    drawLockOverlay(ctx, icon.x + 2, icon.y + 2, icon.w - 4, h - 4)
+  }
+
+  return { prev, next, icon }
+}
+
+function drawSlingshotIcon(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  size: number,
+  skin: SlingshotSkin,
+): void {
+  const w = size * 0.88
+  const h = size
+
+  ctx.save()
+  ctx.lineCap = "round"
+  ctx.lineJoin = "round"
+
+  ctx.strokeStyle = skin.body
+  ctx.lineWidth = Math.max(2.5, size * 0.11)
+  ctx.beginPath()
+  ctx.moveTo(cx, cy + h * 0.32)
+  ctx.lineTo(cx, cy - h * 0.02)
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.moveTo(cx - w * 0.42, cy - h * 0.22)
+  ctx.lineTo(cx, cy - h * 0.02)
+  ctx.lineTo(cx + w * 0.42, cy - h * 0.22)
+  ctx.stroke()
+
+  ctx.strokeStyle = skin.band
+  ctx.lineWidth = Math.max(1.5, size * 0.055)
+  ctx.beginPath()
+  ctx.moveTo(cx - w * 0.36, cy - h * 0.18)
+  ctx.quadraticCurveTo(cx, cy + h * 0.1, cx, cy + h * 0.14)
+  ctx.stroke()
+  ctx.beginPath()
+  ctx.moveTo(cx + w * 0.36, cy - h * 0.18)
+  ctx.quadraticCurveTo(cx, cy + h * 0.1, cx, cy + h * 0.14)
+  ctx.stroke()
+
+  ctx.restore()
+}
+
+function drawBallIcon(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radius: number,
+  skin: BallSkin,
+): void {
+  ctx.save()
+  const grd = ctx.createRadialGradient(
+    cx - radius * 0.35,
+    cy - radius * 0.4,
+    1,
+    cx,
+    cy,
+    radius,
+  )
+  grd.addColorStop(0, skin.highlight)
+  grd.addColorStop(0.55, skin.fill)
+  grd.addColorStop(1, skin.stroke)
+  ctx.fillStyle = grd
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.strokeStyle = skin.strokeAlpha
+  ctx.lineWidth = 1.5
+  ctx.stroke()
+  ctx.restore()
+}
+
+function drawLockOverlay(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): void {
+  ctx.save()
+  ctx.fillStyle = "rgba(255, 255, 255, 0.62)"
+  ctx.beginPath()
+  roundRect(ctx, x, y, w, h, 8)
+  ctx.fill()
+
+  const cx = x + w / 2
+  const cy = y + h / 2
+  const lockColor = "rgba(100, 116, 139, 0.92)"
+
+  ctx.strokeStyle = lockColor
+  ctx.fillStyle = lockColor
+  ctx.lineWidth = 2
+  ctx.lineCap = "round"
+
+  ctx.beginPath()
+  ctx.arc(cx, cy - 3, 6, Math.PI, 0)
+  ctx.stroke()
+
+  ctx.beginPath()
+  roundRect(ctx, cx - 8, cy - 1, 16, 13, 3)
+  ctx.fill()
+
+  ctx.restore()
 }
 
 function hitRect(px: number, py: number, rect: ScreenRect): boolean {
