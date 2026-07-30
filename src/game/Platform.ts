@@ -61,8 +61,14 @@ export class PlatformManager {
   private nextUpgradeY = 0
   private nextCoinY = 0
   private worldWidth = 390
+  private coinChance = COIN_CHANCE
 
-  reset(worldWidth: number, slingshotY: number): void {
+  reset(
+    worldWidth: number,
+    slingshotY: number,
+    options?: { coinChance?: number },
+  ): void {
+    this.coinChance = options?.coinChance ?? COIN_CHANCE
     this.worldWidth = worldWidth
     this.platforms = []
     this.portals = []
@@ -251,7 +257,7 @@ export class PlatformManager {
   }
 
   private maybeSpawnCoin(): void {
-    if (Math.random() < COIN_CHANCE) {
+    if (Math.random() < this.coinChance) {
       const radius = COIN_RADIUS
       const x = rand(
         PLATFORM_HORIZONTAL_MARGIN + radius,

@@ -103,6 +103,8 @@ export const UPGRADE_PICKUP_MAX_GAP = 480
 
 /** Chance to place a collectible coin at each spawn step. */
 export const COIN_CHANCE = 0.55 / 15
+/** Menu-demo backdrop uses much sparser coins so passive pickups stay rare. */
+export const MENU_DEMO_COIN_CHANCE = COIN_CHANCE / 10
 export const COIN_RADIUS = 15
 export const COIN_MIN_GAP = 90
 export const COIN_MAX_GAP = 170
