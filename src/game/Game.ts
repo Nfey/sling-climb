@@ -32,7 +32,7 @@ import {
   COLORS,
 } from "./constants"
 import { GameAudio } from "./Audio"
-import type { BotGameApi } from "./BotController"
+import { BotController, type BotGameApi } from "./BotController"
 import { defaultConfig, type GameConfig } from "./config"
 import { Input } from "./Input"
 import { PlatformManager } from "./Platform"
@@ -57,6 +57,13 @@ export class Game implements BotGameApi {
   private canvas: HTMLCanvasElement
   private config: GameConfig
   private controller: FrameController | null = null
+  /** Perfect-seek autopilot used only as a silent main-menu backdrop. */
+  private menuDemoBot: BotController | null = null
+  /**
+   * When true, a bot run simulates under the title overlay.
+   * Demo score never commits to the player's high-score records.
+   */
+  private menuDemo = false
 
   private state: GameState = "menu"
   private started = false
@@ -106,7 +113,7 @@ export class Game implements BotGameApi {
   }
 
   get autoRestart(): boolean {
-    return this.config.autoRestart === true
+    return this.config.autoRestart === true || this.menuDemo
   }
 
   get mode(): GameConfig["mode"] {
@@ -206,8 +213,12 @@ export class Game implements BotGameApi {
   start(): void {
     this.sessionElapsed = 0
     this.sessionEnded = false
-    // Normal game opens on the main menu; bot/playable skip straight into a run.
-    this.resetRun(this.config.mode === "normal")
+    // Normal game opens on an attract-mode menu; bot/playable skip straight in.
+    if (this.config.mode === "normal") {
+      this.enterMenuDemo()
+    } else {
+      this.resetRun(false)
+    }
     this.running = true
     this.lastTime = performance.now()
     requestAnimationFrame((t) => this.frame(t))
@@ -221,7 +232,7 @@ export class Game implements BotGameApi {
   }
 
   private get botActive(): boolean {
-    return this.config.mode === "bot" && this.controller != null
+    return this.controller != null && (this.config.mode === "bot" || this.menuDemo)
   }
 
   private primaryPointer() {
@@ -301,12 +312,25 @@ export class Game implements BotGameApi {
     this.config.onSessionEnd?.()
   }
 
-  /** Leave the title menu and enter a playable ready state. */
+  /** Silent perfect-seek backdrop behind the main-menu overlay. */
+  private enterMenuDemo(): void {
+    this.menuDemo = true
+    this.audio.setMuted(true)
+    if (!this.menuDemoBot) {
+      this.menuDemoBot = new BotController("perfect-seek")
+    }
+    this.menuDemoBot.reset()
+    this.controller = this.menuDemoBot
+    this.resetRun(false)
+  }
+
+  /** Leave the title menu and enter a fresh playable ready state. */
   private beginFromMenu(): void {
+    this.menuDemo = false
+    this.controller = null
+    this.audio.setMuted(false)
     this.audio.unlock()
-    this.state = "ready"
-    this.started = false
-    this.aimPointerId = null
+    this.resetRun(false)
   }
 
   private syncAudioCombo(): void {
@@ -461,6 +485,15 @@ export class Game implements BotGameApi {
       this.controller.update(dt, this)
     }
 
+    // Attract-mode menu: any tap starts a real player run (fresh world).
+    if (this.menuDemo) {
+      const menuPresses = this.input.consumePresses()
+      this.input.consumeReleases()
+      if (menuPresses.length > 0) {
+        this.beginFromMenu()
+      }
+    }
+
     const ignoreHuman = this.botActive
     if (ignoreHuman) {
       this.input.consumePresses()
@@ -474,6 +507,7 @@ export class Game implements BotGameApi {
     }
 
     if (this.state === "menu") {
+      // Legacy idle menu (no attract demo). Tap still starts a run.
       if (presses.length > 0) {
         this.beginFromMenu()
       }
@@ -485,10 +519,14 @@ export class Game implements BotGameApi {
         this.endPlayableSession()
         return
       }
-      if (!this.botActive && presses.length > 0) {
-        this.resetRun(true)
+      if (this.menuDemo) {
+        // Bot restarts via controller calling restartRun().
+        return
       }
-      // Bot restarts via controller calling restartRun().
+      if (!this.botActive && presses.length > 0) {
+        this.enterMenuDemo()
+      }
+      // Full bot mode restarts via controller calling restartRun().
       return
     }
 
@@ -678,7 +716,10 @@ export class Game implements BotGameApi {
         this.ball.vy <= 0 &&
         this.ball.y < this.camera.killWorldY
       ) {
-        this.score.commitHighScore()
+        // Menu attract demo is visual-only — never touch player records.
+        if (!this.menuDemo) {
+          this.score.commitHighScore()
+        }
         this.audio.playGameOver()
         this.audio.resetFlight()
         this.state = "gameOver"
@@ -992,7 +1033,7 @@ export class Game implements BotGameApi {
     }
     this.renderer.drawBall(cam, this.ball)
 
-    if (this.state === "menu") {
+    if (this.menuDemo || this.state === "menu") {
       this.renderer.drawMainMenu(
         cam,
         this.score.highScore,
@@ -1041,7 +1082,12 @@ export class Game implements BotGameApi {
   }
 
   private tipForState(): string | null {
-    if (this.state === "menu" || this.state === "gameOver" || this.state === "adEnd") {
+    if (
+      this.menuDemo ||
+      this.state === "menu" ||
+      this.state === "gameOver" ||
+      this.state === "adEnd"
+    ) {
       return null
     }
     if (this.config.mode === "bot") return null

@@ -199,6 +199,8 @@ export const COLORS = {
   accent: "#2f6fed",
   wall: "rgba(0,0,0,0.03)",
   overlay: "rgba(255, 255, 255, 0.72)",
+  /** Lighter than game-over so attract-mode gameplay reads behind the title. */
+  menuOverlay: "rgba(255, 255, 255, 0.52)",
   portal: "#12b5a8",
   portalGlow: "rgba(18, 181, 168, 0.35)",
   portalCore: "#e6fffb",

@@ -741,7 +741,7 @@ export class Renderer {
     const cx = width / 2
     let y = camera.slingshotScreenY - 168
 
-    ctx.fillStyle = COLORS.overlay
+    ctx.fillStyle = COLORS.menuOverlay
     ctx.fillRect(0, 0, width, camera.killScreenY)
 
     ctx.textAlign = "center"
