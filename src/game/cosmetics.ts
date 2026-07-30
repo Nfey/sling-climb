@@ -19,6 +19,8 @@ export type BallStyle =
   | "football"
   | "golf"
   | "beach"
+  | "bowling"
+  | "volleyball"
   | "ruby"
   | "emerald"
   | "sapphire"
@@ -60,15 +62,17 @@ export const SLINGSHOT_VARIANTS: readonly SlingshotVariant[] = [
 
 /** Sports balls unlocked by lifetime best score (points). */
 export const POINTS_BALL_VARIANTS: readonly BallVariant[] = [
-  { id: "soccer", name: "Soccer", style: "soccer", unlock: { kind: "points", value: 500 } },
-  { id: "baseball", name: "Baseball", style: "baseball", unlock: { kind: "points", value: 1000 } },
-  { id: "wiffle", name: "Wiffle", style: "wiffle", unlock: { kind: "points", value: 1500 } },
-  { id: "tennis", name: "Tennis", style: "tennis", unlock: { kind: "points", value: 2000 } },
-  { id: "pingpong", name: "Ping Pong", style: "pingpong", unlock: { kind: "points", value: 2500 } },
-  { id: "basketball", name: "Basketball", style: "basketball", unlock: { kind: "points", value: 3500 } },
-  { id: "football", name: "Football", style: "football", unlock: { kind: "points", value: 5000 } },
-  { id: "golf", name: "Golf", style: "golf", unlock: { kind: "points", value: 7000 } },
-  { id: "beach", name: "Beach", style: "beach", unlock: { kind: "points", value: 10000 } },
+  { id: "soccer", name: "Soccer", style: "soccer", unlock: { kind: "points", value: 5_000 } },
+  { id: "baseball", name: "Baseball", style: "baseball", unlock: { kind: "points", value: 10_000 } },
+  { id: "wiffle", name: "Wiffle", style: "wiffle", unlock: { kind: "points", value: 20_000 } },
+  { id: "tennis", name: "Tennis", style: "tennis", unlock: { kind: "points", value: 30_000 } },
+  { id: "pingpong", name: "Ping Pong", style: "pingpong", unlock: { kind: "points", value: 40_000 } },
+  { id: "basketball", name: "Basketball", style: "basketball", unlock: { kind: "points", value: 50_000 } },
+  { id: "football", name: "Football", style: "football", unlock: { kind: "points", value: 100_000 } },
+  { id: "golf", name: "Golf", style: "golf", unlock: { kind: "points", value: 150_000 } },
+  { id: "beach", name: "Beach", style: "beach", unlock: { kind: "points", value: 200_000 } },
+  { id: "bowling", name: "Bowling", style: "bowling", unlock: { kind: "points", value: 250_000 } },
+  { id: "volleyball", name: "Volleyball", style: "volleyball", unlock: { kind: "points", value: 500_000 } },
 ]
 
 /** Gem & special balls unlocked by best climb height. */

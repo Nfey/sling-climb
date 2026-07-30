@@ -49,6 +49,12 @@ export function drawBallStyle(
     case "beach":
       drawBeachBall(ctx, radius)
       break
+    case "bowling":
+      drawBowlingBall(ctx, radius)
+      break
+    case "volleyball":
+      drawVolleyballBall(ctx, radius)
+      break
     case "ruby":
       drawGemBall(ctx, radius, "#fb7185", "#be123c", "#ffe4e6")
       break
@@ -258,6 +264,60 @@ function drawBeachBall(ctx: CanvasRenderingContext2D, radius: number): void {
   ctx.beginPath()
   ctx.arc(0, 0, radius, 0, Math.PI * 2)
   ctx.stroke()
+}
+
+function drawBowlingBall(ctx: CanvasRenderingContext2D, radius: number): void {
+  const grd = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, 1, 0, 0, radius)
+  grd.addColorStop(0, "#475569")
+  grd.addColorStop(0.55, "#1e293b")
+  grd.addColorStop(1, "#0f172a")
+  ctx.fillStyle = grd
+  ctx.beginPath()
+  ctx.arc(0, 0, radius, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = "#f8fafc"
+  const holes = [
+    [0, -radius * 0.35],
+    [-radius * 0.28, radius * 0.12],
+    [radius * 0.28, radius * 0.12],
+  ]
+  for (const [hx, hy] of holes) {
+    ctx.beginPath()
+    ctx.arc(hx, hy, radius * 0.11, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.strokeStyle = "rgba(255,255,255,0.15)"
+  ctx.lineWidth = 1.5
+  ctx.stroke()
+}
+
+function drawVolleyballBall(ctx: CanvasRenderingContext2D, radius: number): void {
+  drawClassicBall(ctx, radius, "#ffffff", "#f8fafc", "#e2e8f0")
+  ctx.strokeStyle = "#1d4ed8"
+  ctx.lineWidth = Math.max(1.2, radius * 0.09)
+  ctx.lineCap = "round"
+  const curves = [
+    [[-radius * 0.9, 0], [0, -radius * 0.85], [radius * 0.9, 0]],
+    [[-radius * 0.9, 0], [0, radius * 0.85], [radius * 0.9, 0]],
+    [[0, -radius * 0.9], [radius * 0.75, 0], [0, radius * 0.9], [-radius * 0.75, 0]],
+  ]
+  for (const pts of curves) {
+    ctx.beginPath()
+    if (pts.length === 3) {
+      ctx.moveTo(pts[0]![0], pts[0]![1])
+      ctx.quadraticCurveTo(pts[1]![0], pts[1]![1], pts[2]![0], pts[2]![1])
+    } else {
+      ctx.moveTo(pts[0]![0], pts[0]![1])
+      for (let i = 1; i < pts.length; i++) {
+        ctx.lineTo(pts[i]![0], pts[i]![1])
+      }
+    }
+    ctx.stroke()
+  }
+  ctx.fillStyle = "#facc15"
+  ctx.beginPath()
+  ctx.arc(0, -radius * 0.55, radius * 0.08, 0, Math.PI * 2)
+  ctx.fill()
 }
 
 function drawGemBall(
