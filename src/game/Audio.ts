@@ -9,6 +9,11 @@ const MAX_COMBO_FOR_PITCH = 12
 /** Climb height (world px) that maxes flight drama. */
 const CLIMB_FULL_SCALE = 1800
 
+/** Default gameplay master gain (0..1). */
+export const DEFAULT_MASTER_VOLUME = 0.55
+/** Main-menu attract demo — audible bot backdrop, slightly louder than gameplay. */
+export const MENU_DEMO_MASTER_VOLUME = 0.6
+
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n))
 }
@@ -17,8 +22,9 @@ export class GameAudio {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
   private unlocked = false
-  /** When true, skip SFX (menu attract demo). */
+  /** When true, skip all SFX and silence output. */
   private muted = false
+  private masterVolume = DEFAULT_MASTER_VOLUME
 
   /** Hits since last catch — driven by Score.combo. */
   private combo = 1
@@ -40,11 +46,23 @@ export class GameAudio {
    * AudioContext.resume() when deferred to requestAnimationFrame.
    * Safe to call repeatedly until the context is running.
    */
-  /** Silence all SFX (used by the main-menu attract demo). */
+  /** Silence all SFX and output. */
   setMuted(muted: boolean): void {
     this.muted = muted
     if (muted) this.resetFlight()
-    if (this.master) this.master.gain.value = muted ? 0 : 0.55
+    this.applyMasterGain()
+  }
+
+  /** Set master output gain (0..1). Respects mute. */
+  setMasterVolume(volume: number): void {
+    this.masterVolume = clamp(volume, 0, 1)
+    this.applyMasterGain()
+  }
+
+  private applyMasterGain(): void {
+    if (this.master) {
+      this.master.gain.value = this.muted ? 0 : this.masterVolume
+    }
   }
 
   unlock(): void {
@@ -84,7 +102,7 @@ export class GameAudio {
       if (!AC) return null
       this.ctx = new AC()
       this.master = this.ctx.createGain()
-      this.master.gain.value = this.muted ? 0 : 0.55
+      this.master.gain.value = this.muted ? 0 : this.masterVolume
       this.master.connect(this.ctx.destination)
     }
     return this.ctx
