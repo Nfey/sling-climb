@@ -7,12 +7,16 @@ import {
   SCORE_POPUP_RISE,
   SKY_ZONE_SPACING,
   SLINGSHOT_FORK_HEIGHT,
+  TURRET_BARREL_LENGTH,
+  TURRET_BARREL_WIDTH,
+  TURRET_BODY_RADIUS,
   skyZoneColor,
 } from "./constants"
 import type { Ball } from "./Ball"
 import type { Camera } from "./Camera"
 import type {
   ArrowPadData,
+  BallTrailNode,
   BulletData,
   BumperData,
   CoinData,
@@ -21,8 +25,10 @@ import type {
   PortalData,
   ScorePopup,
   ScreenRect,
+  TurretShotData,
   UpgradePickupData,
   Vec2,
+  WallTurretData,
 } from "./types"
 import type { Slingshot } from "./Slingshot"
 import type { BallStyle, BackgroundStyle, SlingshotStyle } from "./cosmetics"
@@ -417,6 +423,110 @@ export class Renderer {
     ctx.lineWidth = 2
     ctx.stroke()
     ctx.restore()
+  }
+
+  drawWallTurrets(camera: Camera, turrets: WallTurretData[], anim: number): void {
+    const ctx = this.ctx
+    for (const t of turrets) {
+      const centerX =
+        t.side === "left" ? TURRET_BODY_RADIUS : camera.width - TURRET_BODY_RADIUS
+      const s = camera.worldToScreen({ x: centerX, y: t.y })
+      if (s.y < -40 || s.y > camera.height + 40) continue
+
+      const r = TURRET_BODY_RADIUS
+      const cosA = Math.cos(t.aimAngle)
+      const sinA = Math.sin(t.aimAngle)
+      const inward = t.side === "left" ? 1 : -1
+
+      ctx.save()
+      ctx.translate(s.x, s.y)
+
+      // Half-circle body flush against the wall
+      ctx.fillStyle = COLORS.turret
+      ctx.strokeStyle = COLORS.turretRim
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      if (t.side === "left") {
+        ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2)
+      } else {
+        ctx.arc(0, 0, r, Math.PI / 2, (Math.PI * 3) / 2)
+      }
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+
+      // Barrel
+      const edgeX = inward * cosA * r
+      const edgeY = sinA * r
+      const tipX = edgeX + inward * cosA * TURRET_BARREL_LENGTH
+      const tipY = edgeY + sinA * TURRET_BARREL_LENGTH
+      const perpX = -sinA * (TURRET_BARREL_WIDTH * 0.5)
+      const perpY = cosA * (TURRET_BARREL_WIDTH * 0.5)
+
+      ctx.fillStyle = COLORS.turretBarrel
+      ctx.beginPath()
+      ctx.moveTo(edgeX + perpX, edgeY + perpY)
+      ctx.lineTo(edgeX - perpX, edgeY - perpY)
+      ctx.lineTo(tipX - perpX, tipY - perpY)
+      ctx.lineTo(tipX + perpX, tipY + perpY)
+      ctx.closePath()
+      ctx.fill()
+      ctx.strokeStyle = COLORS.turretRim
+      ctx.stroke()
+
+      // Muzzle glow when near firing
+      if (t.fireCooldown < 0.25) {
+        ctx.fillStyle = COLORS.turretShot
+        ctx.globalAlpha = 0.35 + Math.sin(anim * 18) * 0.15
+        ctx.beginPath()
+        ctx.arc(tipX, tipY, 4.5, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
+      ctx.restore()
+    }
+  }
+
+  drawTurretShots(camera: Camera, shots: TurretShotData[]): void {
+    const ctx = this.ctx
+    for (const shot of shots) {
+      const s = camera.worldToScreen({ x: shot.x, y: shot.y })
+      if (s.y < -20 || s.y > camera.height + 20) continue
+      ctx.save()
+      const grd = ctx.createRadialGradient(
+        s.x - 1,
+        s.y - 1,
+        0.5,
+        s.x,
+        s.y,
+        shot.radius,
+      )
+      grd.addColorStop(0, COLORS.turretShotCore)
+      grd.addColorStop(1, COLORS.turretShot)
+      ctx.fillStyle = grd
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, shot.radius, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+    }
+  }
+
+  drawBallTrails(camera: Camera, trails: BallTrailNode[]): void {
+    const ctx = this.ctx
+    for (const node of trails) {
+      const s = camera.worldToScreen({ x: node.x, y: node.y })
+      if (s.y < -20 || s.y > camera.height + 20) continue
+      ctx.save()
+      ctx.fillStyle = COLORS.ballTrailGlow
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, node.radius + 2, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = COLORS.ballTrail
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, node.radius, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+    }
   }
 
   drawSlingshot(

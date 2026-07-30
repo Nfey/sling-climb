@@ -82,6 +82,27 @@ export const PORTAL_HEIGHT = 96
 /** Vertical gap between successive staggered portals. */
 export const PORTAL_MIN_GAP = 140
 export const PORTAL_MAX_GAP = 240
+
+/** Rare wall-mounted cannon that sweeps and fires slow shots. */
+export const TURRET_CHANCE = 0.06
+export const TURRET_MIN_GAP = 420
+export const TURRET_MAX_GAP = 720
+export const TURRET_BODY_RADIUS = 22
+export const TURRET_BARREL_LENGTH = 30
+export const TURRET_BARREL_WIDTH = 8
+/** Barrel sweep speed (radians per second). */
+export const TURRET_AIM_SPEED = 0.55
+/** Half of the vertical sweep arc (radians). */
+export const TURRET_AIM_ARC = Math.PI * 0.38
+export const TURRET_FIRE_INTERVAL_MIN = 2.4
+export const TURRET_FIRE_INTERVAL_MAX = 4.2
+export const TURRET_SHOT_SPEED = 175
+export const TURRET_SHOT_RADIUS = 7
+/** Seconds the ball leaves collidable trail nodes after a turret hit. */
+export const BALL_TRAIL_DURATION = 1
+export const BALL_TRAIL_NODE_RADIUS = 11
+/** Minimum world-space spacing between deposited trail nodes. */
+export const BALL_TRAIL_SPACING = 9
 /** Speed multiplier applied to the ball when exiting a portal (0–1). */
 export const PORTAL_SPEED_DAMPING = 0.85
 /** Base world-Y speed for camera catch-up after launches / POW (px/s). */
@@ -260,6 +281,13 @@ export const COLORS = {
   milestoneLinePassed: "#16a34a",
   heightMarker: "rgba(17, 17, 17, 0.22)",
   heightMarkerLabel: "rgba(17, 17, 17, 0.45)",
+  turret: "#64748b",
+  turretRim: "#334155",
+  turretBarrel: "#475569",
+  turretShot: "#ef4444",
+  turretShotCore: "#fecaca",
+  ballTrail: "#dc2626",
+  ballTrailGlow: "rgba(220, 38, 38, 0.35)",
 }
 
 /**

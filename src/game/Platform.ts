@@ -27,6 +27,12 @@ import {
   PORTAL_HEIGHT,
   PORTAL_MAX_GAP,
   PORTAL_MIN_GAP,
+  TURRET_BODY_RADIUS,
+  TURRET_CHANCE,
+  TURRET_FIRE_INTERVAL_MAX,
+  TURRET_FIRE_INTERVAL_MIN,
+  TURRET_MAX_GAP,
+  TURRET_MIN_GAP,
   BULLET_PICKUP_SHARE,
   DUAL_PICKUP_SHARE,
   FREE_MOVE_PICKUP_SHARE,
@@ -45,6 +51,7 @@ import type {
   PlatformKind,
   PortalData,
   UpgradePickupData,
+  WallTurretData,
 } from "./types"
 
 function rand(min: number, max: number): number {
@@ -68,6 +75,7 @@ export class PlatformManager {
   arrowPads: ArrowPadData[] = []
   upgrades: UpgradePickupData[] = []
   coins: CoinData[] = []
+  turrets: WallTurretData[] = []
   private nextY = 0
   private nextPortalY = 0
   private nextPortalSide: "left" | "right" = "left"
@@ -75,6 +83,8 @@ export class PlatformManager {
   private nextArrowY = 0
   private nextUpgradeY = 0
   private nextCoinY = 0
+  private nextTurretY = 0
+  private nextTurretSide: "left" | "right" = "left"
   private worldWidth = 390
   private coinChance = COIN_CHANCE
 
@@ -91,6 +101,7 @@ export class PlatformManager {
     this.arrowPads = []
     this.upgrades = []
     this.coins = []
+    this.turrets = []
     this.nextY = slingshotY + 80
     this.nextPortalY = slingshotY + 280
     this.nextPortalSide = Math.random() < 0.5 ? "left" : "right"
@@ -98,6 +109,8 @@ export class PlatformManager {
     this.nextArrowY = slingshotY + 240
     this.nextUpgradeY = slingshotY + 360
     this.nextCoinY = slingshotY + 160
+    this.nextTurretY = slingshotY + 520
+    this.nextTurretSide = Math.random() < 0.5 ? "left" : "right"
     this.spawnInitial(slingshotY)
   }
 
@@ -130,6 +143,9 @@ export class PlatformManager {
     }
     while (this.nextCoinY < slingshotY + 1400) {
       this.maybeSpawnCoin()
+    }
+    while (this.nextTurretY < slingshotY + 1400) {
+      this.maybeSpawnTurret()
     }
   }
 
@@ -307,6 +323,21 @@ export class PlatformManager {
     this.nextCoinY += rand(COIN_MIN_GAP, COIN_MAX_GAP)
   }
 
+  private maybeSpawnTurret(): void {
+    if (Math.random() < TURRET_CHANCE) {
+      this.turrets.push({
+        side: this.nextTurretSide,
+        y: this.nextTurretY,
+        aimAngle: 0,
+        phase: 0,
+        phaseOffset: Math.random() * Math.PI * 2,
+        fireCooldown: rand(TURRET_FIRE_INTERVAL_MIN, TURRET_FIRE_INTERVAL_MAX),
+      })
+      this.nextTurretSide = this.nextTurretSide === "left" ? "right" : "left"
+    }
+    this.nextTurretY += rand(TURRET_MIN_GAP, TURRET_MAX_GAP)
+  }
+
   /**
    * Generate ahead of the camera and cull anything at/below the kill line
    * so platforms (and other props) never appear in the dead zone.
@@ -333,6 +364,9 @@ export class PlatformManager {
     while (this.nextCoinY < topNeeded) {
       this.maybeSpawnCoin()
     }
+    while (this.nextTurretY < topNeeded) {
+      this.maybeSpawnTurret()
+    }
 
     this.platforms = this.platforms.filter(
       (p) => p.active !== false && p.y + p.height > killWorldY,
@@ -342,5 +376,8 @@ export class PlatformManager {
     this.arrowPads = this.arrowPads.filter((a) => a.y + a.radius > killWorldY)
     this.upgrades = this.upgrades.filter((u) => u.y + u.radius > killWorldY)
     this.coins = this.coins.filter((c) => c.y + c.radius > killWorldY)
+    this.turrets = this.turrets.filter(
+      (t) => t.y + TURRET_BODY_RADIUS > killWorldY,
+    )
   }
 }

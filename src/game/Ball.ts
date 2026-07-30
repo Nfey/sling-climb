@@ -2,6 +2,9 @@ import {
   ARROW_PAD_SPEED,
   BALL_RADIUS,
   BALL_SPIN_SCALE,
+  BALL_TRAIL_DURATION,
+  BALL_TRAIL_NODE_RADIUS,
+  BALL_TRAIL_SPACING,
   BUMPER_KNOCK,
   GRAVITY,
   PLATFORM_BOOST,
@@ -13,11 +16,13 @@ import {
 } from "./constants"
 import type {
   ArrowPadData,
+  BallTrailNode,
   BumperData,
   CardinalDir,
   CoinData,
   PlatformData,
   PortalData,
+  TurretShotData,
   UpgradePickupData,
   Vec2,
 } from "./types"
@@ -45,6 +50,8 @@ export interface BallUpdateResult {
   /** Arrow pad consumed this frame. */
   arrowHit: boolean
   arrowAt: Vec2 | null
+  /** Turret shot hit this frame — ball leaves a collidable trail. */
+  turretHit: boolean
 }
 
 /** Unit vectors for 8 cardinal dirs in world space (Y up). */
@@ -77,6 +84,10 @@ export class Ball {
   private stuckPlatformKey = ""
   /** Bumper keys currently overlapping — used to SFX/score only on enter. */
   private bumperOverlaps = new Set<string>()
+  /** Seconds remaining to deposit collidable trail nodes. */
+  trailRemaining = 0
+  private lastTrailX = 0
+  private lastTrailY = 0
 
   reset(x: number, y: number): void {
     this.x = x
@@ -89,6 +100,7 @@ export class Ball {
     this.spin = 0
     this.clearStuckTracking()
     this.bumperOverlaps.clear()
+    this.trailRemaining = 0
   }
 
   /** Spawn as a flying purple bonus ball. */
@@ -103,6 +115,7 @@ export class Ball {
     this.spin = 0
     this.clearStuckTracking()
     this.bumperOverlaps.clear()
+    this.trailRemaining = 0
   }
 
   launch(velocity: Vec2): void {
@@ -112,6 +125,7 @@ export class Ball {
     this.squash = 1
     this.clearStuckTracking()
     this.bumperOverlaps.clear()
+    this.trailRemaining = 0
   }
 
   catchAt(x: number, y: number): void {
@@ -124,6 +138,7 @@ export class Ball {
     this.spin = 0
     this.clearStuckTracking()
     this.bumperOverlaps.clear()
+    this.trailRemaining = 0
   }
 
   private updateSpin(dt: number): void {
@@ -249,6 +264,60 @@ export class Ball {
     return { hit: false, at: null }
   }
 
+  private collideTurretShots(shots: TurretShotData[]): boolean {
+    for (let i = shots.length - 1; i >= 0; i--) {
+      const shot = shots[i]!
+      const dist = Math.hypot(this.x - shot.x, this.y - shot.y)
+      if (dist >= this.radius + shot.radius) continue
+      shots.splice(i, 1)
+      this.trailRemaining = BALL_TRAIL_DURATION
+      this.lastTrailX = this.x
+      this.lastTrailY = this.y
+      this.squash = 0.7
+      return true
+    }
+    return false
+  }
+
+  private collideTrailNodes(trails: BallTrailNode[]): void {
+    for (const node of trails) {
+      const dx = this.x - node.x
+      const dy = this.y - node.y
+      const dist = Math.hypot(dx, dy)
+      const minDist = this.radius + node.radius
+      if (dist >= minDist || dist < 0.0001) continue
+
+      const nx = dx / dist
+      const ny = dy / dist
+      this.x = node.x + nx * minDist
+      this.y = node.y + ny * minDist
+
+      const into = this.vx * nx + this.vy * ny
+      if (into < 0) {
+        this.vx -= 2 * into * nx
+        this.vy -= 2 * into * ny
+      }
+      this.vx += nx * BUMPER_KNOCK * 0.45
+      this.vy += ny * BUMPER_KNOCK * 0.45
+      this.squash = 0.55
+    }
+  }
+
+  private depositTrail(trails: BallTrailNode[], dt: number): void {
+    if (this.trailRemaining <= 0) return
+    this.trailRemaining = Math.max(0, this.trailRemaining - dt)
+    const distFromLast = Math.hypot(this.x - this.lastTrailX, this.y - this.lastTrailY)
+    if (distFromLast >= BALL_TRAIL_SPACING) {
+      trails.push({
+        x: this.x,
+        y: this.y,
+        radius: BALL_TRAIL_NODE_RADIUS,
+      })
+      this.lastTrailX = this.x
+      this.lastTrailY = this.y
+    }
+  }
+
   /**
    * World Y increases upward. Constant gravity only — no air drag —
    * so arcs stay parabolic and horizontal momentum is preserved.
@@ -262,6 +331,8 @@ export class Ball {
     arrowPads: ArrowPadData[],
     upgrades: UpgradePickupData[],
     coins: CoinData[],
+    turretShots: TurretShotData[],
+    trailNodes: BallTrailNode[],
   ): BallUpdateResult {
     const result: BallUpdateResult = {
       bonusCollected: false,
@@ -276,6 +347,7 @@ export class Ball {
       bumperAt: null,
       arrowHit: false,
       arrowAt: null,
+      turretHit: false,
     }
     if (this.inSlingshot) {
       this.squash = Math.max(0, this.squash - dt * 3)
@@ -317,6 +389,9 @@ export class Ball {
     const arrow = this.collideArrowPads(arrowPads)
     result.arrowHit = arrow.hit
     result.arrowAt = arrow.at
+    result.turretHit = this.collideTurretShots(turretShots)
+    this.collideTrailNodes(trailNodes)
+    this.depositTrail(trailNodes, dt)
 
     // Only the player ball collects pickups and coins
     if (!this.isBonus) {
