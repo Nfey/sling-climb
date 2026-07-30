@@ -102,6 +102,19 @@ export function findBallVariant(id: string): BallVariant | undefined {
   return BALL_VARIANTS.find((v) => v.id === id)
 }
 
+export function formatUnlockThreshold(value: number): string {
+  if (value >= 1000) {
+    const k = value / 1000
+    return Number.isInteger(k) ? `${k}k` : `${k.toFixed(1)}k`
+  }
+  return String(Math.round(value))
+}
+
+export function ballUnlockHint(variant: BallVariant): string {
+  const label = formatUnlockThreshold(variant.unlock.value)
+  return variant.unlock.kind === "points" ? `${label} score` : `${label} height`
+}
+
 export function findSlingshotVariant(id: string): SlingshotVariant | undefined {
   return SLINGSHOT_VARIANTS.find((v) => v.id === id)
 }
@@ -212,6 +225,13 @@ export class CosmeticsStore {
   getSelectedBallVariant(): BallVariant | null {
     if (this.equippedBallId === DEFAULT_COSMETIC_ID) return null
     return findBallVariant(this.equippedBallId) ?? null
+  }
+
+  /** Short label for a locked ball's unlock requirement. */
+  getSelectedBallUnlockHint(): string | null {
+    const variant = this.getSelectedBallVariant()
+    if (!variant) return null
+    return ballUnlockHint(variant)
   }
 
   isSlingshotSelectionLocked(): boolean {

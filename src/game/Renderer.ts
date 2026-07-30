@@ -784,6 +784,7 @@ export class Renderer {
     slingshotLocked: boolean,
     ballLocked: boolean,
     slingshotPrice: number | null,
+    ballUnlockHint: string | null,
   ): MainMenuHitAreas {
     const ctx = this.ctx
     const { width, height } = camera
@@ -912,6 +913,7 @@ export class Renderer {
       ballStyle,
       ballLocked,
       this.time,
+      ballLocked ? ballUnlockHint : null,
     )
 
     let buySlingshot: ScreenRect | null = null
@@ -1113,6 +1115,7 @@ function drawCornerVariantPicker(
   style: SlingshotStyle | BallStyle,
   locked: boolean,
   time: number,
+  unlockHint: string | null = null,
 ): { prev: ScreenRect; next: ScreenRect; icon: ScreenRect } {
   ctx.fillStyle = "rgba(255, 255, 255, 0.78)"
   ctx.beginPath()
@@ -1146,7 +1149,7 @@ function drawCornerVariantPicker(
   ctx.restore()
 
   if (locked) {
-    drawLockOverlay(ctx, icon.x + 2, icon.y + 2, icon.w - 4, h - 4)
+    drawLockOverlay(ctx, icon.x + 2, icon.y + 2, icon.w - 4, h - 4, unlockHint)
   }
 
   return { prev, next, icon }
@@ -1158,6 +1161,7 @@ function drawLockOverlay(
   y: number,
   w: number,
   h: number,
+  hint: string | null = null,
 ): void {
   ctx.save()
   ctx.fillStyle = "rgba(255, 255, 255, 0.62)"
@@ -1166,7 +1170,7 @@ function drawLockOverlay(
   ctx.fill()
 
   const cx = x + w / 2
-  const cy = y + h / 2
+  const lockY = hint ? y + h * 0.38 : y + h / 2
   const lockColor = "rgba(100, 116, 139, 0.92)"
 
   ctx.strokeStyle = lockColor
@@ -1175,12 +1179,20 @@ function drawLockOverlay(
   ctx.lineCap = "round"
 
   ctx.beginPath()
-  ctx.arc(cx, cy - 3, 6, Math.PI, 0)
+  ctx.arc(cx, lockY - 3, 6, Math.PI, 0)
   ctx.stroke()
 
   ctx.beginPath()
-  roundRect(ctx, cx - 8, cy - 1, 16, 13, 3)
+  roundRect(ctx, cx - 8, lockY - 1, 16, 13, 3)
   ctx.fill()
+
+  if (hint) {
+    ctx.fillStyle = "rgba(51, 65, 85, 0.95)"
+    ctx.font = "700 9px 'DM Sans', sans-serif"
+    ctx.textAlign = "center"
+    ctx.textBaseline = "bottom"
+    ctx.fillText(hint, cx, y + h - 4)
+  }
 
   ctx.restore()
 }

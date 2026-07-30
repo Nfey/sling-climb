@@ -1119,6 +1119,7 @@ export class Game implements BotGameApi {
 
     if (this.menuDemo || this.state === "menu") {
       const slingshotLocked = this.cosmetics.isSlingshotSelectionLocked()
+      const ballLocked = this.cosmetics.isBallSelectionLocked(bestHeight, highScore)
 
       this.menuHitAreas = this.renderer.drawMainMenu(
         cam,
@@ -1129,8 +1130,9 @@ export class Game implements BotGameApi {
         this.cosmetics.getSelectedSlingshotStyle(),
         this.cosmetics.getSelectedBallStyle(),
         slingshotLocked,
-        this.cosmetics.isBallSelectionLocked(bestHeight, highScore),
+        ballLocked,
         slingshotLocked ? this.cosmetics.previewSlingshotPrice() : null,
+        ballLocked ? this.cosmetics.getSelectedBallUnlockHint() : null,
       )
       return
     }
