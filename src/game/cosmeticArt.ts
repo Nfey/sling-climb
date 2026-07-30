@@ -127,25 +127,123 @@ function drawSoccerBall(ctx: CanvasRenderingContext2D, radius: number): void {
 }
 
 function drawBaseball(ctx: CanvasRenderingContext2D, radius: number): void {
-  drawClassicBall(ctx, radius, "#ffffff", "#f8fafc", "#e2e8f0")
+  const r = radius
 
-  // Two deep quarter-circle seams hugging the ball edge:
-  //   • left center (9 o'clock) → top center (12 o'clock)
-  //   • bottom center (6 o'clock) → right center (3 o'clock)
-  const seamR = radius * 0.96
+  // Base leather
+  ctx.fillStyle = "#ffffff"
+  ctx.beginPath()
+  ctx.arc(0, 0, r, 0, Math.PI * 2)
+  ctx.fill()
 
-  ctx.strokeStyle = "#dc2626"
-  ctx.lineWidth = Math.max(1.5, radius * 0.1)
+  // Bottom-left interior shadow
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(0, 0, r * 0.98, 0, Math.PI * 2)
+  ctx.clip()
+  ctx.fillStyle = "rgba(100, 116, 139, 0.32)"
+  ctx.beginPath()
+  ctx.arc(-r * 0.12, r * 0.18, r * 0.88, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+
+  // Thick outer outline
+  ctx.strokeStyle = "#111827"
+  ctx.lineWidth = Math.max(2, r * 0.11)
+  ctx.beginPath()
+  ctx.arc(0, 0, r, 0, Math.PI * 2)
+  ctx.stroke()
+
+  // Inward-bowing quarter arcs: endpoints on the ball edge, curve dips toward center
+  drawBaseballSeam(ctx, r, -r, -r, r, Math.PI / 2, 0, true)
+  drawBaseballSeam(ctx, r, r, r, r, Math.PI, -Math.PI / 2, false)
+}
+
+function drawBaseballSeam(
+  ctx: CanvasRenderingContext2D,
+  ballR: number,
+  cx: number,
+  cy: number,
+  sr: number,
+  a0: number,
+  a1: number,
+  ccw: boolean,
+): void {
+  const stitchCount = Math.max(10, Math.round(ballR * 0.38))
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(0, 0, ballR * 0.99, 0, Math.PI * 2)
+  ctx.clip()
+
+  // Leather dimples on the convex (outer) side of the seam
+  ctx.strokeStyle = "rgba(148, 163, 184, 0.45)"
+  ctx.lineWidth = Math.max(1.2, ballR * 0.05)
   ctx.lineCap = "round"
-  ctx.lineJoin = "round"
+  for (let i = 0; i <= stitchCount; i++) {
+    const t = i / stitchCount
+    const a = seamArcAngle(a0, a1, t, ccw)
+    const px = cx + sr * Math.cos(a)
+    const py = cy + sr * Math.sin(a)
+    const dist = Math.hypot(px, py) || 1
+    const ox = px + (px / dist) * ballR * 0.055
+    const oy = py + (py / dist) * ballR * 0.055
+    const tangent = a + (ccw ? Math.PI / 2 : -Math.PI / 2)
+    ctx.beginPath()
+    ctx.arc(ox, oy, ballR * 0.045, tangent - 0.55, tangent + 0.55)
+    ctx.stroke()
+  }
 
+  // Dark thread spine
+  ctx.strokeStyle = "#475569"
+  ctx.lineWidth = Math.max(1, ballR * 0.035)
   ctx.beginPath()
-  ctx.arc(0, 0, seamR, Math.PI, -Math.PI / 2, true)
+  ctx.arc(cx, cy, sr, a0, a1, ccw)
   ctx.stroke()
 
-  ctx.beginPath()
-  ctx.arc(0, 0, seamR, Math.PI / 2, 0, true)
-  ctx.stroke()
+  // Red chevron stitches
+  for (let i = 0; i <= stitchCount; i++) {
+    const t = i / stitchCount
+    const a = seamArcAngle(a0, a1, t, ccw)
+    const px = cx + sr * Math.cos(a)
+    const py = cy + sr * Math.sin(a)
+    const tangent = a + (ccw ? Math.PI / 2 : -Math.PI / 2)
+    drawBaseballStitch(ctx, px, py, tangent, ballR)
+  }
+
+  ctx.restore()
+}
+
+function seamArcAngle(a0: number, a1: number, t: number, ccw: boolean): number {
+  let delta = a1 - a0
+  if (ccw) {
+    if (delta > 0) delta -= Math.PI * 2
+  } else if (delta < 0) {
+    delta += Math.PI * 2
+  }
+  return a0 + t * delta
+}
+
+function drawBaseballStitch(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  tangent: number,
+  ballR: number,
+): void {
+  const arm = ballR * 0.075
+  const spread = ballR * 0.045
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(tangent)
+  ctx.fillStyle = "#dc2626"
+  for (const side of [-1, 1]) {
+    ctx.beginPath()
+    ctx.moveTo(0, 0)
+    ctx.quadraticCurveTo(side * spread, -arm * 0.35, side * spread * 0.55, -arm)
+    ctx.quadraticCurveTo(side * spread * 0.2, -arm * 0.55, 0, 0)
+    ctx.fill()
+  }
+  ctx.restore()
 }
 
 function drawWiffleBall(ctx: CanvasRenderingContext2D, radius: number): void {
