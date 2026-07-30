@@ -25,7 +25,14 @@ import type {
   Vec2,
 } from "./types"
 import type { Slingshot } from "./Slingshot"
-import type { BallSkin, SlingshotSkin } from "./cosmetics"
+import type { BallStyle, SlingshotStyle } from "./cosmetics"
+import {
+  drawBallStyle,
+  drawSlingshotBands,
+  drawSlingshotFork,
+  drawSlingshotIconStyle,
+  slingshotAccentColor,
+} from "./cosmeticArt"
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D
@@ -398,7 +405,7 @@ export class Renderer {
     pouch: Vec2 | null,
     pulse = 0,
     style: "normal" | "freeMove" | "pow" = "normal",
-    skin?: SlingshotSkin,
+    cosmeticStyle: SlingshotStyle = "classic",
   ): void {
     const ctx = this.ctx
     const base = camera.worldToScreen(sling.base)
@@ -408,15 +415,13 @@ export class Renderer {
     const pouchScreen = pouch ? camera.worldToScreen(pouch) : rest
     const freeMove = style === "freeMove"
     const pow = style === "pow"
-    const body = pow ? COLORS.powPickup : skin?.body ?? COLORS.slingshot
-    const band = pow ? "#991b1b" : skin?.band ?? COLORS.band
+    const slingStyle = pow || freeMove ? "classic" : cosmeticStyle
     const glow = freeMove
       ? COLORS.freeMovePickup
       : pow
         ? COLORS.powPickup
-        : skin?.accent ?? COLORS.accent
+        : slingshotAccentColor(slingStyle, this.time)
 
-    // Soft glow when ready to catch / holding / powered
     if (pulse > 0 || freeMove || pow) {
       ctx.save()
       ctx.globalAlpha = freeMove || pow
@@ -429,47 +434,46 @@ export class Renderer {
       ctx.restore()
     }
 
-    // Post
-    ctx.strokeStyle = body
-    ctx.lineWidth = 10
-    ctx.lineCap = "round"
-    ctx.lineJoin = "round"
-    ctx.beginPath()
-    ctx.moveTo(base.x, base.y + SLINGSHOT_FORK_HEIGHT * 0.2)
-    ctx.lineTo(rest.x, rest.y + 6)
-    ctx.stroke()
+    const geom = {
+      base: { x: base.x, y: base.y + SLINGSHOT_FORK_HEIGHT * 0.2 },
+      left: { x: left.x, y: left.y },
+      right: { x: right.x, y: right.y },
+      rest: { x: rest.x, y: rest.y },
+    }
 
-    // Fork arms
-    ctx.lineWidth = 8
-    ctx.beginPath()
-    ctx.moveTo(left.x, left.y)
-    ctx.lineTo(rest.x, rest.y + 4)
-    ctx.lineTo(right.x, right.y)
-    ctx.stroke()
+    if (pow) {
+      drawSlingshotFork(ctx, geom, "crimson", this.time, 10, 8)
+    } else {
+      drawSlingshotFork(ctx, geom, slingStyle, this.time, 10, 8)
+    }
 
-    // Rubber bands
-    ctx.strokeStyle = band
-    ctx.lineWidth = 3.5
-    ctx.beginPath()
-    ctx.moveTo(left.x, left.y)
-    ctx.quadraticCurveTo(
-      (left.x + pouchScreen.x) * 0.5,
-      (left.y + pouchScreen.y) * 0.5 + 6,
-      pouchScreen.x,
-      pouchScreen.y,
-    )
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.moveTo(right.x, right.y)
-    ctx.quadraticCurveTo(
-      (right.x + pouchScreen.x) * 0.5,
-      (right.y + pouchScreen.y) * 0.5 + 6,
-      pouchScreen.x,
-      pouchScreen.y,
-    )
-    ctx.stroke()
+    if (!pow) {
+      drawSlingshotBands(
+        ctx,
+        left,
+        right,
+        pouchScreen,
+        slingStyle,
+        this.time,
+        3.5,
+      )
+    } else {
+      ctx.strokeStyle = "#991b1b"
+      ctx.lineWidth = 3.5
+      ctx.lineCap = "round"
+      for (const tip of [left, right]) {
+        ctx.beginPath()
+        ctx.moveTo(tip.x, tip.y)
+        ctx.quadraticCurveTo(
+          (tip.x + pouchScreen.x) * 0.5,
+          (tip.y + pouchScreen.y) * 0.5 + 6,
+          pouchScreen.x,
+          pouchScreen.y,
+        )
+        ctx.stroke()
+      }
+    }
 
-    // Movement guide — follows the slingshot (important during free-move)
     ctx.save()
     ctx.globalAlpha = freeMove ? 0.28 : pow ? 0.26 : 0.2
     ctx.strokeStyle = freeMove
@@ -572,7 +576,7 @@ export class Renderer {
     ctx.globalAlpha = 1
   }
 
-  drawBall(camera: Camera, ball: Ball, skin?: BallSkin): void {
+  drawBall(camera: Camera, ball: Ball, ballStyle: BallStyle = "classic"): void {
     const ctx = this.ctx
     const s = camera.worldToScreen({ x: ball.x, y: ball.y })
     const squash = ball.squash
@@ -583,29 +587,21 @@ export class Renderer {
     ctx.translate(s.x, s.y)
     ctx.scale(scaleX, scaleY)
 
-    const grd = ctx.createRadialGradient(-4, -5, 2, 0, 0, ball.radius)
     if (ball.isBonus) {
+      const grd = ctx.createRadialGradient(-4, -5, 2, 0, 0, ball.radius)
       grd.addColorStop(0, "#f5f3ff")
       grd.addColorStop(0.55, COLORS.ballPurple)
       grd.addColorStop(1, COLORS.ballPurpleStroke)
+      ctx.fillStyle = grd
+      ctx.beginPath()
+      ctx.arc(0, 0, ball.radius, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = "rgba(76, 29, 149, 0.35)"
+      ctx.lineWidth = 2
+      ctx.stroke()
     } else {
-      const highlight = skin?.highlight ?? "#fff6dd"
-      const fill = skin?.fill ?? COLORS.ball
-      const stroke = skin?.stroke ?? COLORS.ballStroke
-      grd.addColorStop(0, highlight)
-      grd.addColorStop(0.55, fill)
-      grd.addColorStop(1, stroke)
+      drawBallStyle(ctx, ballStyle, ball.radius, this.time)
     }
-    ctx.fillStyle = grd
-    ctx.beginPath()
-    ctx.arc(0, 0, ball.radius, 0, Math.PI * 2)
-    ctx.fill()
-
-    ctx.strokeStyle = ball.isBonus
-      ? "rgba(76, 29, 149, 0.35)"
-      : skin?.strokeAlpha ?? "rgba(90, 60, 30, 0.25)"
-    ctx.lineWidth = 2
-    ctx.stroke()
     ctx.restore()
   }
 
@@ -783,8 +779,8 @@ export class Renderer {
     bestHeight: number,
     lifetimeCoins: number,
     anim: number,
-    slingshotIconSkin: SlingshotSkin,
-    ballIconSkin: BallSkin,
+    slingshotStyle: SlingshotStyle,
+    ballStyle: BallStyle,
     slingshotLocked: boolean,
     ballLocked: boolean,
     slingshotPrice: number | null,
@@ -899,8 +895,9 @@ export class Renderer {
       arrowW,
       iconBox,
       "slingshot",
-      slingshotIconSkin,
+      slingshotStyle,
       slingshotLocked,
+      this.time,
     )
 
     const ballRow = drawCornerVariantPicker(
@@ -912,8 +909,9 @@ export class Renderer {
       arrowW,
       iconBox,
       "ball",
-      ballIconSkin,
+      ballStyle,
       ballLocked,
+      this.time,
     )
 
     let buySlingshot: ScreenRect | null = null
@@ -1112,8 +1110,9 @@ function drawCornerVariantPicker(
   arrowW: number,
   iconBox: number,
   kind: "slingshot" | "ball",
-  skin: SlingshotSkin | BallSkin,
+  style: SlingshotStyle | BallStyle,
   locked: boolean,
+  time: number,
 ): { prev: ScreenRect; next: ScreenRect; icon: ScreenRect } {
   ctx.fillStyle = "rgba(255, 255, 255, 0.78)"
   ctx.beginPath()
@@ -1137,87 +1136,20 @@ function drawCornerVariantPicker(
   const iconCx = icon.x + icon.w / 2
   const iconCy = icon.y + h / 2
 
+  ctx.save()
+  ctx.translate(iconCx, iconCy)
   if (kind === "slingshot") {
-    drawSlingshotIcon(ctx, iconCx, iconCy, iconBox * 0.72, skin as SlingshotSkin)
+    drawSlingshotIconStyle(ctx, 0, 0, iconBox * 0.72, style as SlingshotStyle, time)
   } else {
-    drawBallIcon(ctx, iconCx, iconCy, iconBox * 0.32, skin as BallSkin)
+    drawBallStyle(ctx, style as BallStyle, iconBox * 0.32, time)
   }
+  ctx.restore()
 
   if (locked) {
     drawLockOverlay(ctx, icon.x + 2, icon.y + 2, icon.w - 4, h - 4)
   }
 
   return { prev, next, icon }
-}
-
-function drawSlingshotIcon(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  size: number,
-  skin: SlingshotSkin,
-): void {
-  const w = size * 0.88
-  const h = size
-
-  ctx.save()
-  ctx.lineCap = "round"
-  ctx.lineJoin = "round"
-
-  ctx.strokeStyle = skin.body
-  ctx.lineWidth = Math.max(2.5, size * 0.11)
-  ctx.beginPath()
-  ctx.moveTo(cx, cy + h * 0.32)
-  ctx.lineTo(cx, cy - h * 0.02)
-  ctx.stroke()
-
-  ctx.beginPath()
-  ctx.moveTo(cx - w * 0.42, cy - h * 0.22)
-  ctx.lineTo(cx, cy - h * 0.02)
-  ctx.lineTo(cx + w * 0.42, cy - h * 0.22)
-  ctx.stroke()
-
-  ctx.strokeStyle = skin.band
-  ctx.lineWidth = Math.max(1.5, size * 0.055)
-  ctx.beginPath()
-  ctx.moveTo(cx - w * 0.36, cy - h * 0.18)
-  ctx.quadraticCurveTo(cx, cy + h * 0.1, cx, cy + h * 0.14)
-  ctx.stroke()
-  ctx.beginPath()
-  ctx.moveTo(cx + w * 0.36, cy - h * 0.18)
-  ctx.quadraticCurveTo(cx, cy + h * 0.1, cx, cy + h * 0.14)
-  ctx.stroke()
-
-  ctx.restore()
-}
-
-function drawBallIcon(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  radius: number,
-  skin: BallSkin,
-): void {
-  ctx.save()
-  const grd = ctx.createRadialGradient(
-    cx - radius * 0.35,
-    cy - radius * 0.4,
-    1,
-    cx,
-    cy,
-    radius,
-  )
-  grd.addColorStop(0, skin.highlight)
-  grd.addColorStop(0.55, skin.fill)
-  grd.addColorStop(1, skin.stroke)
-  ctx.fillStyle = grd
-  ctx.beginPath()
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.strokeStyle = skin.strokeAlpha
-  ctx.lineWidth = 1.5
-  ctx.stroke()
-  ctx.restore()
 }
 
 function drawLockOverlay(

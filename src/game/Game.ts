@@ -1088,15 +1088,16 @@ export class Game implements BotGameApi {
 
     const slingStyle = this.freeMoveActive ? "freeMove" : this.powActive ? "pow" : "normal"
     const bestHeight = this.score.bestMaxHeight
-    const slingshotSkin = this.cosmetics.getSlingshotSkin()
-    const ballSkin = this.cosmetics.getBallSkin(bestHeight)
+    const highScore = this.score.highScore
+    const slingshotStyle = this.cosmetics.getEquippedSlingshotStyle()
+    const ballStyle = this.cosmetics.getEquippedBallStyle(bestHeight, highScore)
     this.renderer.drawSlingshot(
       cam,
       this.slingshot,
       pouch,
       pulse,
       slingStyle,
-      slingshotSkin,
+      slingshotStyle,
     )
     if (this.catchBurst > 0) {
       this.renderer.drawCatchBurst(
@@ -1114,21 +1115,21 @@ export class Game implements BotGameApi {
     for (const b of this.bonusBalls) {
       this.renderer.drawBall(cam, b)
     }
-    this.renderer.drawBall(cam, this.ball, ballSkin)
+    this.renderer.drawBall(cam, this.ball, ballStyle)
 
     if (this.menuDemo || this.state === "menu") {
       const slingshotLocked = this.cosmetics.isSlingshotSelectionLocked()
 
       this.menuHitAreas = this.renderer.drawMainMenu(
         cam,
-        this.score.highScore,
+        highScore,
         bestHeight,
         this.score.lifetimeCoins,
         this.anim,
-        this.cosmetics.getSelectedSlingshotSkin(),
-        this.cosmetics.getSelectedBallSkin(),
+        this.cosmetics.getSelectedSlingshotStyle(),
+        this.cosmetics.getSelectedBallStyle(),
         slingshotLocked,
-        this.cosmetics.isBallSelectionLocked(bestHeight),
+        this.cosmetics.isBallSelectionLocked(bestHeight, highScore),
         slingshotLocked ? this.cosmetics.previewSlingshotPrice() : null,
       )
       return

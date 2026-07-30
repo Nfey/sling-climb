@@ -1,168 +1,90 @@
-export interface SlingshotSkin {
-  body: string
-  band: string
-  accent: string
-}
+export type SlingshotStyle =
+  | "classic"
+  | "twig"
+  | "iron"
+  | "vine"
+  | "royal"
+  | "crimson"
+  | "golden"
+  | "rainbow"
 
-export interface BallSkin {
-  highlight: string
-  fill: string
-  stroke: string
-  strokeAlpha: string
+export type BallStyle =
+  | "classic"
+  | "soccer"
+  | "baseball"
+  | "wiffle"
+  | "tennis"
+  | "pingpong"
+  | "basketball"
+  | "football"
+  | "golf"
+  | "beach"
+  | "ruby"
+  | "emerald"
+  | "sapphire"
+  | "amethyst"
+  | "topaz"
+  | "winged"
+  | "rainbow"
+
+export type BallUnlockKind = "height" | "points"
+
+export interface BallUnlock {
+  kind: BallUnlockKind
+  value: number
 }
 
 export interface SlingshotVariant {
   id: string
   name: string
   price: number
-  skin: SlingshotSkin
+  style: SlingshotStyle
 }
 
 export interface BallVariant {
   id: string
   name: string
-  unlockHeight: number
-  skin: BallSkin
-}
-
-/** Default look used before any slingshot variant is purchased. */
-export const DEFAULT_SLINGSHOT_SKIN: SlingshotSkin = {
-  body: "#2f6fed",
-  band: "#1d4fbf",
-  accent: "#2f6fed",
-}
-
-/** Default look used before any ball variant is unlocked. */
-export const DEFAULT_BALL_SKIN: BallSkin = {
-  highlight: "#fff6dd",
-  fill: "#f0d9a0",
-  stroke: "#d4b06a",
-  strokeAlpha: "rgba(90, 60, 30, 0.25)",
+  style: BallStyle
+  unlock: BallUnlock
 }
 
 export const SLINGSHOT_VARIANTS: readonly SlingshotVariant[] = [
-  {
-    id: "wood",
-    name: "Wood",
-    price: 5,
-    skin: { body: "#8b5a2b", band: "#5c3d1e", accent: "#a0622a" },
-  },
-  {
-    id: "iron",
-    name: "Iron",
-    price: 10,
-    skin: { body: "#64748b", band: "#334155", accent: "#94a3b8" },
-  },
-  {
-    id: "forest",
-    name: "Forest",
-    price: 15,
-    skin: { body: "#15803d", band: "#14532d", accent: "#22c55e" },
-  },
-  {
-    id: "royal",
-    name: "Royal",
-    price: 20,
-    skin: { body: "#7c3aed", band: "#5b21b6", accent: "#a78bfa" },
-  },
-  {
-    id: "crimson",
-    name: "Crimson",
-    price: 25,
-    skin: { body: "#dc2626", band: "#991b1b", accent: "#f87171" },
-  },
-  {
-    id: "golden",
-    name: "Golden",
-    price: 50,
-    skin: { body: "#ca8a04", band: "#854d0e", accent: "#facc15" },
-  },
-  {
-    id: "diamond",
-    name: "Diamond",
-    price: 100,
-    skin: { body: "#67e8f9", band: "#0891b2", accent: "#e0f2fe" },
-  },
+  { id: "twig", name: "Twig", price: 5, style: "twig" },
+  { id: "iron", name: "Iron", price: 10, style: "iron" },
+  { id: "vine", name: "Vine", price: 15, style: "vine" },
+  { id: "royal", name: "Royal", price: 20, style: "royal" },
+  { id: "crimson", name: "Crimson", price: 25, style: "crimson" },
+  { id: "golden", name: "Golden", price: 50, style: "golden" },
+  { id: "rainbow", name: "Rainbow", price: 100, style: "rainbow" },
+]
+
+/** Sports balls unlocked by lifetime best score (points). */
+export const POINTS_BALL_VARIANTS: readonly BallVariant[] = [
+  { id: "soccer", name: "Soccer", style: "soccer", unlock: { kind: "points", value: 500 } },
+  { id: "baseball", name: "Baseball", style: "baseball", unlock: { kind: "points", value: 1000 } },
+  { id: "wiffle", name: "Wiffle", style: "wiffle", unlock: { kind: "points", value: 1500 } },
+  { id: "tennis", name: "Tennis", style: "tennis", unlock: { kind: "points", value: 2000 } },
+  { id: "pingpong", name: "Ping Pong", style: "pingpong", unlock: { kind: "points", value: 2500 } },
+  { id: "basketball", name: "Basketball", style: "basketball", unlock: { kind: "points", value: 3500 } },
+  { id: "football", name: "Football", style: "football", unlock: { kind: "points", value: 5000 } },
+  { id: "golf", name: "Golf", style: "golf", unlock: { kind: "points", value: 7000 } },
+  { id: "beach", name: "Beach", style: "beach", unlock: { kind: "points", value: 10000 } },
+]
+
+/** Gem & special balls unlocked by best climb height. */
+export const HEIGHT_BALL_VARIANTS: readonly BallVariant[] = [
+  { id: "ruby", name: "Ruby", style: "ruby", unlock: { kind: "height", value: 5000 } },
+  { id: "emerald", name: "Emerald", style: "emerald", unlock: { kind: "height", value: 10000 } },
+  { id: "sapphire", name: "Sapphire", style: "sapphire", unlock: { kind: "height", value: 15000 } },
+  { id: "amethyst", name: "Amethyst", style: "amethyst", unlock: { kind: "height", value: 20000 } },
+  { id: "topaz", name: "Topaz", style: "topaz", unlock: { kind: "height", value: 25000 } },
+  { id: "winged", name: "Winged", style: "winged", unlock: { kind: "height", value: 50000 } },
+  { id: "rainbow", name: "Rainbow", style: "rainbow", unlock: { kind: "height", value: 100000 } },
 ]
 
 export const BALL_VARIANTS: readonly BallVariant[] = [
-  {
-    id: "ruby",
-    name: "Ruby",
-    unlockHeight: 5000,
-    skin: {
-      highlight: "#ffe4e6",
-      fill: "#fb7185",
-      stroke: "#be123c",
-      strokeAlpha: "rgba(190, 18, 60, 0.35)",
-    },
-  },
-  {
-    id: "emerald",
-    name: "Emerald",
-    unlockHeight: 10000,
-    skin: {
-      highlight: "#ecfdf5",
-      fill: "#34d399",
-      stroke: "#047857",
-      strokeAlpha: "rgba(4, 120, 87, 0.35)",
-    },
-  },
-  {
-    id: "sapphire",
-    name: "Sapphire",
-    unlockHeight: 15000,
-    skin: {
-      highlight: "#eff6ff",
-      fill: "#60a5fa",
-      stroke: "#1d4ed8",
-      strokeAlpha: "rgba(29, 78, 216, 0.35)",
-    },
-  },
-  {
-    id: "amethyst",
-    name: "Amethyst",
-    unlockHeight: 20000,
-    skin: {
-      highlight: "#f5f3ff",
-      fill: "#a78bfa",
-      stroke: "#6d28d9",
-      strokeAlpha: "rgba(109, 40, 217, 0.35)",
-    },
-  },
-  {
-    id: "topaz",
-    name: "Topaz",
-    unlockHeight: 25000,
-    skin: {
-      highlight: "#fffbeb",
-      fill: "#fbbf24",
-      stroke: "#b45309",
-      strokeAlpha: "rgba(180, 83, 9, 0.35)",
-    },
-  },
-  {
-    id: "obsidian",
-    name: "Obsidian",
-    unlockHeight: 50000,
-    skin: {
-      highlight: "#475569",
-      fill: "#1e293b",
-      stroke: "#0f172a",
-      strokeAlpha: "rgba(15, 23, 42, 0.45)",
-    },
-  },
-  {
-    id: "diamond",
-    name: "Diamond",
-    unlockHeight: 100000,
-    skin: {
-      highlight: "#ffffff",
-      fill: "#bae6fd",
-      stroke: "#0284c7",
-      strokeAlpha: "rgba(2, 132, 199, 0.35)",
-    },
-  },
+  ...POINTS_BALL_VARIANTS,
+  ...HEIGHT_BALL_VARIANTS,
 ]
 
 export const SLINGSHOT_UNLOCKS_KEY = "sling-climb-slingshot-unlocks"
@@ -172,12 +94,26 @@ export const EQUIPPED_BALL_KEY = "sling-climb-equipped-ball"
 /** Sentinel id for the built-in default look (always available). */
 export const DEFAULT_COSMETIC_ID = "default"
 
+export function findBallVariant(id: string): BallVariant | undefined {
+  return BALL_VARIANTS.find((v) => v.id === id)
+}
+
+export function findSlingshotVariant(id: string): SlingshotVariant | undefined {
+  return SLINGSHOT_VARIANTS.find((v) => v.id === id)
+}
+
+export function isBallVariantUnlocked(
+  variant: BallVariant,
+  bestHeight: number,
+  highScore: number,
+): boolean {
+  if (variant.unlock.kind === "height") return bestHeight >= variant.unlock.value
+  return highScore >= variant.unlock.value
+}
+
 export class CosmeticsStore {
-  /** Purchased slingshot variant ids. */
   private slingshotUnlocked = new Set<string>()
-  /** Preview / equipped slingshot id, or DEFAULT_COSMETIC_ID. */
   equippedSlingshotId = DEFAULT_COSMETIC_ID
-  /** Preview / equipped ball id, or DEFAULT_COSMETIC_ID. */
   equippedBallId = DEFAULT_COSMETIC_ID
   private persist: boolean
 
@@ -186,36 +122,16 @@ export class CosmeticsStore {
     if (this.persist) this.load()
   }
 
-  /** Index into SLINGSHOT_VARIANTS for the currently previewed slingshot. */
-  get slingshotPreviewIndex(): number {
-    if (this.equippedSlingshotId === DEFAULT_COSMETIC_ID) return -1
-    const idx = SLINGSHOT_VARIANTS.findIndex((v) => v.id === this.equippedSlingshotId)
-    return idx >= 0 ? idx : -1
-  }
-
-  /** Index into BALL_VARIANTS for the currently previewed ball. */
-  get ballPreviewIndex(): number {
-    if (this.equippedBallId === DEFAULT_COSMETIC_ID) return -1
-    const idx = BALL_VARIANTS.findIndex((v) => v.id === this.equippedBallId)
-    return idx >= 0 ? idx : -1
-  }
-
   isSlingshotOwned(id: string): boolean {
     return this.slingshotUnlocked.has(id)
   }
 
-  isBallUnlocked(id: string, bestHeight: number): boolean {
-    const variant = BALL_VARIANTS.find((v) => v.id === id)
+  isBallUnlocked(id: string, bestHeight: number, highScore: number): boolean {
+    const variant = findBallVariant(id)
     if (!variant) return false
-    return bestHeight >= variant.unlockHeight
+    return isBallVariantUnlocked(variant, bestHeight, highScore)
   }
 
-  /** All ball variants the player has earned by height. */
-  unlockedBallVariants(bestHeight: number): BallVariant[] {
-    return BALL_VARIANTS.filter((v) => bestHeight >= v.unlockHeight)
-  }
-
-  /** Cycle slingshot selector through default + all shop variants. */
   cycleSlingshotMenu(delta: number): void {
     const allIds = [DEFAULT_COSMETIC_ID, ...SLINGSHOT_VARIANTS.map((v) => v.id)]
     const current = allIds.indexOf(this.equippedSlingshotId)
@@ -227,7 +143,6 @@ export class CosmeticsStore {
     this.saveEquipped()
   }
 
-  /** Cycle ball selector through default + all height variants. */
   cycleBallMenu(delta: number): void {
     const allIds = [DEFAULT_COSMETIC_ID, ...BALL_VARIANTS.map((v) => v.id)]
     const current = allIds.indexOf(this.equippedBallId)
@@ -240,7 +155,7 @@ export class CosmeticsStore {
   }
 
   purchaseSlingshot(id: string, spendCoins: (amount: number) => boolean): boolean {
-    const variant = SLINGSHOT_VARIANTS.find((v) => v.id === id)
+    const variant = findSlingshotVariant(id)
     if (!variant || this.isSlingshotOwned(id)) return false
     if (!spendCoins(variant.price)) return false
     this.slingshotUnlocked.add(id)
@@ -261,41 +176,38 @@ export class CosmeticsStore {
     this.saveEquipped()
   }
 
-  getSlingshotSkin(): SlingshotSkin {
+  /** Active slingshot style for gameplay (owned variants only). */
+  getEquippedSlingshotStyle(): SlingshotStyle {
     if (
       this.equippedSlingshotId !== DEFAULT_COSMETIC_ID &&
       !this.isSlingshotOwned(this.equippedSlingshotId)
     ) {
-      return DEFAULT_SLINGSHOT_SKIN
+      return "classic"
     }
-    if (this.equippedSlingshotId === DEFAULT_COSMETIC_ID) return DEFAULT_SLINGSHOT_SKIN
-    const variant = SLINGSHOT_VARIANTS.find((v) => v.id === this.equippedSlingshotId)
-    return variant?.skin ?? DEFAULT_SLINGSHOT_SKIN
+    if (this.equippedSlingshotId === DEFAULT_COSMETIC_ID) return "classic"
+    return findSlingshotVariant(this.equippedSlingshotId)?.style ?? "classic"
   }
 
-  getBallSkin(bestHeight: number): BallSkin {
-    if (
-      this.equippedBallId !== DEFAULT_COSMETIC_ID &&
-      !this.isBallUnlocked(this.equippedBallId, bestHeight)
-    ) {
-      return DEFAULT_BALL_SKIN
-    }
-    if (this.equippedBallId === DEFAULT_COSMETIC_ID) return DEFAULT_BALL_SKIN
-    const variant = BALL_VARIANTS.find((v) => v.id === this.equippedBallId)
-    return variant?.skin ?? DEFAULT_BALL_SKIN
+  /** Active ball style for gameplay (unlocked variants only). */
+  getEquippedBallStyle(bestHeight: number, highScore: number): BallStyle {
+    if (this.equippedBallId === DEFAULT_COSMETIC_ID) return "classic"
+    if (!this.isBallUnlocked(this.equippedBallId, bestHeight, highScore)) return "classic"
+    return findBallVariant(this.equippedBallId)?.style ?? "classic"
   }
 
-  /** Skin shown in the selector icon (includes locked selections). */
-  getSelectedSlingshotSkin(): SlingshotSkin {
-    if (this.equippedSlingshotId === DEFAULT_COSMETIC_ID) return DEFAULT_SLINGSHOT_SKIN
-    const variant = SLINGSHOT_VARIANTS.find((v) => v.id === this.equippedSlingshotId)
-    return variant?.skin ?? DEFAULT_SLINGSHOT_SKIN
+  getSelectedSlingshotStyle(): SlingshotStyle {
+    if (this.equippedSlingshotId === DEFAULT_COSMETIC_ID) return "classic"
+    return findSlingshotVariant(this.equippedSlingshotId)?.style ?? "classic"
   }
 
-  getSelectedBallSkin(): BallSkin {
-    if (this.equippedBallId === DEFAULT_COSMETIC_ID) return DEFAULT_BALL_SKIN
-    const variant = BALL_VARIANTS.find((v) => v.id === this.equippedBallId)
-    return variant?.skin ?? DEFAULT_BALL_SKIN
+  getSelectedBallStyle(): BallStyle {
+    if (this.equippedBallId === DEFAULT_COSMETIC_ID) return "classic"
+    return findBallVariant(this.equippedBallId)?.style ?? "classic"
+  }
+
+  getSelectedBallVariant(): BallVariant | null {
+    if (this.equippedBallId === DEFAULT_COSMETIC_ID) return null
+    return findBallVariant(this.equippedBallId) ?? null
   }
 
   isSlingshotSelectionLocked(): boolean {
@@ -305,16 +217,16 @@ export class CosmeticsStore {
     )
   }
 
-  isBallSelectionLocked(bestHeight: number): boolean {
+  isBallSelectionLocked(bestHeight: number, highScore: number): boolean {
     return (
       this.equippedBallId !== DEFAULT_COSMETIC_ID &&
-      !this.isBallUnlocked(this.equippedBallId, bestHeight)
+      !this.isBallUnlocked(this.equippedBallId, bestHeight, highScore)
     )
   }
 
   previewSlingshotPrice(): number | null {
     if (this.equippedSlingshotId === DEFAULT_COSMETIC_ID) return null
-    const variant = SLINGSHOT_VARIANTS.find((v) => v.id === this.equippedSlingshotId)
+    const variant = findSlingshotVariant(this.equippedSlingshotId)
     if (!variant || this.isSlingshotOwned(variant.id)) return null
     return variant.price
   }
@@ -338,7 +250,6 @@ export class CosmeticsStore {
 
     this.equippedSlingshotId =
       this.loadString(EQUIPPED_SLINGSHOT_KEY) ?? DEFAULT_COSMETIC_ID
-
     this.equippedBallId = this.loadString(EQUIPPED_BALL_KEY) ?? DEFAULT_COSMETIC_ID
   }
 
