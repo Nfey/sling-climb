@@ -31,6 +31,14 @@ import {
   SCORE_POPUP_DURATION,
   SLINGSHOT_FORK_WIDTH,
   SLINGSHOT_KEYBOARD_SPEED,
+  TURRET_AIM_ARC,
+  TURRET_AIM_SPEED,
+  TURRET_BARREL_LENGTH,
+  TURRET_BODY_RADIUS,
+  TURRET_FIRE_INTERVAL_MAX,
+  TURRET_FIRE_INTERVAL_MIN,
+  TURRET_SHOT_RADIUS,
+  TURRET_SHOT_SPEED,
   COLORS,
 } from "./constants"
 import {
@@ -57,6 +65,7 @@ import type {
   GameState,
   MainMenuHitAreas,
   ScorePopup,
+  TurretShotData,
   Vec2,
 } from "./types"
 
@@ -67,6 +76,7 @@ export class Game implements BotGameApi {
   private ball = new Ball()
   private bonusBalls: Ball[] = []
   private bullets: BulletData[] = []
+  private turretShots: TurretShotData[] = []
   private slingshot = new Slingshot()
   private score: Score
   private cosmetics: CosmeticsStore
@@ -319,6 +329,7 @@ export class Game implements BotGameApi {
     this.ball.reset(this.slingshot.x, this.slingshot.y)
     this.bonusBalls = []
     this.bullets = []
+    this.turretShots = []
     this.platforms.reset(width, this.slingshot.y, {
       coinChance: this.menuDemo ? MENU_DEMO_COIN_CHANCE : undefined,
     })
@@ -723,6 +734,7 @@ export class Game implements BotGameApi {
         this.platforms.arrowPads,
         this.platforms.upgrades,
         this.platforms.coins,
+        this.turretShots,
       )
       if (hit.bonusCollected && hit.bonusAt) {
         const awarded = this.score.collectBonus(BONUS_PLATFORM_POINTS)
@@ -748,6 +760,7 @@ export class Game implements BotGameApi {
         this.audio.playPlatformBounce()
       }
       if (hit.wallHit) this.audio.playWallBounce()
+      if (hit.turretHit) this.audio.playBumper()
       if (hit.coinsCollected > 0) {
         const added = this.score.addCoins(hit.coinsCollected)
         const at = hit.coinAt ?? { x: this.ball.x, y: this.ball.y }
@@ -850,6 +863,7 @@ export class Game implements BotGameApi {
         this.platforms.arrowPads,
         this.platforms.upgrades,
         this.platforms.coins,
+        this.turretShots,
       )
       if (hit.platformHit) {
         this.score.collectFlat(PURPLE_BALL_PLATFORM_POINTS)
@@ -861,6 +875,7 @@ export class Game implements BotGameApi {
     }
 
     this.updateBulletPower(dt)
+    this.updateWallTurrets(dt)
 
     this.platforms.update(this.camera.y, this.camera.height, this.camera.killWorldY)
     if (!this.freeMoveActive) {
@@ -1014,6 +1029,59 @@ export class Game implements BotGameApi {
     }
   }
 
+  private updateWallTurrets(dt: number): void {
+    const width = this.camera.width
+    const killY = this.camera.killWorldY
+    const topY = this.camera.y + this.camera.height + 80
+
+    for (const turret of this.platforms.turrets) {
+      turret.phase += TURRET_AIM_SPEED * dt
+      turret.aimAngle = Math.sin(turret.phase + turret.phaseOffset) * TURRET_AIM_ARC
+      turret.fireCooldown -= dt
+      if (turret.fireCooldown > 0) continue
+
+      turret.fireCooldown =
+        TURRET_FIRE_INTERVAL_MIN +
+        Math.random() * (TURRET_FIRE_INTERVAL_MAX - TURRET_FIRE_INTERVAL_MIN)
+
+      const cosA = Math.cos(turret.aimAngle)
+      const sinA = Math.sin(turret.aimAngle)
+      const inward = turret.side === "left" ? 1 : -1
+      const cx =
+        turret.side === "left"
+          ? TURRET_BODY_RADIUS
+          : width - TURRET_BODY_RADIUS
+      const edgeX = cx + inward * cosA * TURRET_BODY_RADIUS
+      const edgeY = turret.y + sinA * TURRET_BODY_RADIUS
+      const dirX = inward * cosA
+      const dirY = sinA
+      const spawnX = edgeX + dirX * TURRET_BARREL_LENGTH
+      const spawnY = edgeY + dirY * TURRET_BARREL_LENGTH
+
+      this.turretShots.push({
+        x: spawnX,
+        y: spawnY,
+        vx: dirX * TURRET_SHOT_SPEED,
+        vy: dirY * TURRET_SHOT_SPEED,
+        radius: TURRET_SHOT_RADIUS,
+      })
+    }
+
+    for (let i = this.turretShots.length - 1; i >= 0; i--) {
+      const shot = this.turretShots[i]!
+      shot.x += shot.vx * dt
+      shot.y += shot.vy * dt
+      if (
+        shot.x < -20 ||
+        shot.x > width + 20 ||
+        shot.y < killY - 40 ||
+        shot.y > topY
+      ) {
+        this.turretShots.splice(i, 1)
+      }
+    }
+  }
+
   private advanceWorld(dt: number): void {
     // Soft follow keeps the ball near the upper third; hard clamp never lets
     // it cross the top of the screen (important for POW launches).
@@ -1084,6 +1152,8 @@ export class Game implements BotGameApi {
     this.renderer.drawUpgradePickups(cam, this.platforms.upgrades, this.anim)
     this.renderer.drawCoins(cam, this.platforms.coins, this.anim)
     this.renderer.drawPortals(cam, this.platforms.portals, this.anim)
+    this.renderer.drawWallTurrets(cam, this.platforms.turrets, this.anim)
+    this.renderer.drawTurretShots(cam, this.turretShots)
     this.renderer.drawBullets(cam, this.bullets)
 
     let pouch: Vec2 | null = null

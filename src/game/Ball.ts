@@ -9,6 +9,7 @@ import {
   PLATFORM_STUCK_NUDGE,
   PLATFORM_STUCK_VX,
   PORTAL_SPEED_DAMPING,
+  TURRET_SHOT_KNOCK_UP,
   WALL_BOUNCE,
 } from "./constants"
 import type {
@@ -18,6 +19,7 @@ import type {
   CoinData,
   PlatformData,
   PortalData,
+  TurretShotData,
   UpgradePickupData,
   Vec2,
 } from "./types"
@@ -45,6 +47,8 @@ export interface BallUpdateResult {
   /** Arrow pad consumed this frame. */
   arrowHit: boolean
   arrowAt: Vec2 | null
+  /** Turret shot hit this frame. */
+  turretHit: boolean
 }
 
 /** Unit vectors for 8 cardinal dirs in world space (Y up). */
@@ -249,6 +253,20 @@ export class Ball {
     return { hit: false, at: null }
   }
 
+  private collideTurretShots(shots: TurretShotData[]): boolean {
+    for (let i = shots.length - 1; i >= 0; i--) {
+      const shot = shots[i]!
+      const dist = Math.hypot(this.x - shot.x, this.y - shot.y)
+      if (dist >= this.radius + shot.radius) continue
+      shots.splice(i, 1)
+      this.vx = -this.vx
+      this.vy += TURRET_SHOT_KNOCK_UP
+      this.squash = 0.7
+      return true
+    }
+    return false
+  }
+
   /**
    * World Y increases upward. Constant gravity only — no air drag —
    * so arcs stay parabolic and horizontal momentum is preserved.
@@ -262,6 +280,7 @@ export class Ball {
     arrowPads: ArrowPadData[],
     upgrades: UpgradePickupData[],
     coins: CoinData[],
+    turretShots: TurretShotData[],
   ): BallUpdateResult {
     const result: BallUpdateResult = {
       bonusCollected: false,
@@ -276,6 +295,7 @@ export class Ball {
       bumperAt: null,
       arrowHit: false,
       arrowAt: null,
+      turretHit: false,
     }
     if (this.inSlingshot) {
       this.squash = Math.max(0, this.squash - dt * 3)
@@ -317,6 +337,7 @@ export class Ball {
     const arrow = this.collideArrowPads(arrowPads)
     result.arrowHit = arrow.hit
     result.arrowAt = arrow.at
+    result.turretHit = this.collideTurretShots(turretShots)
 
     // Only the player ball collects pickups and coins
     if (!this.isBonus) {

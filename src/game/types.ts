@@ -142,6 +142,30 @@ export interface BulletData {
   radius: number
 }
 
+/** Wall-mounted cannon that sweeps its barrel and fires slow shots inward. */
+export interface WallTurretData {
+  side: "left" | "right"
+  /** World Y of the turret center. */
+  y: number
+  /** Current barrel angle from horizontal into the playfield (radians, Y up). */
+  aimAngle: number
+  /** Sweep phase accumulator (radians). */
+  phase: number
+  /** Per-turret phase offset so groups don't move in lockstep. */
+  phaseOffset: number
+  /** Seconds until the next shot. */
+  fireCooldown: number
+}
+
+/** Slow red projectile fired by a wall turret. */
+export interface TurretShotData {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  radius: number
+}
+
 /** Floating score label that rises and fades above a scoring event. */
 export interface ScorePopup {
   x: number

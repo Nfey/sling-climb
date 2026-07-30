@@ -7,6 +7,9 @@ import {
   SCORE_POPUP_RISE,
   SKY_ZONE_SPACING,
   SLINGSHOT_FORK_HEIGHT,
+  TURRET_BARREL_LENGTH,
+  TURRET_BARREL_WIDTH,
+  TURRET_BODY_RADIUS,
   skyZoneColor,
 } from "./constants"
 import type { Ball } from "./Ball"
@@ -21,8 +24,10 @@ import type {
   PortalData,
   ScorePopup,
   ScreenRect,
+  TurretShotData,
   UpgradePickupData,
   Vec2,
+  WallTurretData,
 } from "./types"
 import type { Slingshot } from "./Slingshot"
 import type { BallStyle, BackgroundStyle, SlingshotStyle } from "./cosmetics"
@@ -417,6 +422,82 @@ export class Renderer {
     ctx.lineWidth = 2
     ctx.stroke()
     ctx.restore()
+  }
+
+  drawWallTurrets(camera: Camera, turrets: WallTurretData[], anim: number): void {
+    const ctx = this.ctx
+    for (const t of turrets) {
+      const centerX =
+        t.side === "left" ? TURRET_BODY_RADIUS : camera.width - TURRET_BODY_RADIUS
+      const s = camera.worldToScreen({ x: centerX, y: t.y })
+      if (s.y < -40 || s.y > camera.height + 40) continue
+
+      const r = TURRET_BODY_RADIUS
+
+      ctx.save()
+      ctx.translate(s.x, s.y)
+
+      // Half-circle body flush against the wall
+      ctx.fillStyle = COLORS.turret
+      ctx.strokeStyle = COLORS.turretRim
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      if (t.side === "left") {
+        ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2)
+      } else {
+        ctx.arc(0, 0, r, Math.PI / 2, (Math.PI * 3) / 2)
+      }
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+
+      // Barrel — flat rectangle pivoted from the semicircle edge in 2D
+      ctx.save()
+      ctx.rotate(t.side === "left" ? t.aimAngle : Math.PI - t.aimAngle)
+      ctx.fillStyle = COLORS.turretBarrel
+      ctx.fillRect(r, -TURRET_BARREL_WIDTH * 0.5, TURRET_BARREL_LENGTH, TURRET_BARREL_WIDTH)
+      ctx.strokeStyle = COLORS.turretRim
+      ctx.strokeRect(r, -TURRET_BARREL_WIDTH * 0.5, TURRET_BARREL_LENGTH, TURRET_BARREL_WIDTH)
+      ctx.restore()
+
+      // Muzzle glow when near firing
+      const muzzleAngle = t.side === "left" ? t.aimAngle : Math.PI - t.aimAngle
+      const tipX = Math.cos(muzzleAngle) * (r + TURRET_BARREL_LENGTH)
+      const tipY = Math.sin(muzzleAngle) * (r + TURRET_BARREL_LENGTH)
+      if (t.fireCooldown < 0.25) {
+        ctx.fillStyle = COLORS.turretShot
+        ctx.globalAlpha = 0.35 + Math.sin(anim * 18) * 0.15
+        ctx.beginPath()
+        ctx.arc(tipX, tipY, 4.5, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
+      ctx.restore()
+    }
+  }
+
+  drawTurretShots(camera: Camera, shots: TurretShotData[]): void {
+    const ctx = this.ctx
+    for (const shot of shots) {
+      const s = camera.worldToScreen({ x: shot.x, y: shot.y })
+      if (s.y < -20 || s.y > camera.height + 20) continue
+      ctx.save()
+      const grd = ctx.createRadialGradient(
+        s.x - 1,
+        s.y - 1,
+        0.5,
+        s.x,
+        s.y,
+        shot.radius,
+      )
+      grd.addColorStop(0, COLORS.turretShotCore)
+      grd.addColorStop(1, COLORS.turretShot)
+      ctx.fillStyle = grd
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, shot.radius, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+    }
   }
 
   drawSlingshot(
