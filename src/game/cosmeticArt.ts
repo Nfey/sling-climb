@@ -128,16 +128,35 @@ function drawSoccerBall(ctx: CanvasRenderingContext2D, radius: number): void {
 
 function drawBaseball(ctx: CanvasRenderingContext2D, radius: number): void {
   drawClassicBall(ctx, radius, "#ffffff", "#f8fafc", "#e2e8f0")
+
+  // Each seam follows one branch of a hyperbola with a vertical conjugate axis:
+  //   (r² − y²)/a² − x²/b² = 1  →  x = ±b·√((r² − y²)/a² − 1)
+  // Bulges widest at the equator (y = 0) and meets the opposite seam near the poles.
+  const a = radius * 0.2
+  const b = radius * 0.17
+  const yLimit = Math.sqrt(radius * radius - a * a)
+
   ctx.strokeStyle = "#dc2626"
   ctx.lineWidth = Math.max(1.5, radius * 0.1)
   ctx.lineCap = "round"
-  for (const side of [-1, 1]) {
+  ctx.lineJoin = "round"
+
+  for (const side of [-1, 1] as const) {
     ctx.beginPath()
-    for (let t = -0.9; t <= 0.9; t += 0.08) {
-      const x = side * radius * 0.15 * Math.sin(t * Math.PI)
-      const y = t * radius * 0.88
-      if (t === -0.9) ctx.moveTo(x, y)
-      else ctx.lineTo(x, y)
+    let started = false
+    const steps = 72
+    for (let i = 0; i <= steps; i++) {
+      const y = -yLimit + (i / steps) * yLimit * 2
+      const numer = (radius * radius - y * y) / (a * a) - 1
+      if (numer <= 0) continue
+      const x = side * b * Math.sqrt(numer)
+      if (x * x + y * y > radius * radius * 0.995) continue
+      if (!started) {
+        ctx.moveTo(x, y)
+        started = true
+      } else {
+        ctx.lineTo(x, y)
+      }
     }
     ctx.stroke()
   }
