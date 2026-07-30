@@ -585,6 +585,7 @@ export class Renderer {
 
     ctx.save()
     ctx.translate(s.x, s.y)
+    ctx.rotate(ball.spin)
     ctx.scale(scaleX, scaleY)
 
     if (ball.isBonus) {

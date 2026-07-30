@@ -1,5 +1,7 @@
 export const GRAVITY = 2200
 export const BALL_RADIUS = 14
+/** Visual-only ball spin rate (radians per px/s of speed). */
+export const BALL_SPIN_SCALE = 1 / BALL_RADIUS
 export const WALL_BOUNCE = 0.85
 /** Fixed upward boost when landing on a platform from above (px/s). */
 export const PLATFORM_BOOST = 1100

@@ -1,6 +1,7 @@
 import {
   ARROW_PAD_SPEED,
   BALL_RADIUS,
+  BALL_SPIN_SCALE,
   BUMPER_KNOCK,
   GRAVITY,
   PLATFORM_BOOST,
@@ -69,6 +70,8 @@ export class Ball {
   isBonus = false
   /** Brief squash after launch / bounce for juice. */
   squash = 0
+  /** Visual-only rotation in radians (does not affect physics). */
+  spin = 0
   /** Near-vertical bounces on the same platform (anti-stuck). */
   private stuckHits = 0
   private stuckPlatformKey = ""
@@ -83,6 +86,7 @@ export class Ball {
     this.inSlingshot = true
     this.isBonus = false
     this.squash = 0
+    this.spin = 0
     this.clearStuckTracking()
     this.bumperOverlaps.clear()
   }
@@ -96,6 +100,7 @@ export class Ball {
     this.inSlingshot = false
     this.isBonus = true
     this.squash = 1
+    this.spin = 0
     this.clearStuckTracking()
     this.bumperOverlaps.clear()
   }
@@ -116,8 +121,17 @@ export class Ball {
     this.vy = 0
     this.inSlingshot = true
     this.squash = 1
+    this.spin = 0
     this.clearStuckTracking()
     this.bumperOverlaps.clear()
+  }
+
+  private updateSpin(dt: number): void {
+    const speed = Math.hypot(this.vx, this.vy)
+    if (speed < 1) return
+    const direction = Math.sign(this.vx)
+    if (direction === 0) return
+    this.spin += direction * speed * BALL_SPIN_SCALE * dt
   }
 
   private clearStuckTracking(): void {
@@ -377,6 +391,7 @@ export class Ball {
       }
     }
 
+    this.updateSpin(dt)
     this.squash = Math.max(0, this.squash - dt * 4)
     return result
   }
