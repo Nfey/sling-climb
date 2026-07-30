@@ -129,40 +129,23 @@ function drawSoccerBall(ctx: CanvasRenderingContext2D, radius: number): void {
 function drawBaseball(ctx: CanvasRenderingContext2D, radius: number): void {
   drawClassicBall(ctx, radius, "#ffffff", "#f8fafc", "#e2e8f0")
 
-  // Diagonal inward-curving seams from a hyperbola whose conjugate axis runs at 45°.
-  // In primed coords: x′²/a² − y′²/b² = 1  →  x′ = s·a·√(1 + (y′/b)²)
-  // Pinches toward the ball center at y′ = 0 and opens toward the poles, then
-  // rotate the primed frame by 45° so the pinch aligns with the diagonal in the icon.
-  const a = radius * 0.1
-  const b = radius * 0.42
-  const cos = Math.SQRT1_2
-  const sin = Math.SQRT1_2
+  // Two deep quarter-circle seams hugging the ball edge:
+  //   • left center (9 o'clock) → top center (12 o'clock)
+  //   • bottom center (6 o'clock) → right center (3 o'clock)
+  const seamR = radius * 0.96
 
   ctx.strokeStyle = "#dc2626"
   ctx.lineWidth = Math.max(1.5, radius * 0.1)
   ctx.lineCap = "round"
   ctx.lineJoin = "round"
 
-  for (const side of [-1, 1] as const) {
-    ctx.beginPath()
-    let started = false
-    const steps = 80
-    const yMax = radius * 0.94
-    for (let i = 0; i <= steps; i++) {
-      const yp = -yMax + (i / steps) * yMax * 2
-      const xp = side * a * Math.sqrt(1 + (yp * yp) / (b * b))
-      const x = xp * cos - yp * sin
-      const y = xp * sin + yp * cos
-      if (x * x + y * y > radius * radius * 0.992) continue
-      if (!started) {
-        ctx.moveTo(x, y)
-        started = true
-      } else {
-        ctx.lineTo(x, y)
-      }
-    }
-    ctx.stroke()
-  }
+  ctx.beginPath()
+  ctx.arc(0, 0, seamR, Math.PI, -Math.PI / 2, true)
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.arc(0, 0, seamR, Math.PI / 2, 0, true)
+  ctx.stroke()
 }
 
 function drawWiffleBall(ctx: CanvasRenderingContext2D, radius: number): void {
