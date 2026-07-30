@@ -50,6 +50,11 @@ export class BotController {
 
     if (snap.state === "adEnd") return
 
+    if (snap.state === "menu") {
+      // Bot/playable should not land here; if they do, wait for host to leave menu.
+      return
+    }
+
     if (snap.state === "gameOver") {
       if (game.autoRestart) {
         this.phaseT += dt

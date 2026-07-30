@@ -1,6 +1,7 @@
 export type Vec2 = { x: number; y: number }
 
 export type GameState =
+  | "menu"
   | "ready"
   | "aiming"
   | "flying"
@@ -21,6 +22,14 @@ export interface GameSnapshot {
   killWorldY: number
   width: number
   height: number
+}
+
+/** Axis-aligned hit target in screen space (CSS pixels). */
+export interface ScreenRect {
+  x: number
+  y: number
+  w: number
+  h: number
 }
 
 export interface PointerState {

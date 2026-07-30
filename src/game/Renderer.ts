@@ -18,6 +18,7 @@ import type {
   PlatformData,
   PortalData,
   ScorePopup,
+  ScreenRect,
   UpgradePickupData,
   Vec2,
 } from "./types"
@@ -725,16 +726,95 @@ export class Renderer {
     }
   }
 
-  drawTitle(camera: Camera): void {
+  /**
+   * Title screen with bests and a Play button.
+   * Returns the Play button rect in screen space for hit-testing.
+   */
+  drawMainMenu(
+    camera: Camera,
+    highScore: number,
+    bestHeight: number,
+    anim: number,
+  ): ScreenRect {
     const ctx = this.ctx
+    const { width } = camera
+    const cx = width / 2
+    let y = camera.slingshotScreenY - 168
+
+    ctx.fillStyle = COLORS.overlay
+    ctx.fillRect(0, 0, width, camera.killScreenY)
+
     ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+
     ctx.fillStyle = COLORS.ink
-    ctx.font = "800 42px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText("Sling Climb", camera.width / 2, camera.slingshotScreenY - 120)
+    ctx.font = "800 44px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText("Sling Climb", cx, y)
+    y += 36
 
     ctx.fillStyle = COLORS.inkDim
     ctx.font = "500 15px 'DM Sans', sans-serif"
-    ctx.fillText("Pull back to launch · catch to climb", camera.width / 2, camera.slingshotScreenY - 88)
+    ctx.fillText("Pull back to launch · catch to climb", cx, y)
+    y += 40
+
+    if (highScore > 0 || bestHeight > 0) {
+      const rowW = Math.min(280, width - 48)
+      const rowX = cx - rowW / 2
+      ctx.fillStyle = "rgba(255, 255, 255, 0.55)"
+      ctx.beginPath()
+      roundRect(ctx, rowX, y - 22, rowW, 52, 12)
+      ctx.fill()
+
+      const leftX = rowX + rowW * 0.28
+      const rightX = rowX + rowW * 0.72
+
+      ctx.fillStyle = COLORS.inkDim
+      ctx.font = "500 11px 'DM Sans', sans-serif"
+      ctx.fillText("BEST SCORE", leftX, y - 8)
+      ctx.fillText("BEST HEIGHT", rightX, y - 8)
+
+      ctx.fillStyle = COLORS.accent
+      ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText(highScore > 0 ? String(highScore) : "—", leftX, y + 14)
+      ctx.fillText(
+        bestHeight > 0 ? formatHeightLabel(bestHeight) : "—",
+        rightX,
+        y + 14,
+      )
+      y += 56
+    } else {
+      y += 12
+    }
+
+    const pulse = 0.92 + Math.sin(anim * 3.2) * 0.08
+    const btnW = 168
+    const btnH = 52
+    const btn: ScreenRect = {
+      x: cx - btnW / 2,
+      y: y - btnH / 2,
+      w: btnW,
+      h: btnH,
+    }
+
+    ctx.save()
+    ctx.translate(cx, y)
+    ctx.scale(pulse, pulse)
+    ctx.fillStyle = COLORS.accent
+    ctx.beginPath()
+    roundRect(ctx, -btnW / 2, -btnH / 2, btnW, btnH, 14)
+    ctx.fill()
+    ctx.fillStyle = "#ffffff"
+    ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText("Play", 0, 1)
+    ctx.restore()
+
+    y += 48
+    ctx.fillStyle = COLORS.inkDim
+    ctx.font = "500 13px 'DM Sans', sans-serif"
+    ctx.fillText("or tap anywhere to start", cx, y)
+
+    ctx.textBaseline = "alphabetic"
+    return btn
   }
 
   drawGameOver(
@@ -746,7 +826,7 @@ export class Renderer {
     bestHeight: number,
     isNewBestHeight = false,
     anim = 0,
-    replayHint: string | null = "Tap to play again",
+    replayHint: string | null = "Tap to continue",
   ): void {
     const ctx = this.ctx
     const { width } = camera

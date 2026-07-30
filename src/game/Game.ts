@@ -58,7 +58,7 @@ export class Game implements BotGameApi {
   private config: GameConfig
   private controller: FrameController | null = null
 
-  private state: GameState = "ready"
+  private state: GameState = "menu"
   private started = false
   private anim = 0
   private lastTime = 0
@@ -164,9 +164,10 @@ export class Game implements BotGameApi {
   }
 
   start(): void {
-    this.resetRun()
     this.sessionElapsed = 0
     this.sessionEnded = false
+    // Normal game opens on the main menu; bot/playable skip straight into a run.
+    this.resetRun(this.config.mode === "normal")
     this.running = true
     this.lastTime = performance.now()
     requestAnimationFrame((t) => this.frame(t))
@@ -227,7 +228,7 @@ export class Game implements BotGameApi {
     }
   }
 
-  private resetRun(): void {
+  private resetRun(toMenu = false): void {
     this.audio.resetFlight()
     const width = this.camera.width
     this.slingshot.reset(width * 0.5, 0)
@@ -237,7 +238,7 @@ export class Game implements BotGameApi {
     this.platforms.reset(width, this.slingshot.y)
     this.score.reset(this.slingshot.y)
     this.camera.followSlingshot(this.slingshot.y)
-    this.state = "ready"
+    this.state = toMenu ? "menu" : "ready"
     this.started = false
     this.lastAimPull = null
     this.aimPointerId = null
@@ -258,6 +259,14 @@ export class Game implements BotGameApi {
     this.state = "adEnd"
     this.audio.resetFlight()
     this.config.onSessionEnd?.()
+  }
+
+  /** Leave the title menu and enter a playable ready state. */
+  private beginFromMenu(): void {
+    this.audio.unlock()
+    this.state = "ready"
+    this.started = false
+    this.aimPointerId = null
   }
 
   private syncAudioCombo(): void {
@@ -424,13 +433,20 @@ export class Game implements BotGameApi {
       // handled below in aiming
     }
 
+    if (this.state === "menu") {
+      if (presses.length > 0) {
+        this.beginFromMenu()
+      }
+      return
+    }
+
     if (this.state === "gameOver") {
       if (this.config.mode === "playable") {
         this.endPlayableSession()
         return
       }
       if (!this.botActive && presses.length > 0) {
-        this.resetRun()
+        this.resetRun(true)
       }
       // Bot restarts via controller calling restartRun().
       return
@@ -936,8 +952,14 @@ export class Game implements BotGameApi {
     }
     this.renderer.drawBall(cam, this.ball)
 
-    if (!this.started && this.state === "ready" && this.config.mode !== "bot") {
-      this.renderer.drawTitle(cam)
+    if (this.state === "menu") {
+      this.renderer.drawMainMenu(
+        cam,
+        this.score.highScore,
+        this.score.bestMaxHeight,
+        this.anim,
+      )
+      return
     }
 
     this.renderer.drawHud(
@@ -968,7 +990,7 @@ export class Game implements BotGameApi {
         this.score.bestMaxHeight,
         this.score.isNewBestHeight,
         this.anim,
-        hideReplay ? null : "Tap to play again",
+        hideReplay ? null : "Tap to continue",
       )
     }
   }
@@ -979,7 +1001,9 @@ export class Game implements BotGameApi {
   }
 
   private tipForState(): string | null {
-    if (this.state === "gameOver" || this.state === "adEnd") return null
+    if (this.state === "menu" || this.state === "gameOver" || this.state === "adEnd") {
+      return null
+    }
     if (this.config.mode === "bot") return null
     if (!this.started) {
       return this.config.mode === "playable"
