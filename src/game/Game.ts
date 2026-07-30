@@ -51,7 +51,7 @@ export class Game {
   private renderer: Renderer
   private canvas: HTMLCanvasElement
 
-  private state: GameState = "ready"
+  private state: GameState = "menu"
   private started = false
   private anim = 0
   private lastTime = 0
@@ -92,7 +92,7 @@ export class Game {
   }
 
   start(): void {
-    this.resetRun()
+    this.resetRun(true)
     this.running = true
     this.lastTime = performance.now()
     requestAnimationFrame((t) => this.frame(t))
@@ -142,7 +142,7 @@ export class Game {
     }
   }
 
-  private resetRun(): void {
+  private resetRun(toMenu = false): void {
     this.audio.resetFlight()
     const width = this.camera.width
     this.slingshot.reset(width * 0.5, 0)
@@ -152,7 +152,7 @@ export class Game {
     this.platforms.reset(width, this.slingshot.y)
     this.score.reset(this.slingshot.y)
     this.camera.followSlingshot(this.slingshot.y)
-    this.state = "ready"
+    this.state = toMenu ? "menu" : "ready"
     this.started = false
     this.lastAimPull = null
     this.aimPointerId = null
@@ -164,6 +164,14 @@ export class Game {
     this.scorePopups = []
     this.portalCatchupRemaining = 0
     this.flightStartY = 0
+  }
+
+  /** Leave the title menu and enter a playable ready state. */
+  private beginFromMenu(): void {
+    this.audio.unlock()
+    this.state = "ready"
+    this.started = false
+    this.aimPointerId = null
   }
 
   private syncAudioCombo(): void {
@@ -303,9 +311,16 @@ export class Game {
       // handled below in aiming
     }
 
+    if (this.state === "menu") {
+      if (presses.length > 0) {
+        this.beginFromMenu()
+      }
+      return
+    }
+
     if (this.state === "gameOver") {
       if (presses.length > 0) {
-        this.resetRun()
+        this.resetRun(true)
       }
       return
     }
@@ -787,8 +802,14 @@ export class Game {
     }
     this.renderer.drawBall(cam, this.ball)
 
-    if (!this.started && this.state === "ready") {
-      this.renderer.drawTitle(cam)
+    if (this.state === "menu") {
+      this.renderer.drawMainMenu(
+        cam,
+        this.score.highScore,
+        this.score.bestMaxHeight,
+        this.anim,
+      )
+      return
     }
 
     this.renderer.drawHud(
@@ -821,7 +842,7 @@ export class Game {
   }
 
   private tipForState(): string | null {
-    if (this.state === "gameOver") return null
+    if (this.state === "menu" || this.state === "gameOver") return null
     if (!this.started) return "Hold & drag to aim · release to fire"
     if (this.catchBurst > 0) return "Caught!"
     if (this.powActive && (this.state === "aiming" || this.state === "ready")) {
