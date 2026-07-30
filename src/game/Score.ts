@@ -1,6 +1,8 @@
 import {
   BONUS_PLATFORM_POINTS,
   CLIMB_POINT_UNIT,
+  COIN_KEY,
+  COIN_VALUE,
   HIGH_SCORE_KEY,
   MAX_HEIGHT_KEY,
 } from "./constants"
@@ -32,6 +34,11 @@ export class Score {
    * max-height line is drawn. Does not rise during the current run.
    */
   runHeightLine = 0
+  /**
+   * Lifetime coin bank across runs. Survives resetRun / game over.
+   * Saved immediately on collect when persistScores is enabled.
+   */
+  lifetimeCoins = 0
   /** When false, skip localStorage load/save (playable / bot). */
   private persistScores: boolean
 
@@ -40,6 +47,7 @@ export class Score {
     if (this.persistScores) {
       this.highScore = this.loadNumber(HIGH_SCORE_KEY)
       this.bestMaxHeight = this.loadNumber(MAX_HEIGHT_KEY)
+      this.lifetimeCoins = this.loadNumber(COIN_KEY)
     }
   }
 
@@ -122,6 +130,19 @@ export class Score {
   collectFlat(amount: number): number {
     this.bonusPoints += amount
     return amount
+  }
+
+  /**
+   * Bank collected coins into the lifetime total.
+   * Persists immediately so totals survive mid-run reloads.
+   * Returns the number of coins added.
+   */
+  addCoins(count: number): number {
+    if (count <= 0) return 0
+    const added = count * COIN_VALUE
+    this.lifetimeCoins += added
+    if (this.persistScores) this.saveNumber(COIN_KEY, this.lifetimeCoins)
+    return added
   }
 
   bumpCombo(): void {

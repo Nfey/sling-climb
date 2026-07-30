@@ -15,6 +15,7 @@ import type {
   ArrowPadData,
   BulletData,
   BumperData,
+  CoinData,
   PlatformData,
   PortalData,
   ScorePopup,
@@ -709,6 +710,44 @@ export class Renderer {
     }
   }
 
+  drawCoins(camera: Camera, coins: CoinData[], anim: number): void {
+    const ctx = this.ctx
+    const killY = camera.killScreenY
+    const bob = Math.sin(anim * 5) * 2.5
+    for (const c of coins) {
+      const s = camera.worldToScreen({ x: c.x, y: c.y })
+      s.y += bob
+      if (s.y - c.radius >= killY || s.y + c.radius < -20) continue
+
+      ctx.save()
+      const grd = ctx.createRadialGradient(
+        s.x - c.radius * 0.35,
+        s.y - c.radius * 0.4,
+        1,
+        s.x,
+        s.y,
+        c.radius,
+      )
+      grd.addColorStop(0, COLORS.coinCore)
+      grd.addColorStop(0.55, COLORS.coin)
+      grd.addColorStop(1, COLORS.coinRim)
+      ctx.fillStyle = grd
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, c.radius, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = COLORS.coinRim
+      ctx.lineWidth = 2
+      ctx.stroke()
+      ctx.fillStyle = COLORS.coinRim
+      ctx.font = "800 11px 'Bricolage Grotesque', sans-serif"
+      ctx.textAlign = "center"
+      ctx.textBaseline = "middle"
+      ctx.fillText("$", s.x, s.y + 0.5)
+      ctx.textBaseline = "alphabetic"
+      ctx.restore()
+    }
+  }
+
   drawBullets(camera: Camera, bullets: BulletData[]): void {
     const ctx = this.ctx
     for (const b of bullets) {
@@ -734,6 +773,7 @@ export class Renderer {
     camera: Camera,
     highScore: number,
     bestHeight: number,
+    lifetimeCoins: number,
     anim: number,
   ): ScreenRect {
     const ctx = this.ctx
@@ -757,31 +797,48 @@ export class Renderer {
     ctx.fillText("Pull back to launch · catch to climb", cx, y)
     y += 40
 
-    if (highScore > 0 || bestHeight > 0) {
+    const showBests = highScore > 0 || bestHeight > 0
+    const showCoins = lifetimeCoins > 0
+
+    if (showBests || showCoins) {
       const rowW = Math.min(280, width - 48)
       const rowX = cx - rowW / 2
+      const rowH = showBests && showCoins ? 96 : 52
       ctx.fillStyle = "rgba(255, 255, 255, 0.55)"
       ctx.beginPath()
-      roundRect(ctx, rowX, y - 22, rowW, 52, 12)
+      roundRect(ctx, rowX, y - 22, rowW, rowH, 12)
       ctx.fill()
 
-      const leftX = rowX + rowW * 0.28
-      const rightX = rowX + rowW * 0.72
+      if (showBests) {
+        const leftX = rowX + rowW * 0.28
+        const rightX = rowX + rowW * 0.72
 
-      ctx.fillStyle = COLORS.inkDim
-      ctx.font = "500 11px 'DM Sans', sans-serif"
-      ctx.fillText("BEST SCORE", leftX, y - 8)
-      ctx.fillText("BEST HEIGHT", rightX, y - 8)
+        ctx.fillStyle = COLORS.inkDim
+        ctx.font = "500 11px 'DM Sans', sans-serif"
+        ctx.fillText("BEST SCORE", leftX, y - 8)
+        ctx.fillText("BEST HEIGHT", rightX, y - 8)
 
-      ctx.fillStyle = COLORS.accent
-      ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
-      ctx.fillText(highScore > 0 ? String(highScore) : "—", leftX, y + 14)
-      ctx.fillText(
-        bestHeight > 0 ? formatHeightLabel(bestHeight) : "—",
-        rightX,
-        y + 14,
-      )
-      y += 56
+        ctx.fillStyle = COLORS.accent
+        ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
+        ctx.fillText(highScore > 0 ? String(highScore) : "—", leftX, y + 14)
+        ctx.fillText(
+          bestHeight > 0 ? formatHeightLabel(bestHeight) : "—",
+          rightX,
+          y + 14,
+        )
+        y += showCoins ? 48 : 56
+      }
+
+      if (showCoins) {
+        const coinCy = showBests ? y : y + 4
+        drawMenuCoinIcon(ctx, cx - 28, coinCy, 9)
+        ctx.fillStyle = COLORS.coinRim
+        ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
+        ctx.textAlign = "left"
+        ctx.fillText(String(lifetimeCoins), cx - 12, coinCy + 1)
+        ctx.textAlign = "center"
+        y = coinCy + 34
+      }
     } else {
       y += 12
     }
@@ -970,6 +1027,40 @@ function formatHeightLabel(climb: number): string {
     return Number.isInteger(k) ? `${k}k` : `${k.toFixed(1)}k`
   }
   return String(Math.round(climb))
+}
+
+/** Small gold coin glyph for the main-menu lifetime total. */
+function drawMenuCoinIcon(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+): void {
+  ctx.save()
+  const grd = ctx.createRadialGradient(
+    x - radius * 0.35,
+    y - radius * 0.4,
+    1,
+    x,
+    y,
+    radius,
+  )
+  grd.addColorStop(0, COLORS.coinCore)
+  grd.addColorStop(0.55, COLORS.coin)
+  grd.addColorStop(1, COLORS.coinRim)
+  ctx.fillStyle = grd
+  ctx.beginPath()
+  ctx.arc(x, y, radius, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.strokeStyle = COLORS.coinRim
+  ctx.lineWidth = 1.5
+  ctx.stroke()
+  ctx.fillStyle = COLORS.coinRim
+  ctx.font = "800 10px 'Bricolage Grotesque', sans-serif"
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  ctx.fillText("$", x, y + 0.5)
+  ctx.restore()
 }
 
 function roundRect(

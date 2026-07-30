@@ -98,6 +98,13 @@ export interface UpgradePickupData {
   kind: "dual" | "bullets" | "freeMove" | "pow"
 }
 
+/** Pass-through gold coin — banked into a lifetime total across runs. */
+export interface CoinData {
+  x: number
+  y: number
+  radius: number
+}
+
 /** Cosmetic pellet that travels along a fork beam (no physics). */
 export interface BulletData {
   x: number

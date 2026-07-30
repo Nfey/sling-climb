@@ -584,6 +584,7 @@ export class Game implements BotGameApi {
         this.platforms.bumpers,
         this.platforms.arrowPads,
         this.platforms.upgrades,
+        this.platforms.coins,
       )
       if (hit.bonusCollected && hit.bonusAt) {
         const awarded = this.score.collectBonus(BONUS_PLATFORM_POINTS)
@@ -609,6 +610,12 @@ export class Game implements BotGameApi {
         this.audio.playPlatformBounce()
       }
       if (hit.wallHit) this.audio.playWallBounce()
+      if (hit.coinsCollected > 0) {
+        const added = this.score.addCoins(hit.coinsCollected)
+        const at = hit.coinAt ?? { x: this.ball.x, y: this.ball.y }
+        this.spawnScorePopup(at.x, at.y + 12, added, COLORS.coin)
+        this.audio.playCoin()
+      }
       if (hit.upgradeCollected === "dual") {
         this.spawnPurpleBall()
         this.audio.playPowerup()
@@ -700,6 +707,7 @@ export class Game implements BotGameApi {
         this.platforms.bumpers,
         this.platforms.arrowPads,
         this.platforms.upgrades,
+        this.platforms.coins,
       )
       if (hit.platformHit) {
         this.score.collectFlat(PURPLE_BALL_PLATFORM_POINTS)
@@ -929,6 +937,7 @@ export class Game implements BotGameApi {
     this.renderer.drawBumpers(cam, this.platforms.bumpers, this.anim)
     this.renderer.drawArrowPads(cam, this.platforms.arrowPads, this.anim)
     this.renderer.drawUpgradePickups(cam, this.platforms.upgrades, this.anim)
+    this.renderer.drawCoins(cam, this.platforms.coins, this.anim)
     this.renderer.drawPortals(cam, this.platforms.portals, this.anim)
     this.renderer.drawBullets(cam, this.bullets)
 
@@ -997,6 +1006,7 @@ export class Game implements BotGameApi {
         cam,
         this.score.highScore,
         this.score.bestMaxHeight,
+        this.score.lifetimeCoins,
         this.anim,
       )
       return

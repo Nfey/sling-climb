@@ -9,6 +9,10 @@ import {
   BUMPER_MIN_GAP,
   BUMPER_RADIUS_MAX,
   BUMPER_RADIUS_MIN,
+  COIN_CHANCE,
+  COIN_MAX_GAP,
+  COIN_MIN_GAP,
+  COIN_RADIUS,
   PLATFORM_HEIGHT,
   PLATFORM_HORIZONTAL_MARGIN,
   PLATFORM_MAX_WIDTH,
@@ -32,6 +36,7 @@ import type {
   ArrowPadData,
   BumperData,
   CardinalDir,
+  CoinData,
   PlatformData,
   PortalData,
   UpgradePickupData,
@@ -47,12 +52,14 @@ export class PlatformManager {
   bumpers: BumperData[] = []
   arrowPads: ArrowPadData[] = []
   upgrades: UpgradePickupData[] = []
+  coins: CoinData[] = []
   private nextY = 0
   private nextPortalY = 0
   private nextPortalSide: "left" | "right" = "left"
   private nextBumperY = 0
   private nextArrowY = 0
   private nextUpgradeY = 0
+  private nextCoinY = 0
   private worldWidth = 390
 
   reset(worldWidth: number, slingshotY: number): void {
@@ -62,12 +69,14 @@ export class PlatformManager {
     this.bumpers = []
     this.arrowPads = []
     this.upgrades = []
+    this.coins = []
     this.nextY = slingshotY + 80
     this.nextPortalY = slingshotY + 280
     this.nextPortalSide = Math.random() < 0.5 ? "left" : "right"
     this.nextBumperY = slingshotY + 200
     this.nextArrowY = slingshotY + 240
     this.nextUpgradeY = slingshotY + 360
+    this.nextCoinY = slingshotY + 160
     this.spawnInitial(slingshotY)
   }
 
@@ -97,6 +106,9 @@ export class PlatformManager {
     }
     while (this.nextUpgradeY < slingshotY + 1400) {
       this.maybeSpawnUpgrade()
+    }
+    while (this.nextCoinY < slingshotY + 1400) {
+      this.maybeSpawnCoin()
     }
   }
 
@@ -238,6 +250,22 @@ export class PlatformManager {
     this.nextUpgradeY += rand(UPGRADE_PICKUP_MIN_GAP, UPGRADE_PICKUP_MAX_GAP)
   }
 
+  private maybeSpawnCoin(): void {
+    if (Math.random() < COIN_CHANCE) {
+      const radius = COIN_RADIUS
+      const x = rand(
+        PLATFORM_HORIZONTAL_MARGIN + radius,
+        this.worldWidth - PLATFORM_HORIZONTAL_MARGIN - radius,
+      )
+      this.coins.push({
+        x,
+        y: this.nextCoinY,
+        radius,
+      })
+    }
+    this.nextCoinY += rand(COIN_MIN_GAP, COIN_MAX_GAP)
+  }
+
   /**
    * Generate ahead of the camera and cull anything at/below the kill line
    * so platforms (and other props) never appear in the dead zone.
@@ -261,11 +289,15 @@ export class PlatformManager {
     while (this.nextUpgradeY < topNeeded) {
       this.maybeSpawnUpgrade()
     }
+    while (this.nextCoinY < topNeeded) {
+      this.maybeSpawnCoin()
+    }
 
     this.platforms = this.platforms.filter((p) => p.y + p.height > killWorldY)
     this.portals = this.portals.filter((p) => p.y + p.height > killWorldY)
     this.bumpers = this.bumpers.filter((b) => b.y + b.radius > killWorldY)
     this.arrowPads = this.arrowPads.filter((a) => a.y + a.radius > killWorldY)
     this.upgrades = this.upgrades.filter((u) => u.y + u.radius > killWorldY)
+    this.coins = this.coins.filter((c) => c.y + c.radius > killWorldY)
   }
 }

@@ -100,6 +100,14 @@ export const UPGRADE_PICKUP_CHANCE = 0.2
 export const UPGRADE_PICKUP_RADIUS = 22
 export const UPGRADE_PICKUP_MIN_GAP = 260
 export const UPGRADE_PICKUP_MAX_GAP = 480
+
+/** Chance to place a collectible coin at each spawn step. */
+export const COIN_CHANCE = 0.55
+export const COIN_RADIUS = 11
+export const COIN_MIN_GAP = 90
+export const COIN_MAX_GAP = 170
+/** Lifetime coins banked per collected coin. */
+export const COIN_VALUE = 1
 /** Chance a pickup is the bullet volley. 0 = disabled (code kept). */
 export const BULLET_PICKUP_SHARE = 0
 /** Chance a pickup is free-move XY (after bullets are ruled out). 0 = disabled. */
@@ -137,6 +145,8 @@ export const HIGH_SCORE_KEY = "sling-climb-high-score-v4"
 export const CLIMB_POINT_UNIT = 10
 /** Persisted best climb height (world px above run start). */
 export const MAX_HEIGHT_KEY = "sling-climb-max-height"
+/** Persisted lifetime coin total across runs. */
+export const COIN_KEY = "sling-climb-coins"
 
 /** World-Y spacing between dashed altitude marker lines. */
 export const HEIGHT_MARKER_SPACING = 200
@@ -219,6 +229,9 @@ export const COLORS = {
   freeMovePickupCore: "#ccfbf1",
   powPickup: "#dc2626",
   powPickupCore: "#fee2e2",
+  coin: "#eab308",
+  coinRim: "#a16207",
+  coinCore: "#fef08a",
   /** Previous best-height line before the player passes it. */
   maxHeightLine: "#2f6fed",
   /** Best-height line after the player has passed it this run. */
