@@ -875,7 +875,7 @@ export class Renderer {
   }
 
   /**
-   * Title screen with bests, bottom-corner variant pickers, and a Play button.
+   * Title screen with top-right coins, bests, bottom-corner variant pickers, and a Play button.
    * Returns interactive regions for hit-testing.
    */
   drawMainMenu(
@@ -904,6 +904,20 @@ export class Renderer {
     ctx.fillStyle = theme.menuOverlay
     ctx.fillRect(0, 0, width, camera.killScreenY)
 
+    // Lifetime coins — top-right corner (above title content).
+    {
+      const coinY = 28 + safeAreaInsetTop()
+      const coinRight = width - 20
+      ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
+      const coinLabel = String(lifetimeCoins)
+      const coinTextW = ctx.measureText(coinLabel).width
+      drawMenuCoinIcon(ctx, coinRight - coinTextW - 14, coinY, 9)
+      ctx.fillStyle = COLORS.coinRim
+      ctx.textAlign = "right"
+      ctx.textBaseline = "middle"
+      ctx.fillText(coinLabel, coinRight, coinY + 1)
+    }
+
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
 
@@ -919,43 +933,32 @@ export class Renderer {
 
     const showBests = highScore > 0 || bestHeight > 0
 
-    if (showBests || lifetimeCoins >= 0) {
+    if (showBests) {
       const rowW = Math.min(280, width - 48)
       const rowX = cx - rowW / 2
-      const rowH = showBests ? 96 : 52
+      const rowH = 64
       ctx.fillStyle = theme.statsCard
       ctx.beginPath()
       roundRect(ctx, rowX, y - 22, rowW, rowH, 12)
       ctx.fill()
 
-      if (showBests) {
-        const leftX = rowX + rowW * 0.28
-        const rightX = rowX + rowW * 0.72
+      const leftX = rowX + rowW * 0.28
+      const rightX = rowX + rowW * 0.72
 
-        ctx.fillStyle = theme.inkDim
-        ctx.font = "500 11px 'DM Sans', sans-serif"
-        ctx.fillText("BEST SCORE", leftX, y - 8)
-        ctx.fillText("BEST HEIGHT", rightX, y - 8)
+      ctx.fillStyle = theme.inkDim
+      ctx.font = "500 11px 'DM Sans', sans-serif"
+      ctx.fillText("BEST SCORE", leftX, y - 8)
+      ctx.fillText("BEST HEIGHT", rightX, y - 8)
 
-        ctx.fillStyle = COLORS.accent
-        ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
-        ctx.fillText(highScore > 0 ? String(highScore) : "—", leftX, y + 14)
-        ctx.fillText(
-          bestHeight > 0 ? formatHeightLabel(bestHeight) : "—",
-          rightX,
-          y + 14,
-        )
-        y += 56
-      }
-
-      const coinCy = showBests ? y : y + 4
-      drawMenuCoinIcon(ctx, cx - 28, coinCy, 9)
-      ctx.fillStyle = COLORS.coinRim
+      ctx.fillStyle = COLORS.accent
       ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
-      ctx.textAlign = "left"
-      ctx.fillText(String(lifetimeCoins), cx - 12, coinCy + 1)
-      ctx.textAlign = "center"
-      y = coinCy + 34
+      ctx.fillText(highScore > 0 ? String(highScore) : "—", leftX, y + 14)
+      ctx.fillText(
+        bestHeight > 0 ? formatHeightLabel(bestHeight) : "—",
+        rightX,
+        y + 14,
+      )
+      y += 56
     } else {
       y += 12
     }
