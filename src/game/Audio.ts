@@ -310,6 +310,30 @@ export class GameAudio {
     })
   }
 
+  /** Short bright chime when collecting a coin. */
+  playCoin(): void {
+    const ctx = this.ensureCtx()
+    if (!ctx || !this.master) return
+    const t = ctx.currentTime
+    const p = this.pitch()
+    const gMul = this.dramaGain()
+
+    const osc = ctx.createOscillator()
+    osc.type = "sine"
+    osc.frequency.setValueAtTime(880 * p, t)
+    osc.frequency.exponentialRampToValueAtTime(1320 * p, t + 0.08)
+
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(0.16 * gMul, t + 0.012)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14)
+
+    osc.connect(g)
+    g.connect(this.master)
+    osc.start(t)
+    osc.stop(t + 0.16)
+  }
+
   playCatch(): void {
     if (this.muted) return
     const ctx = this.ensureCtx()

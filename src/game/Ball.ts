@@ -14,6 +14,7 @@ import type {
   ArrowPadData,
   BumperData,
   CardinalDir,
+  CoinData,
   PlatformData,
   PortalData,
   UpgradePickupData,
@@ -27,6 +28,10 @@ export interface BallUpdateResult {
   bonusAt: Vec2 | null
   /** Player ball collected a pickup (kind set when true). */
   upgradeCollected: "dual" | "bullets" | "freeMove" | "pow" | null
+  /** Coins collected this frame (player ball only). */
+  coinsCollected: number
+  /** World position of the last coin collected this frame. */
+  coinAt: Vec2 | null
   /** Any platform landing this frame (used by purple bonus balls / combo). */
   platformHit: boolean
   /** World-Y change from a portal teleport this frame (0 if none). */
@@ -245,11 +250,14 @@ export class Ball {
     bumpers: BumperData[],
     arrowPads: ArrowPadData[],
     upgrades: UpgradePickupData[],
+    coins: CoinData[],
   ): BallUpdateResult {
     const result: BallUpdateResult = {
       bonusCollected: false,
       bonusAt: null,
       upgradeCollected: null,
+      coinsCollected: 0,
+      coinAt: null,
       platformHit: false,
       portalDeltaY: 0,
       wallHit: false,
@@ -299,7 +307,7 @@ export class Ball {
     result.arrowHit = arrow.hit
     result.arrowAt = arrow.at
 
-    // Only the player ball collects pickups
+    // Only the player ball collects pickups and coins
     if (!this.isBonus) {
       for (let i = upgrades.length - 1; i >= 0; i--) {
         const u = upgrades[i]!
@@ -307,6 +315,15 @@ export class Ball {
         if (dist < this.radius + u.radius) {
           result.upgradeCollected = u.kind
           upgrades.splice(i, 1)
+        }
+      }
+      for (let i = coins.length - 1; i >= 0; i--) {
+        const c = coins[i]!
+        const dist = Math.hypot(this.x - c.x, this.y - c.y)
+        if (dist < this.radius + c.radius) {
+          result.coinsCollected += 1
+          result.coinAt = { x: c.x, y: c.y }
+          coins.splice(i, 1)
         }
       }
     }
