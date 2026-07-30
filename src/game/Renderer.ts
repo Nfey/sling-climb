@@ -16,6 +16,7 @@ import type {
   BulletData,
   BumperData,
   CoinData,
+  MainMenuHitAreas,
   PlatformData,
   PortalData,
   ScorePopup,
@@ -24,6 +25,14 @@ import type {
   Vec2,
 } from "./types"
 import type { Slingshot } from "./Slingshot"
+import type { BallStyle, SlingshotStyle } from "./cosmetics"
+import {
+  drawBallStyle,
+  drawSlingshotBands,
+  drawSlingshotFork,
+  drawSlingshotIconStyle,
+  slingshotAccentColor,
+} from "./cosmeticArt"
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D
@@ -396,6 +405,7 @@ export class Renderer {
     pouch: Vec2 | null,
     pulse = 0,
     style: "normal" | "freeMove" | "pow" = "normal",
+    cosmeticStyle: SlingshotStyle = "classic",
   ): void {
     const ctx = this.ctx
     const base = camera.worldToScreen(sling.base)
@@ -405,15 +415,13 @@ export class Renderer {
     const pouchScreen = pouch ? camera.worldToScreen(pouch) : rest
     const freeMove = style === "freeMove"
     const pow = style === "pow"
-    const body = pow ? COLORS.powPickup : COLORS.slingshot
-    const band = pow ? "#991b1b" : COLORS.band
+    const slingStyle = pow || freeMove ? "classic" : cosmeticStyle
     const glow = freeMove
       ? COLORS.freeMovePickup
       : pow
         ? COLORS.powPickup
-        : COLORS.accent
+        : slingshotAccentColor(slingStyle, this.time)
 
-    // Soft glow when ready to catch / holding / powered
     if (pulse > 0 || freeMove || pow) {
       ctx.save()
       ctx.globalAlpha = freeMove || pow
@@ -426,47 +434,46 @@ export class Renderer {
       ctx.restore()
     }
 
-    // Post
-    ctx.strokeStyle = body
-    ctx.lineWidth = 10
-    ctx.lineCap = "round"
-    ctx.lineJoin = "round"
-    ctx.beginPath()
-    ctx.moveTo(base.x, base.y + SLINGSHOT_FORK_HEIGHT * 0.2)
-    ctx.lineTo(rest.x, rest.y + 6)
-    ctx.stroke()
+    const geom = {
+      base: { x: base.x, y: base.y + SLINGSHOT_FORK_HEIGHT * 0.2 },
+      left: { x: left.x, y: left.y },
+      right: { x: right.x, y: right.y },
+      rest: { x: rest.x, y: rest.y },
+    }
 
-    // Fork arms
-    ctx.lineWidth = 8
-    ctx.beginPath()
-    ctx.moveTo(left.x, left.y)
-    ctx.lineTo(rest.x, rest.y + 4)
-    ctx.lineTo(right.x, right.y)
-    ctx.stroke()
+    if (pow) {
+      drawSlingshotFork(ctx, geom, "crimson", this.time, 10, 8)
+    } else {
+      drawSlingshotFork(ctx, geom, slingStyle, this.time, 10, 8)
+    }
 
-    // Rubber bands
-    ctx.strokeStyle = band
-    ctx.lineWidth = 3.5
-    ctx.beginPath()
-    ctx.moveTo(left.x, left.y)
-    ctx.quadraticCurveTo(
-      (left.x + pouchScreen.x) * 0.5,
-      (left.y + pouchScreen.y) * 0.5 + 6,
-      pouchScreen.x,
-      pouchScreen.y,
-    )
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.moveTo(right.x, right.y)
-    ctx.quadraticCurveTo(
-      (right.x + pouchScreen.x) * 0.5,
-      (right.y + pouchScreen.y) * 0.5 + 6,
-      pouchScreen.x,
-      pouchScreen.y,
-    )
-    ctx.stroke()
+    if (!pow) {
+      drawSlingshotBands(
+        ctx,
+        left,
+        right,
+        pouchScreen,
+        slingStyle,
+        this.time,
+        3.5,
+      )
+    } else {
+      ctx.strokeStyle = "#991b1b"
+      ctx.lineWidth = 3.5
+      ctx.lineCap = "round"
+      for (const tip of [left, right]) {
+        ctx.beginPath()
+        ctx.moveTo(tip.x, tip.y)
+        ctx.quadraticCurveTo(
+          (tip.x + pouchScreen.x) * 0.5,
+          (tip.y + pouchScreen.y) * 0.5 + 6,
+          pouchScreen.x,
+          pouchScreen.y,
+        )
+        ctx.stroke()
+      }
+    }
 
-    // Movement guide — follows the slingshot (important during free-move)
     ctx.save()
     ctx.globalAlpha = freeMove ? 0.28 : pow ? 0.26 : 0.2
     ctx.strokeStyle = freeMove
@@ -569,7 +576,7 @@ export class Renderer {
     ctx.globalAlpha = 1
   }
 
-  drawBall(camera: Camera, ball: Ball): void {
+  drawBall(camera: Camera, ball: Ball, ballStyle: BallStyle = "classic"): void {
     const ctx = this.ctx
     const s = camera.worldToScreen({ x: ball.x, y: ball.y })
     const squash = ball.squash
@@ -580,24 +587,21 @@ export class Renderer {
     ctx.translate(s.x, s.y)
     ctx.scale(scaleX, scaleY)
 
-    const grd = ctx.createRadialGradient(-4, -5, 2, 0, 0, ball.radius)
     if (ball.isBonus) {
+      const grd = ctx.createRadialGradient(-4, -5, 2, 0, 0, ball.radius)
       grd.addColorStop(0, "#f5f3ff")
       grd.addColorStop(0.55, COLORS.ballPurple)
       grd.addColorStop(1, COLORS.ballPurpleStroke)
+      ctx.fillStyle = grd
+      ctx.beginPath()
+      ctx.arc(0, 0, ball.radius, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = "rgba(76, 29, 149, 0.35)"
+      ctx.lineWidth = 2
+      ctx.stroke()
     } else {
-      grd.addColorStop(0, "#fff6dd")
-      grd.addColorStop(0.55, COLORS.ball)
-      grd.addColorStop(1, COLORS.ballStroke)
+      drawBallStyle(ctx, ballStyle, ball.radius, this.time)
     }
-    ctx.fillStyle = grd
-    ctx.beginPath()
-    ctx.arc(0, 0, ball.radius, 0, Math.PI * 2)
-    ctx.fill()
-
-    ctx.strokeStyle = ball.isBonus ? "rgba(76, 29, 149, 0.35)" : "rgba(90, 60, 30, 0.25)"
-    ctx.lineWidth = 2
-    ctx.stroke()
     ctx.restore()
   }
 
@@ -766,8 +770,8 @@ export class Renderer {
   }
 
   /**
-   * Title screen with bests and a Play button.
-   * Returns the Play button rect in screen space for hit-testing.
+   * Title screen with bests, bottom-corner variant pickers, and a Play button.
+   * Returns interactive regions for hit-testing.
    */
   drawMainMenu(
     camera: Camera,
@@ -775,9 +779,15 @@ export class Renderer {
     bestHeight: number,
     lifetimeCoins: number,
     anim: number,
-  ): ScreenRect {
+    slingshotStyle: SlingshotStyle,
+    ballStyle: BallStyle,
+    slingshotLocked: boolean,
+    ballLocked: boolean,
+    slingshotPrice: number | null,
+    ballUnlockHint: string | null,
+  ): MainMenuHitAreas {
     const ctx = this.ctx
-    const { width } = camera
+    const { width, height } = camera
     const cx = width / 2
     let y = camera.slingshotScreenY - 168
 
@@ -798,12 +808,11 @@ export class Renderer {
     y += 40
 
     const showBests = highScore > 0 || bestHeight > 0
-    const showCoins = lifetimeCoins > 0
 
-    if (showBests || showCoins) {
+    if (showBests || lifetimeCoins >= 0) {
       const rowW = Math.min(280, width - 48)
       const rowX = cx - rowW / 2
-      const rowH = showBests && showCoins ? 96 : 52
+      const rowH = showBests ? 96 : 52
       ctx.fillStyle = "rgba(255, 255, 255, 0.55)"
       ctx.beginPath()
       roundRect(ctx, rowX, y - 22, rowW, rowH, 12)
@@ -826,19 +835,17 @@ export class Renderer {
           rightX,
           y + 14,
         )
-        y += showCoins ? 48 : 56
+        y += 56
       }
 
-      if (showCoins) {
-        const coinCy = showBests ? y : y + 4
-        drawMenuCoinIcon(ctx, cx - 28, coinCy, 9)
-        ctx.fillStyle = COLORS.coinRim
-        ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
-        ctx.textAlign = "left"
-        ctx.fillText(String(lifetimeCoins), cx - 12, coinCy + 1)
-        ctx.textAlign = "center"
-        y = coinCy + 34
-      }
+      const coinCy = showBests ? y : y + 4
+      drawMenuCoinIcon(ctx, cx - 28, coinCy, 9)
+      ctx.fillStyle = COLORS.coinRim
+      ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
+      ctx.textAlign = "left"
+      ctx.fillText(String(lifetimeCoins), cx - 12, coinCy + 1)
+      ctx.textAlign = "center"
+      y = coinCy + 34
     } else {
       y += 12
     }
@@ -846,7 +853,7 @@ export class Renderer {
     const pulse = 0.92 + Math.sin(anim * 3.2) * 0.08
     const btnW = 168
     const btnH = 52
-    const btn: ScreenRect = {
+    const play: ScreenRect = {
       x: cx - btnW / 2,
       y: y - btnH / 2,
       w: btnW,
@@ -870,8 +877,75 @@ export class Renderer {
     ctx.font = "500 13px 'DM Sans', sans-serif"
     ctx.fillText("or tap anywhere to start", cx, y)
 
+    // Bottom-corner variant pickers (below kill line)
+    const bottomTop = camera.killScreenY
+    const bottomH = height - bottomTop
+    const pickerH = Math.min(72, bottomH - 8)
+    const pickerY = bottomTop + (bottomH - pickerH) / 2
+    const arrowW = 34
+    const iconBox = 48
+    const pickerW = arrowW + iconBox + arrowW
+    const margin = 12
+
+    const slingshotRow = drawCornerVariantPicker(
+      ctx,
+      margin,
+      pickerY,
+      pickerW,
+      pickerH,
+      arrowW,
+      iconBox,
+      "slingshot",
+      slingshotStyle,
+      slingshotLocked,
+      this.time,
+    )
+
+    const ballRow = drawCornerVariantPicker(
+      ctx,
+      width - margin - pickerW,
+      pickerY,
+      pickerW,
+      pickerH,
+      arrowW,
+      iconBox,
+      "ball",
+      ballStyle,
+      ballLocked,
+      this.time,
+      ballLocked ? ballUnlockHint : null,
+    )
+
+    let buySlingshot: ScreenRect | null = null
+    if (slingshotPrice != null && slingshotLocked) {
+      const buyW = 112
+      const buyH = 26
+      const buyX = slingshotRow.icon.x + (slingshotRow.icon.w - buyW) / 2
+      const buyY = slingshotRow.icon.y + slingshotRow.icon.h + 4
+      buySlingshot = { x: buyX, y: buyY, w: buyW, h: buyH }
+      const canAfford = lifetimeCoins >= slingshotPrice
+      ctx.fillStyle = canAfford ? COLORS.coin : "rgba(17, 17, 17, 0.1)"
+      ctx.beginPath()
+      roundRect(ctx, buyX, buyY, buyW, buyH, 8)
+      ctx.fill()
+      ctx.fillStyle = canAfford ? COLORS.coinRim : COLORS.inkDim
+      ctx.font = "800 12px 'Bricolage Grotesque', sans-serif"
+      ctx.textAlign = "center"
+      ctx.fillText(`${slingshotPrice}`, buyX + buyW / 2 - 8, buyY + buyH / 2 + 1)
+      drawMenuCoinIcon(ctx, buyX + buyW / 2 + 14, buyY + buyH / 2, 6)
+    }
+
     ctx.textBaseline = "alphabetic"
-    return btn
+    return {
+      play,
+      slingshotPrev: slingshotRow.prev,
+      slingshotNext: slingshotRow.next,
+      slingshotPicker: { x: margin, y: pickerY, w: pickerW, h: pickerH },
+      ballPrev: ballRow.prev,
+      ballNext: ballRow.next,
+      ballPicker: { x: width - margin - pickerW, y: pickerY, w: pickerW, h: pickerH },
+      buySlingshot,
+    }
   }
 
   drawGameOver(
@@ -1028,6 +1102,111 @@ function formatHeightLabel(climb: number): string {
   }
   return String(Math.round(climb))
 }
+
+function drawCornerVariantPicker(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  arrowW: number,
+  iconBox: number,
+  kind: "slingshot" | "ball",
+  style: SlingshotStyle | BallStyle,
+  locked: boolean,
+  time: number,
+  unlockHint: string | null = null,
+): { prev: ScreenRect; next: ScreenRect; icon: ScreenRect } {
+  ctx.fillStyle = "rgba(255, 255, 255, 0.78)"
+  ctx.beginPath()
+  roundRect(ctx, x, y, w, h, 12)
+  ctx.fill()
+  ctx.strokeStyle = "rgba(17, 17, 17, 0.08)"
+  ctx.lineWidth = 1
+  ctx.stroke()
+
+  const prev: ScreenRect = { x, y, w: arrowW, h }
+  const next: ScreenRect = { x: x + w - arrowW, y, w: arrowW, h }
+  const icon: ScreenRect = { x: x + arrowW, y, w: iconBox, h }
+
+  ctx.fillStyle = COLORS.accent
+  ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  ctx.fillText("‹", x + arrowW / 2, y + h / 2 + 1)
+  ctx.fillText("›", x + w - arrowW / 2, y + h / 2 + 1)
+
+  const iconCx = icon.x + icon.w / 2
+  const iconCy = icon.y + h / 2
+
+  ctx.save()
+  ctx.translate(iconCx, iconCy)
+  if (kind === "slingshot") {
+    drawSlingshotIconStyle(ctx, 0, 0, iconBox * 0.72, style as SlingshotStyle, time)
+  } else {
+    drawBallStyle(ctx, style as BallStyle, iconBox * 0.32, time)
+  }
+  ctx.restore()
+
+  if (locked) {
+    drawLockOverlay(ctx, icon.x + 2, icon.y + 2, icon.w - 4, h - 4, unlockHint)
+  }
+
+  return { prev, next, icon }
+}
+
+function drawLockOverlay(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  hint: string | null = null,
+): void {
+  ctx.save()
+  ctx.fillStyle = "rgba(255, 255, 255, 0.62)"
+  ctx.beginPath()
+  roundRect(ctx, x, y, w, h, 8)
+  ctx.fill()
+
+  const cx = x + w / 2
+  const lockY = hint ? y + h * 0.38 : y + h / 2
+  const lockColor = "rgba(100, 116, 139, 0.92)"
+
+  ctx.strokeStyle = lockColor
+  ctx.fillStyle = lockColor
+  ctx.lineWidth = 2
+  ctx.lineCap = "round"
+
+  ctx.beginPath()
+  ctx.arc(cx, lockY - 3, 6, Math.PI, 0)
+  ctx.stroke()
+
+  ctx.beginPath()
+  roundRect(ctx, cx - 8, lockY - 1, 16, 13, 3)
+  ctx.fill()
+
+  if (hint) {
+    ctx.fillStyle = "rgba(51, 65, 85, 0.95)"
+    ctx.font = "700 9px 'DM Sans', sans-serif"
+    ctx.textAlign = "center"
+    ctx.textBaseline = "bottom"
+    ctx.fillText(hint, cx, y + h - 4)
+  }
+
+  ctx.restore()
+}
+
+function hitRect(px: number, py: number, rect: ScreenRect): boolean {
+  return (
+    px >= rect.x &&
+    px <= rect.x + rect.w &&
+    py >= rect.y &&
+    py <= rect.y + rect.h
+  )
+}
+
+export { hitRect }
 
 /** Small gold coin glyph for the main-menu lifetime total. */
 function drawMenuCoinIcon(

@@ -26,7 +26,7 @@ export interface GameSnapshot {
   targets: BotAimTarget[]
   /** Nearby coins the bot may steer away from (menu demo). */
   coins: CoinData[]
-  /** When true, the bot nudges aim and tracking to miss coins. */
+  /** When true, the bot nudges aim to miss coins. */
   avoidCoins: boolean
 }
 
@@ -45,6 +45,18 @@ export interface ScreenRect {
   y: number
   w: number
   h: number
+}
+
+/** Interactive regions returned by the main-menu draw pass. */
+export interface MainMenuHitAreas {
+  play: ScreenRect
+  slingshotPrev: ScreenRect
+  slingshotNext: ScreenRect
+  slingshotPicker: ScreenRect
+  ballPrev: ScreenRect
+  ballNext: ScreenRect
+  ballPicker: ScreenRect
+  buySlingshot: ScreenRect | null
 }
 
 export interface PointerState {
