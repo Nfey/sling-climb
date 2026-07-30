@@ -111,6 +111,20 @@ export const BALL_VARIANTS: readonly BallVariant[] = [
   ...HEIGHT_BALL_VARIANTS,
 ]
 
+/** Ball ids hidden from the picker until visuals are ready. Remove ids to re-enable. */
+export const TEMPORARILY_HIDDEN_BALL_IDS: ReadonlySet<string> = new Set([
+  "tennis",
+  "volleyball",
+])
+
+export function isBallVariantVisible(id: string): boolean {
+  return !TEMPORARILY_HIDDEN_BALL_IDS.has(id)
+}
+
+export const VISIBLE_BALL_VARIANTS: readonly BallVariant[] = BALL_VARIANTS.filter((v) =>
+  isBallVariantVisible(v.id),
+)
+
 export const SLINGSHOT_UNLOCKS_KEY = "sling-climb-slingshot-unlocks"
 export const EQUIPPED_SLINGSHOT_KEY = "sling-climb-equipped-slingshot"
 export const EQUIPPED_BALL_KEY = "sling-climb-equipped-ball"
@@ -183,7 +197,7 @@ export class CosmeticsStore {
   }
 
   cycleBallMenu(delta: number): void {
-    const allIds = [DEFAULT_COSMETIC_ID, ...BALL_VARIANTS.map((v) => v.id)]
+    const allIds = [DEFAULT_COSMETIC_ID, ...VISIBLE_BALL_VARIANTS.map((v) => v.id)]
     const current = allIds.indexOf(this.equippedBallId)
     const next =
       current >= 0
@@ -242,6 +256,7 @@ export class CosmeticsStore {
   }
 
   equipBall(id: string): void {
+    if (id !== DEFAULT_COSMETIC_ID && !isBallVariantVisible(id)) return
     this.equippedBallId = id
     this.saveEquipped()
   }
@@ -261,6 +276,7 @@ export class CosmeticsStore {
   /** Active ball style for gameplay (unlocked variants only). */
   getEquippedBallStyle(bestHeight: number, highScore: number): BallStyle {
     if (this.equippedBallId === DEFAULT_COSMETIC_ID) return "classic"
+    if (!isBallVariantVisible(this.equippedBallId)) return "classic"
     if (!this.isBallUnlocked(this.equippedBallId, bestHeight, highScore)) return "classic"
     return findBallVariant(this.equippedBallId)?.style ?? "classic"
   }
@@ -308,11 +324,13 @@ export class CosmeticsStore {
 
   getSelectedBallStyle(): BallStyle {
     if (this.equippedBallId === DEFAULT_COSMETIC_ID) return "classic"
+    if (!isBallVariantVisible(this.equippedBallId)) return "classic"
     return findBallVariant(this.equippedBallId)?.style ?? "classic"
   }
 
   getSelectedBallVariant(): BallVariant | null {
     if (this.equippedBallId === DEFAULT_COSMETIC_ID) return null
+    if (!isBallVariantVisible(this.equippedBallId)) return null
     return findBallVariant(this.equippedBallId) ?? null
   }
 
@@ -333,6 +351,7 @@ export class CosmeticsStore {
   isBallSelectionLocked(bestHeight: number, highScore: number): boolean {
     return (
       this.equippedBallId !== DEFAULT_COSMETIC_ID &&
+      isBallVariantVisible(this.equippedBallId) &&
       !this.isBallUnlocked(this.equippedBallId, bestHeight, highScore)
     )
   }
@@ -364,6 +383,9 @@ export class CosmeticsStore {
     this.equippedSlingshotId =
       this.loadString(EQUIPPED_SLINGSHOT_KEY) ?? DEFAULT_COSMETIC_ID
     this.equippedBallId = this.loadString(EQUIPPED_BALL_KEY) ?? DEFAULT_COSMETIC_ID
+    if (!isBallVariantVisible(this.equippedBallId)) {
+      this.equippedBallId = DEFAULT_COSMETIC_ID
+    }
     this.equippedBackgroundId =
       this.loadString(EQUIPPED_BACKGROUND_KEY) ?? DEFAULT_COSMETIC_ID
 
