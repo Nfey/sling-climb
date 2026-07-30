@@ -31,7 +31,11 @@ import {
   SLINGSHOT_KEYBOARD_SPEED,
   COLORS,
 } from "./constants"
-import { GameAudio } from "./Audio"
+import {
+  DEFAULT_MASTER_VOLUME,
+  GameAudio,
+  MENU_DEMO_MASTER_VOLUME,
+} from "./Audio"
 import { BotController, type BotGameApi } from "./BotController"
 import { defaultConfig, type GameConfig } from "./config"
 import { Input } from "./Input"
@@ -312,10 +316,10 @@ export class Game implements BotGameApi {
     this.config.onSessionEnd?.()
   }
 
-  /** Silent perfect-seek backdrop behind the main-menu overlay. */
+  /** Audible perfect-seek backdrop behind the main-menu overlay. */
   private enterMenuDemo(): void {
     this.menuDemo = true
-    this.audio.setMuted(true)
+    this.audio.setMasterVolume(MENU_DEMO_MASTER_VOLUME)
     if (!this.menuDemoBot) {
       this.menuDemoBot = new BotController("perfect-seek")
     }
@@ -328,7 +332,7 @@ export class Game implements BotGameApi {
   private beginFromMenu(): void {
     this.menuDemo = false
     this.controller = null
-    this.audio.setMuted(false)
+    this.audio.setMasterVolume(DEFAULT_MASTER_VOLUME)
     this.audio.unlock()
     this.resetRun(false)
   }
