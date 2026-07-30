@@ -233,6 +233,7 @@ export class Renderer {
     const ctx = this.ctx
     const killY = camera.killScreenY
     for (const p of platforms) {
+      if (p.active === false) continue
       const tl = camera.worldToScreen({ x: p.x, y: p.y + p.height })
       const br = camera.worldToScreen({ x: p.x + p.width, y: p.y })
       const w = br.x - tl.x
@@ -240,12 +241,25 @@ export class Renderer {
       // Hide anything at or below the kill line
       if (tl.y >= killY || br.y < -20 || tl.y > camera.height + 20) continue
 
-      ctx.fillStyle = p.bonus ? COLORS.platformBonus : COLORS.platform
+      let fill = COLORS.platform
+      let edge = COLORS.platformEdge
+      if (p.kind === "bonus") {
+        fill = COLORS.platformBonus
+        edge = COLORS.platformBonusEdge
+      } else if (p.kind === "crumbling") {
+        fill = COLORS.platformCrumbling
+        edge = COLORS.platformCrumblingEdge
+      } else if (p.kind === "moving") {
+        fill = COLORS.platformMoving
+        edge = COLORS.platformMovingEdge
+      }
+
+      ctx.fillStyle = fill
       ctx.beginPath()
       roundRect(ctx, tl.x, tl.y, w, Math.max(PLATFORM_HEIGHT, h), 6)
       ctx.fill()
 
-      ctx.fillStyle = p.bonus ? COLORS.platformBonusEdge : COLORS.platformEdge
+      ctx.fillStyle = edge
       ctx.fillRect(tl.x + 4, tl.y + 3, w - 8, 3)
     }
   }

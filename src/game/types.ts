@@ -68,13 +68,21 @@ export interface PointerState {
   id: number
 }
 
+export type PlatformKind = "normal" | "bonus" | "crumbling" | "moving"
+
 export interface PlatformData {
   x: number
   y: number
   width: number
   height: number
-  /** Purple bonus platform — awards points once, then turns normal. */
-  bonus: boolean
+  kind: PlatformKind
+  /** Grey crumbling platforms are removed after the first bounce. */
+  active?: boolean
+  /** Moving platforms oscillate around this X center. */
+  originX?: number
+  phase?: number
+  amplitude?: number
+  speed?: number
 }
 
 /** Staggered single-wall portals — enter one, exit the next portal up on the opposite side. */

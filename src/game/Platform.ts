@@ -13,6 +13,10 @@ import {
   COIN_MAX_GAP,
   COIN_MIN_GAP,
   COIN_RADIUS,
+  CRUMBLING_PLATFORM_CHANCE,
+  MOVING_PLATFORM_AMPLITUDE,
+  MOVING_PLATFORM_CHANCE,
+  MOVING_PLATFORM_SPEED,
   PLATFORM_HEIGHT,
   PLATFORM_HORIZONTAL_MARGIN,
   PLATFORM_MAX_WIDTH,
@@ -38,12 +42,23 @@ import type {
   CardinalDir,
   CoinData,
   PlatformData,
+  PlatformKind,
   PortalData,
   UpgradePickupData,
 } from "./types"
 
 function rand(min: number, max: number): number {
   return min + Math.random() * (max - min)
+}
+
+function pickPlatformKind(): PlatformKind {
+  const r = Math.random()
+  if (r < BONUS_PLATFORM_CHANCE) return "bonus"
+  if (r < BONUS_PLATFORM_CHANCE + CRUMBLING_PLATFORM_CHANCE) return "crumbling"
+  if (r < BONUS_PLATFORM_CHANCE + CRUMBLING_PLATFORM_CHANCE + MOVING_PLATFORM_CHANCE) {
+    return "moving"
+  }
+  return "normal"
 }
 
 export class PlatformManager {
@@ -92,7 +107,7 @@ export class PlatformManager {
       y: slingshotY + 100,
       width: 100,
       height: PLATFORM_HEIGHT,
-      bonus: false,
+      kind: "normal",
     })
     this.nextY = slingshotY + 100 + rand(PLATFORM_VERTICAL_GAP_MIN, PLATFORM_VERTICAL_GAP_MAX)
 
@@ -120,19 +135,39 @@ export class PlatformManager {
 
   private spawnOne(): void {
     const width = rand(PLATFORM_MIN_WIDTH, PLATFORM_MAX_WIDTH)
+    const kind = pickPlatformKind()
+    const amplitude =
+      kind === "moving" ? MOVING_PLATFORM_AMPLITUDE : 0
+    const minX = PLATFORM_HORIZONTAL_MARGIN + amplitude
     const maxX = Math.max(
-      PLATFORM_HORIZONTAL_MARGIN,
-      this.worldWidth - width - PLATFORM_HORIZONTAL_MARGIN,
+      minX,
+      this.worldWidth - width - PLATFORM_HORIZONTAL_MARGIN - amplitude,
     )
-    const x = rand(PLATFORM_HORIZONTAL_MARGIN, maxX)
-    this.platforms.push({
+    const x = rand(minX, maxX)
+    const platform: PlatformData = {
       x,
       y: this.nextY,
       width,
       height: PLATFORM_HEIGHT,
-      bonus: Math.random() < BONUS_PLATFORM_CHANCE,
-    })
+      kind,
+    }
+    if (kind === "moving") {
+      platform.originX = x
+      platform.phase = Math.random() * Math.PI * 2
+      platform.amplitude = MOVING_PLATFORM_AMPLITUDE
+      platform.speed = MOVING_PLATFORM_SPEED
+    }
+    this.platforms.push(platform)
     this.nextY += rand(PLATFORM_VERTICAL_GAP_MIN, PLATFORM_VERTICAL_GAP_MAX)
+  }
+
+  /** Advance side-to-side motion before collision checks each frame. */
+  updateMovingPlatforms(dt: number): void {
+    for (const p of this.platforms) {
+      if (p.kind !== "moving" || p.originX == null) continue
+      p.phase! += p.speed! * dt
+      p.x = p.originX + Math.sin(p.phase!) * p.amplitude!
+    }
   }
 
   private maybeSpawnPortal(): void {
@@ -299,7 +334,9 @@ export class PlatformManager {
       this.maybeSpawnCoin()
     }
 
-    this.platforms = this.platforms.filter((p) => p.y + p.height > killWorldY)
+    this.platforms = this.platforms.filter(
+      (p) => p.active !== false && p.y + p.height > killWorldY,
+    )
     this.portals = this.portals.filter((p) => p.y + p.height > killWorldY)
     this.bumpers = this.bumpers.filter((b) => b.y + b.radius > killWorldY)
     this.arrowPads = this.arrowPads.filter((a) => a.y + a.radius > killWorldY)
