@@ -18,6 +18,7 @@ import {
   FREE_MOVE_DURATION,
   BONUS_PLATFORM_POINTS,
   DESKTOP_HINT_MIN_WIDTH,
+  MAX_PULL,
   PLAYFIELD_MAX_WIDTH,
   POW_DURATION,
   POW_LAUNCH_MULT,
@@ -31,25 +32,31 @@ import {
   COLORS,
 } from "./constants"
 import { GameAudio } from "./Audio"
+import type { BotGameApi } from "./BotController"
+import { defaultConfig, type GameConfig } from "./config"
 import { Input } from "./Input"
 import { PlatformManager } from "./Platform"
 import { Renderer } from "./Renderer"
 import { Score } from "./Score"
 import { Slingshot } from "./Slingshot"
-import type { BulletData, GameState, ScorePopup, Vec2 } from "./types"
+import type { BulletData, BotAimTarget, GameSnapshot, GameState, ScorePopup, Vec2 } from "./types"
 
-export class Game {
+export type FrameController = { update(dt: number, game: BotGameApi): void }
+
+export class Game implements BotGameApi {
   private camera = new Camera()
   private ball = new Ball()
   private bonusBalls: Ball[] = []
   private bullets: BulletData[] = []
   private slingshot = new Slingshot()
+  private score: Score
   private platforms = new PlatformManager()
-  private score = new Score()
   private audio = new GameAudio()
   private input: Input
   private renderer: Renderer
   private canvas: HTMLCanvasElement
+  private config: GameConfig
+  private controller: FrameController | null = null
 
   private state: GameState = "menu"
   private started = false
@@ -58,6 +65,8 @@ export class Game {
   private running = false
   private lastAimPull: Vec2 | null = null
   private aimPointerId: number | null = null
+  /** True while bot/script drives aim without a real pointer. */
+  private scriptedAim = false
   /** Seconds remaining of fork-bullet volley powerup. */
   private bulletPowerRemaining = 0
   private bulletFireCooldown = 0
@@ -76,9 +85,14 @@ export class Game {
   private portalCatchupRemaining = 0
   /** World Y when the current flight started (launch or after catch). */
   private flightStartY = 0
+  /** Elapsed seconds in the current playable session. */
+  private sessionElapsed = 0
+  private sessionEnded = false
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, config: Partial<GameConfig> = {}) {
     this.canvas = canvas
+    this.config = defaultConfig(config)
+    this.score = new Score(this.config.persistScores !== false)
     // Unlock audio inside the real gesture handlers (pointer/key), not rAF.
     this.input = new Input(
       canvas,
@@ -91,11 +105,123 @@ export class Game {
     window.addEventListener("orientationchange", () => this.resize())
   }
 
+  get autoRestart(): boolean {
+    return this.config.autoRestart === true
+  }
+
+  get mode(): GameConfig["mode"] {
+    return this.config.mode
+  }
+
+  setController(controller: FrameController | null): void {
+    this.controller = controller
+  }
+
+  snapshot(): GameSnapshot {
+    return {
+      state: this.state,
+      ball: {
+        x: this.ball.x,
+        y: this.ball.y,
+        vx: this.ball.vx,
+        vy: this.ball.vy,
+        inSlingshot: this.ball.inSlingshot,
+      },
+      slingshot: { x: this.slingshot.x, y: this.slingshot.y },
+      killWorldY: this.camera.killWorldY,
+      width: this.camera.width,
+      height: this.camera.height,
+      targets: this.collectBotTargets(),
+    }
+  }
+
+  /** Nearby hazards / bonuses above the pouch for seek-style bots. */
+  private collectBotTargets(): BotAimTarget[] {
+    const slingY = this.slingshot.y
+    const maxY = slingY + this.camera.height * 1.35
+    const width = this.camera.width
+    const out: BotAimTarget[] = []
+
+    for (const p of this.platforms.portals) {
+      const midY = p.y + p.height * 0.5
+      if (midY <= slingY + 50 || midY > maxY) continue
+      out.push({
+        x: p.side === "left" ? 18 : width - 18,
+        y: midY,
+        kind: "portal",
+        weight: 4,
+      })
+    }
+    for (const b of this.platforms.bumpers) {
+      if (b.y <= slingY + 40 || b.y > maxY) continue
+      out.push({ x: b.x, y: b.y, kind: "bumper", weight: 2.5 })
+    }
+    for (const a of this.platforms.arrowPads) {
+      if (a.y <= slingY + 40 || a.y > maxY) continue
+      out.push({ x: a.x, y: a.y, kind: "arrow", weight: 2.2 })
+    }
+    for (const p of this.platforms.platforms) {
+      if (!p.bonus) continue
+      const cy = p.y + p.height * 0.5
+      if (cy <= slingY + 40 || cy > maxY) continue
+      out.push({
+        x: p.x + p.width * 0.5,
+        y: cy,
+        kind: "bonus",
+        weight: 1.4,
+      })
+    }
+    return out
+  }
+
+  setSlingX(x: number): void {
+    this.slingshot.setX(x, this.camera.width)
+  }
+
+  beginAimPull(pull: Vec2): void {
+    if (!this.ball.inSlingshot) return
+    if (this.state !== "ready" && this.state !== "aiming") return
+    this.state = "aiming"
+    this.started = true
+    this.scriptedAim = true
+    this.aimPointerId = null
+    this.applyPull(pull)
+  }
+
+  setAimPull(pull: Vec2): void {
+    if (this.state !== "aiming" || !this.ball.inSlingshot) return
+    this.scriptedAim = true
+    this.applyPull(pull)
+  }
+
+  releaseAim(): void {
+    if (this.state !== "aiming") return
+    this.commitAimRelease()
+  }
+
+  restartRun(): void {
+    this.resetRun()
+  }
+
   start(): void {
-    this.resetRun(true)
+    this.sessionElapsed = 0
+    this.sessionEnded = false
+    // Normal game opens on the main menu; bot/playable skip straight into a run.
+    this.resetRun(this.config.mode === "normal")
     this.running = true
     this.lastTime = performance.now()
     requestAnimationFrame((t) => this.frame(t))
+  }
+
+  private applyPull(pull: Vec2): void {
+    const len = Math.hypot(pull.x, pull.y)
+    const power = Math.min(1, len / MAX_PULL)
+    this.lastAimPull = { x: pull.x, y: pull.y }
+    this.slingshot.stretch = power
+  }
+
+  private get botActive(): boolean {
+    return this.config.mode === "bot" && this.controller != null
   }
 
   private primaryPointer() {
@@ -156,6 +282,7 @@ export class Game {
     this.started = false
     this.lastAimPull = null
     this.aimPointerId = null
+    this.scriptedAim = false
     this.bulletPowerRemaining = 0
     this.bulletFireCooldown = 0
     this.freeMoveRemaining = 0
@@ -164,6 +291,14 @@ export class Game {
     this.scorePopups = []
     this.portalCatchupRemaining = 0
     this.flightStartY = 0
+  }
+
+  private endPlayableSession(): void {
+    if (this.sessionEnded) return
+    this.sessionEnded = true
+    this.state = "adEnd"
+    this.audio.resetFlight()
+    this.config.onSessionEnd?.()
   }
 
   /** Leave the title menu and enter a playable ready state. */
@@ -210,6 +345,7 @@ export class Game {
     }
     this.lastAimPull = null
     this.aimPointerId = null
+    this.scriptedAim = false
   }
 
   /** Pointer lifted — commit aim while still in the browser gesture stack. */
@@ -304,8 +440,34 @@ export class Game {
   }
 
   private update(dt: number): void {
-    const presses = this.input.consumePresses()
-    const releases = this.input.consumeReleases()
+    if (this.state === "adEnd") {
+      this.input.consumePresses()
+      this.input.consumeReleases()
+      return
+    }
+
+    if (this.config.mode === "playable" && !this.sessionEnded) {
+      this.sessionElapsed += dt
+      const maxSec = this.config.maxSessionSec ?? 30
+      if (this.sessionElapsed >= maxSec) {
+        this.score.commitHighScore()
+        this.endPlayableSession()
+        return
+      }
+    }
+
+    // Autopilot runs before human input so it owns aim/move this frame.
+    if (this.controller) {
+      this.controller.update(dt, this)
+    }
+
+    const ignoreHuman = this.botActive
+    if (ignoreHuman) {
+      this.input.consumePresses()
+      this.input.consumeReleases()
+    }
+    const presses = ignoreHuman ? [] : this.input.consumePresses()
+    const releases = ignoreHuman ? [] : this.input.consumeReleases()
 
     if (this.aimPointerId != null && releases.includes(this.aimPointerId)) {
       // handled below in aiming
@@ -319,9 +481,14 @@ export class Game {
     }
 
     if (this.state === "gameOver") {
-      if (presses.length > 0) {
+      if (this.config.mode === "playable") {
+        this.endPlayableSession()
+        return
+      }
+      if (!this.botActive && presses.length > 0) {
         this.resetRun(true)
       }
+      // Bot restarts via controller calling restartRun().
       return
     }
 
@@ -350,7 +517,7 @@ export class Game {
       if (this.aimPointerId == null) this.aimPointerId = p.id
     }
 
-    const pointer = this.primaryPointer()
+    const pointer = ignoreHuman ? null : this.primaryPointer()
 
     if (this.ball.inSlingshot) {
       this.slingshot.frozen = true
@@ -359,7 +526,7 @@ export class Game {
 
       // Only a fresh press starts aiming — a held finger after
       // "tap to play again" must not immediately pull the slingshot.
-      if (this.state === "ready") {
+      if (this.state === "ready" && !this.scriptedAim) {
         const press = presses[0]
         if (press) {
           this.state = "aiming"
@@ -369,34 +536,44 @@ export class Game {
       }
 
       if (this.state === "aiming") {
-        const ptr =
-          this.aimPointerId != null
-            ? this.input.getPointer(this.aimPointerId)
-            : pointer
-
-        if (!ptr) {
-          this.commitAimRelease()
+        if (this.scriptedAim) {
+          // Pull already set by beginAimPull / setAimPull.
+          if (this.lastAimPull) {
+            const len = Math.hypot(this.lastAimPull.x, this.lastAimPull.y)
+            this.slingshot.stretch = Math.min(1, len / MAX_PULL)
+          }
         } else {
-          const { pull, power } = this.slingshot.getPull(
-            ptr.x,
-            ptr.y,
-            (sx, sy) => this.camera.screenToWorld(sx, sy),
-          )
-          this.slingshot.stretch = power
-          this.lastAimPull = pull
+          const ptr =
+            this.aimPointerId != null
+              ? this.input.getPointer(this.aimPointerId)
+              : pointer
+
+          if (!ptr) {
+            this.commitAimRelease()
+          } else {
+            const { pull, power } = this.slingshot.getPull(
+              ptr.x,
+              ptr.y,
+              (sx, sy) => this.camera.screenToWorld(sx, sy),
+            )
+            this.slingshot.stretch = power
+            this.lastAimPull = pull
+          }
         }
       }
     } else {
       this.state = "flying"
       this.slingshot.frozen = false
 
-      // Pointer still wins when held; otherwise WASD / arrows move the slingshot.
-      if (pointer) {
-        this.moveSlingshotToPointer(pointer.x, pointer.y)
-        this.aimPointerId = pointer.id
-      } else {
-        this.aimPointerId = null
-        this.moveSlingshotWithKeyboard(dt)
+      // Bot already moved sling via setSlingX; humans use pointer/keyboard.
+      if (!ignoreHuman) {
+        if (pointer) {
+          this.moveSlingshotToPointer(pointer.x, pointer.y)
+          this.aimPointerId = pointer.id
+        } else {
+          this.aimPointerId = null
+          this.moveSlingshotWithKeyboard(dt)
+        }
       }
 
       const hit = this.ball.update(
@@ -482,6 +659,7 @@ export class Game {
         this.slingshot.frozen = true
         this.started = true
         this.lastAimPull = null
+        this.scriptedAim = false
         this.catchBurst = CATCH_BURST_DURATION
         this.score.resetCombo()
         this.endFlightCatch()
@@ -504,6 +682,9 @@ export class Game {
         this.audio.playGameOver()
         this.audio.resetFlight()
         this.state = "gameOver"
+        if (this.config.mode === "playable") {
+          this.endPlayableSession()
+        }
       }
     }
 
@@ -653,7 +834,7 @@ export class Game {
   }
 
   private updateBulletPower(dt: number): void {
-    if (this.bulletPowerRemaining > 0 && this.state !== "gameOver") {
+    if (this.bulletPowerRemaining > 0 && this.state !== "gameOver" && this.state !== "adEnd") {
       this.bulletPowerRemaining = Math.max(0, this.bulletPowerRemaining - dt)
       this.bulletFireCooldown -= dt
       while (this.bulletFireCooldown <= 0 && this.bulletPowerRemaining > 0) {
@@ -756,16 +937,25 @@ export class Game {
     let trajVel: Vec2 | null = null
 
     if (this.state === "aiming") {
-      const ptr =
-        this.aimPointerId != null
-          ? this.input.getPointer(this.aimPointerId)
-          : this.primaryPointer()
-      if (ptr) {
-        const { pull } = this.slingshot.getPull(
-          ptr.x,
-          ptr.y,
-          (sx, sy) => this.camera.screenToWorld(sx, sy),
-        )
+      let pull: Vec2 | null = null
+      if (this.scriptedAim && this.lastAimPull) {
+        pull = this.lastAimPull
+      } else {
+        const ptr =
+          this.aimPointerId != null
+            ? this.input.getPointer(this.aimPointerId)
+            : this.primaryPointer()
+        if (ptr) {
+          pull = this.slingshot.getPull(
+            ptr.x,
+            ptr.y,
+            (sx, sy) => this.camera.screenToWorld(sx, sy),
+          ).pull
+        } else if (this.lastAimPull) {
+          pull = this.lastAimPull
+        }
+      }
+      if (pull) {
         pouch = Renderer.pouchFromPull(this.slingshot, pull)
         this.ball.x = pouch.x
         this.ball.y = pouch.y
@@ -774,7 +964,7 @@ export class Game {
       }
     }
 
-    const holding = this.primaryPointer() != null
+    const holding = !this.botActive && this.primaryPointer() != null
     const pulse =
       !this.ball.inSlingshot && holding
         ? 0.55 + Math.sin(this.anim * 6) * 0.25
@@ -822,7 +1012,15 @@ export class Game {
       this.score.bestMaxHeight,
     )
 
-    if (this.state === "gameOver") {
+    if (this.config.mode === "bot") {
+      this.renderer.drawBotBadge(cam, this.config.botStyle ?? "perfect")
+    }
+
+    if (this.state === "gameOver" || this.state === "adEnd") {
+      const hideReplay =
+        this.config.mode === "playable" ||
+        this.config.mode === "bot" ||
+        this.state === "adEnd"
       this.renderer.drawGameOver(
         cam,
         this.score.current,
@@ -832,6 +1030,7 @@ export class Game {
         this.score.bestMaxHeight,
         this.score.isNewBestHeight,
         this.anim,
+        hideReplay ? null : "Tap to continue",
       )
     }
   }
@@ -842,8 +1041,15 @@ export class Game {
   }
 
   private tipForState(): string | null {
-    if (this.state === "menu" || this.state === "gameOver") return null
-    if (!this.started) return "Hold & drag to aim · release to fire"
+    if (this.state === "menu" || this.state === "gameOver" || this.state === "adEnd") {
+      return null
+    }
+    if (this.config.mode === "bot") return null
+    if (!this.started) {
+      return this.config.mode === "playable"
+        ? "Drag to aim · release to fire"
+        : "Hold & drag to aim · release to fire"
+    }
     if (this.catchBurst > 0) return "Caught!"
     if (this.powActive && (this.state === "aiming" || this.state === "ready")) {
       return `POW · 2x launch · ${Math.ceil(this.powRemaining)}s`

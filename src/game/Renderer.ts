@@ -826,6 +826,7 @@ export class Renderer {
     bestHeight: number,
     isNewBestHeight = false,
     anim = 0,
+    replayHint: string | null = "Tap to continue",
   ): void {
     const ctx = this.ctx
     const { width } = camera
@@ -841,7 +842,7 @@ export class Renderer {
     ctx.textBaseline = "middle"
 
     ctx.fillStyle = COLORS.ink
-    ctx.font = "800 36px 'Bricolage Grotesque', sans-serif"
+    ctx.font = "800 36px 'Bricolage Grotesque', system-ui, sans-serif"
     ctx.fillText("Game Over", cx, y)
     y += 48
 
@@ -860,59 +861,82 @@ export class Renderer {
       ctx.fill()
       ctx.globalAlpha = pulse
       ctx.fillStyle = COLORS.accent
-      ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+      ctx.font = "800 18px 'Bricolage Grotesque', system-ui, sans-serif"
       ctx.fillText(banner, cx, y)
       ctx.restore()
       y += 48
     }
 
     ctx.fillStyle = COLORS.inkDim
-    ctx.font = "500 13px 'DM Sans', sans-serif"
+    ctx.font = "500 13px 'DM Sans', system-ui, sans-serif"
     ctx.fillText("SCORE", cx, y)
     y += 38
 
     ctx.fillStyle = COLORS.accent
-    ctx.font = "800 52px 'Bricolage Grotesque', sans-serif"
+    ctx.font = "800 52px 'Bricolage Grotesque', system-ui, sans-serif"
     ctx.fillText(String(score), cx, y)
     y += 36
 
     if (isNewHighScore) {
       ctx.fillStyle = COLORS.accent
-      ctx.font = "700 14px 'DM Sans', sans-serif"
+      ctx.font = "700 14px 'DM Sans', system-ui, sans-serif"
       ctx.fillText("New best!", cx, y)
     } else if (highScore > 0) {
       ctx.fillStyle = COLORS.inkDim
-      ctx.font = "500 14px 'DM Sans', sans-serif"
+      ctx.font = "500 14px 'DM Sans', system-ui, sans-serif"
       ctx.fillText(`Best ${highScore}`, cx, y)
     }
     y += 40
 
     ctx.fillStyle = COLORS.inkDim
-    ctx.font = "500 13px 'DM Sans', sans-serif"
+    ctx.font = "500 13px 'DM Sans', system-ui, sans-serif"
     ctx.fillText("HEIGHT", cx, y)
     y += 32
 
     ctx.fillStyle = COLORS.ink
-    ctx.font = "800 36px 'Bricolage Grotesque', sans-serif"
+    ctx.font = "800 36px 'Bricolage Grotesque', system-ui, sans-serif"
     ctx.fillText(formatHeightLabel(climbHeight), cx, y)
     y += 28
 
     if (isNewBestHeight) {
       ctx.fillStyle = COLORS.accent
-      ctx.font = "700 14px 'DM Sans', sans-serif"
+      ctx.font = "700 14px 'DM Sans', system-ui, sans-serif"
       ctx.fillText("New best!", cx, y)
     } else if (bestHeight > 0) {
       ctx.fillStyle = COLORS.inkDim
-      ctx.font = "500 14px 'DM Sans', sans-serif"
+      ctx.font = "500 14px 'DM Sans', system-ui, sans-serif"
       ctx.fillText(`Best ${formatHeightLabel(bestHeight)}`, cx, y)
     }
     y += 44
 
-    ctx.fillStyle = COLORS.ink
-    ctx.font = "600 16px 'DM Sans', sans-serif"
-    ctx.fillText("Tap to continue", cx, y)
+    if (replayHint) {
+      ctx.fillStyle = COLORS.ink
+      ctx.font = "600 16px 'DM Sans', system-ui, sans-serif"
+      ctx.fillText(replayHint, cx, y)
+    }
 
     ctx.textBaseline = "alphabetic"
+  }
+
+  drawBotBadge(_camera: Camera, style: string): void {
+    const ctx = this.ctx
+    const label = `BOT · ${style.toUpperCase()}`
+    ctx.save()
+    ctx.textAlign = "left"
+    ctx.textBaseline = "middle"
+    ctx.font = "700 11px system-ui, sans-serif"
+    const padX = 10
+    const w = ctx.measureText(label).width + padX * 2
+    const h = 22
+    const x = 10
+    const y = 10 + safeAreaInsetTop()
+    ctx.fillStyle = "rgba(17,17,17,0.82)"
+    ctx.beginPath()
+    roundRect(ctx, x, y, w, h, 6)
+    ctx.fill()
+    ctx.fillStyle = "#fff"
+    ctx.fillText(label, x + padX, y + h / 2)
+    ctx.restore()
   }
 
   /** Helper for aim pouch offset in world space from pull. */

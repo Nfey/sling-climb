@@ -6,6 +6,34 @@ export type GameState =
   | "aiming"
   | "flying"
   | "gameOver"
+  | "adEnd"
+
+/** Read-only view of the run for autopilot / tooling. */
+export interface GameSnapshot {
+  state: GameState
+  ball: {
+    x: number
+    y: number
+    vx: number
+    vy: number
+    inSlingshot: boolean
+  }
+  slingshot: { x: number; y: number }
+  killWorldY: number
+  width: number
+  height: number
+  /** Interesting aim points above the slingshot for seek bots. */
+  targets: BotAimTarget[]
+}
+
+/** World-space aim hint used by seek-style autopilots. */
+export interface BotAimTarget {
+  x: number
+  y: number
+  kind: "portal" | "bumper" | "arrow" | "bonus"
+  /** Higher = preferred when the seek bot picks a target. */
+  weight: number
+}
 
 /** Axis-aligned hit target in screen space (CSS pixels). */
 export interface ScreenRect {
