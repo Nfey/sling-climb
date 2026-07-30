@@ -6,7 +6,6 @@ export type BackgroundStyle =
   | "cute"
   | "emo"
   | "anime"
-  | "grunge"
   | "sunset"
   | "neon"
   | "aurora"
@@ -32,7 +31,6 @@ export const BACKGROUND_VARIANTS: readonly BackgroundVariant[] = [
   { id: "cute", name: "Cute", style: "cute", unlock: { kind: "coins", value: 15 } },
   { id: "emo", name: "Emo", style: "emo", unlock: { kind: "points", value: 10_000 } },
   { id: "anime", name: "Anime", style: "anime", unlock: { kind: "height", value: 7_500 } },
-  { id: "grunge", name: "Grunge", style: "grunge", unlock: { kind: "points", value: 15_000 } },
   { id: "sunset", name: "Sunset", style: "sunset", unlock: { kind: "height", value: 12_500 } },
   { id: "neon", name: "Neon", style: "neon", unlock: { kind: "coins", value: 30 } },
   { id: "space", name: "Space", style: "space", unlock: { kind: "height", value: 40_000 } },
