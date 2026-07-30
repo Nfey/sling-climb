@@ -25,7 +25,7 @@ import type {
   Vec2,
 } from "./types"
 import type { Slingshot } from "./Slingshot"
-import type { BallStyle, SlingshotStyle } from "./cosmetics"
+import type { BallStyle, BackgroundStyle, SlingshotStyle } from "./cosmetics"
 import {
   drawBallStyle,
   drawSlingshotBands,
@@ -33,6 +33,7 @@ import {
   drawSlingshotIconStyle,
   slingshotAccentColor,
 } from "./cosmeticArt"
+import { drawBackgroundPreview, drawBackgroundStyle } from "./backgroundArt"
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D
@@ -44,34 +45,39 @@ export class Renderer {
     this.ctx = ctx
   }
 
-  begin(camera: Camera, dt: number, startHeight: number): void {
+  begin(camera: Camera, dt: number, startHeight: number, backgroundStyle: BackgroundStyle = "classic"): void {
     this.time += dt
     const ctx = this.ctx
     const dpr = camera.dpr
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, camera.width, camera.height)
-    this.drawBackground(camera, startHeight)
+    this.drawBackground(camera, startHeight, backgroundStyle)
   }
 
-  private drawBackground(camera: Camera, startHeight: number): void {
+  private drawBackground(camera: Camera, startHeight: number, backgroundStyle: BackgroundStyle): void {
     const ctx = this.ctx
     const { width, height } = camera
     const killY = camera.killScreenY
-    this.drawSkyBands(camera, startHeight, killY)
 
-    // Soft hash for a bit of depth on white
-    ctx.save()
-    ctx.globalAlpha = 0.04
-    ctx.strokeStyle = COLORS.ink
-    ctx.lineWidth = 1
-    const offset = (this.time * 12 + camera.y * 0.15) % 28
-    for (let y = -28; y < height + 28; y += 28) {
-      ctx.beginPath()
-      ctx.moveTo(0, y + offset)
-      ctx.lineTo(width, y + offset + 8)
-      ctx.stroke()
+    if (backgroundStyle === "classic") {
+      this.drawSkyBands(camera, startHeight, killY)
+
+      // Soft hash for a bit of depth on white
+      ctx.save()
+      ctx.globalAlpha = 0.04
+      ctx.strokeStyle = COLORS.ink
+      ctx.lineWidth = 1
+      const offset = (this.time * 12 + camera.y * 0.15) % 28
+      for (let y = -28; y < height + 28; y += 28) {
+        ctx.beginPath()
+        ctx.moveTo(0, y + offset)
+        ctx.lineTo(width, y + offset + 8)
+        ctx.stroke()
+      }
+      ctx.restore()
+    } else {
+      drawBackgroundStyle(ctx, camera, backgroundStyle, this.time, killY)
     }
-    ctx.restore()
 
     // Reserved powerup zone below kill line
     ctx.fillStyle = COLORS.reserved
@@ -780,10 +786,14 @@ export class Renderer {
     lifetimeCoins: number,
     anim: number,
     slingshotStyle: SlingshotStyle,
+    backgroundStyle: BackgroundStyle,
     ballStyle: BallStyle,
     slingshotLocked: boolean,
+    backgroundLocked: boolean,
     ballLocked: boolean,
     slingshotPrice: number | null,
+    backgroundPrice: number | null,
+    backgroundUnlockHint: string | null,
     ballUnlockHint: string | null,
   ): MainMenuHitAreas {
     const ctx = this.ctx
@@ -901,6 +911,21 @@ export class Renderer {
       this.time,
     )
 
+    const backgroundRow = drawCornerVariantPicker(
+      ctx,
+      cx - pickerW / 2,
+      pickerY,
+      pickerW,
+      pickerH,
+      arrowW,
+      iconBox,
+      "background",
+      backgroundStyle,
+      backgroundLocked,
+      this.time,
+      backgroundLocked ? backgroundUnlockHint : null,
+    )
+
     const ballRow = drawCornerVariantPicker(
       ctx,
       width - margin - pickerW,
@@ -935,16 +960,39 @@ export class Renderer {
       drawMenuCoinIcon(ctx, buyX + buyW / 2 + 14, buyY + buyH / 2, 6)
     }
 
+    let buyBackground: ScreenRect | null = null
+    if (backgroundPrice != null && backgroundLocked) {
+      const buyW = 112
+      const buyH = 26
+      const buyX = backgroundRow.icon.x + (backgroundRow.icon.w - buyW) / 2
+      const buyY = backgroundRow.icon.y + backgroundRow.icon.h + 4
+      buyBackground = { x: buyX, y: buyY, w: buyW, h: buyH }
+      const canAfford = lifetimeCoins >= backgroundPrice
+      ctx.fillStyle = canAfford ? COLORS.coin : "rgba(17, 17, 17, 0.1)"
+      ctx.beginPath()
+      roundRect(ctx, buyX, buyY, buyW, buyH, 8)
+      ctx.fill()
+      ctx.fillStyle = canAfford ? COLORS.coinRim : COLORS.inkDim
+      ctx.font = "800 12px 'Bricolage Grotesque', sans-serif"
+      ctx.textAlign = "center"
+      ctx.fillText(`${backgroundPrice}`, buyX + buyW / 2 - 8, buyY + buyH / 2 + 1)
+      drawMenuCoinIcon(ctx, buyX + buyW / 2 + 14, buyY + buyH / 2, 6)
+    }
+
     ctx.textBaseline = "alphabetic"
     return {
       play,
       slingshotPrev: slingshotRow.prev,
       slingshotNext: slingshotRow.next,
       slingshotPicker: { x: margin, y: pickerY, w: pickerW, h: pickerH },
+      backgroundPrev: backgroundRow.prev,
+      backgroundNext: backgroundRow.next,
+      backgroundPicker: { x: cx - pickerW / 2, y: pickerY, w: pickerW, h: pickerH },
       ballPrev: ballRow.prev,
       ballNext: ballRow.next,
       ballPicker: { x: width - margin - pickerW, y: pickerY, w: pickerW, h: pickerH },
       buySlingshot,
+      buyBackground,
     }
   }
 
@@ -1111,8 +1159,8 @@ function drawCornerVariantPicker(
   h: number,
   arrowW: number,
   iconBox: number,
-  kind: "slingshot" | "ball",
-  style: SlingshotStyle | BallStyle,
+  kind: "slingshot" | "ball" | "background",
+  style: SlingshotStyle | BallStyle | BackgroundStyle,
   locked: boolean,
   time: number,
   unlockHint: string | null = null,
@@ -1143,6 +1191,8 @@ function drawCornerVariantPicker(
   ctx.translate(iconCx, iconCy)
   if (kind === "slingshot") {
     drawSlingshotIconStyle(ctx, 0, 0, iconBox * 0.72, style as SlingshotStyle, time)
+  } else if (kind === "background") {
+    drawBackgroundPreview(ctx, iconBox, style as BackgroundStyle, time)
   } else {
     drawBallStyle(ctx, style as BallStyle, iconBox * 0.32, time)
   }

@@ -8,6 +8,26 @@ export type SlingshotStyle =
   | "golden"
   | "rainbow"
 
+import {
+  BACKGROUND_VARIANTS,
+  BACKGROUND_UNLOCKS_KEY,
+  EQUIPPED_BACKGROUND_KEY,
+  backgroundUnlockHint,
+  findBackgroundVariant,
+  isBackgroundVariantUnlocked,
+} from "./backgrounds"
+import type { BackgroundStyle } from "./backgrounds"
+
+export {
+  BACKGROUND_VARIANTS,
+  BACKGROUND_UNLOCKS_KEY,
+  EQUIPPED_BACKGROUND_KEY,
+  backgroundUnlockHint,
+  findBackgroundVariant,
+  isBackgroundVariantUnlocked,
+} from "./backgrounds"
+export type { BackgroundStyle, BackgroundVariant } from "./backgrounds"
+
 export type BallStyle =
   | "classic"
   | "soccer"
@@ -130,8 +150,10 @@ export function isBallVariantUnlocked(
 
 export class CosmeticsStore {
   private slingshotUnlocked = new Set<string>()
+  private backgroundUnlocked = new Set<string>()
   equippedSlingshotId = DEFAULT_COSMETIC_ID
   equippedBallId = DEFAULT_COSMETIC_ID
+  equippedBackgroundId = DEFAULT_COSMETIC_ID
   private persist: boolean
 
   constructor(persist = true) {
@@ -169,6 +191,37 @@ export class CosmeticsStore {
         : DEFAULT_COSMETIC_ID
     this.equippedBallId = next
     this.saveEquipped()
+  }
+
+  cycleBackgroundMenu(delta: number): void {
+    const allIds = [DEFAULT_COSMETIC_ID, ...BACKGROUND_VARIANTS.map((v) => v.id)]
+    const current = allIds.indexOf(this.equippedBackgroundId)
+    const next =
+      current >= 0
+        ? allIds[(current + delta + allIds.length) % allIds.length]!
+        : DEFAULT_COSMETIC_ID
+    this.equippedBackgroundId = next
+    this.saveEquipped()
+  }
+
+  isBackgroundUnlocked(id: string, bestHeight: number, highScore: number): boolean {
+    const variant = findBackgroundVariant(id)
+    if (!variant) return false
+    return isBackgroundVariantUnlocked(variant, bestHeight, highScore, this.backgroundUnlocked)
+  }
+
+  purchaseBackground(id: string, spendCoins: (amount: number) => boolean): boolean {
+    const variant = findBackgroundVariant(id)
+    if (!variant || variant.unlock.kind !== "coins") return false
+    if (this.isBackgroundUnlocked(id, 0, 0)) return false
+    if (!spendCoins(variant.unlock.value)) return false
+    this.backgroundUnlocked.add(id)
+    this.equippedBackgroundId = id
+    if (this.persist) {
+      this.saveBackgroundUnlocks()
+      this.saveEquipped()
+    }
+    return true
   }
 
   purchaseSlingshot(id: string, spendCoins: (amount: number) => boolean): boolean {
@@ -210,6 +263,42 @@ export class CosmeticsStore {
     if (this.equippedBallId === DEFAULT_COSMETIC_ID) return "classic"
     if (!this.isBallUnlocked(this.equippedBallId, bestHeight, highScore)) return "classic"
     return findBallVariant(this.equippedBallId)?.style ?? "classic"
+  }
+
+  /** Active background for gameplay (unlocked variants only). */
+  getEquippedBackgroundStyle(bestHeight: number, highScore: number): BackgroundStyle {
+    if (this.equippedBackgroundId === DEFAULT_COSMETIC_ID) return "classic"
+    if (!this.isBackgroundUnlocked(this.equippedBackgroundId, bestHeight, highScore)) {
+      return "classic"
+    }
+    return findBackgroundVariant(this.equippedBackgroundId)?.style ?? "classic"
+  }
+
+  getSelectedBackgroundStyle(): BackgroundStyle {
+    if (this.equippedBackgroundId === DEFAULT_COSMETIC_ID) return "classic"
+    return findBackgroundVariant(this.equippedBackgroundId)?.style ?? "classic"
+  }
+
+  getSelectedBackgroundUnlockHint(): string | null {
+    if (this.equippedBackgroundId === DEFAULT_COSMETIC_ID) return null
+    const variant = findBackgroundVariant(this.equippedBackgroundId)
+    if (!variant) return null
+    return backgroundUnlockHint(variant)
+  }
+
+  isBackgroundSelectionLocked(bestHeight: number, highScore: number): boolean {
+    return (
+      this.equippedBackgroundId !== DEFAULT_COSMETIC_ID &&
+      !this.isBackgroundUnlocked(this.equippedBackgroundId, bestHeight, highScore)
+    )
+  }
+
+  previewBackgroundPrice(): number | null {
+    if (this.equippedBackgroundId === DEFAULT_COSMETIC_ID) return null
+    const variant = findBackgroundVariant(this.equippedBackgroundId)
+    if (!variant || variant.unlock.kind !== "coins") return null
+    if (this.isBackgroundUnlocked(variant.id, 0, 0)) return null
+    return variant.unlock.value
   }
 
   getSelectedSlingshotStyle(): SlingshotStyle {
@@ -275,6 +364,35 @@ export class CosmeticsStore {
     this.equippedSlingshotId =
       this.loadString(EQUIPPED_SLINGSHOT_KEY) ?? DEFAULT_COSMETIC_ID
     this.equippedBallId = this.loadString(EQUIPPED_BALL_KEY) ?? DEFAULT_COSMETIC_ID
+    this.equippedBackgroundId =
+      this.loadString(EQUIPPED_BACKGROUND_KEY) ?? DEFAULT_COSMETIC_ID
+
+    try {
+      const raw = localStorage.getItem(BACKGROUND_UNLOCKS_KEY)
+      if (raw) {
+        const ids = JSON.parse(raw) as string[]
+        if (Array.isArray(ids)) {
+          for (const id of ids) {
+            if (BACKGROUND_VARIANTS.some((v) => v.id === id)) {
+              this.backgroundUnlocked.add(id)
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  private saveBackgroundUnlocks(): void {
+    try {
+      localStorage.setItem(
+        BACKGROUND_UNLOCKS_KEY,
+        JSON.stringify([...this.backgroundUnlocked]),
+      )
+    } catch {
+      // ignore
+    }
   }
 
   private saveUnlocks(): void {
@@ -293,6 +411,7 @@ export class CosmeticsStore {
     try {
       localStorage.setItem(EQUIPPED_SLINGSHOT_KEY, this.equippedSlingshotId)
       localStorage.setItem(EQUIPPED_BALL_KEY, this.equippedBallId)
+      localStorage.setItem(EQUIPPED_BACKGROUND_KEY, this.equippedBackgroundId)
     } catch {
       // ignore
     }

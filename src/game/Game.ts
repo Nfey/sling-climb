@@ -544,6 +544,14 @@ export class Game implements BotGameApi {
             this.cosmetics.cycleBallMenu(1)
             return
           }
+          if (hitRect(p.x, p.y, areas.backgroundPrev)) {
+            this.cosmetics.cycleBackgroundMenu(-1)
+            return
+          }
+          if (hitRect(p.x, p.y, areas.backgroundNext)) {
+            this.cosmetics.cycleBackgroundMenu(1)
+            return
+          }
           if (
             areas.buySlingshot &&
             hitRect(p.x, p.y, areas.buySlingshot)
@@ -557,7 +565,20 @@ export class Game implements BotGameApi {
             return
           }
           if (
+            areas.buyBackground &&
+            hitRect(p.x, p.y, areas.buyBackground)
+          ) {
+            const id = this.cosmetics.equippedBackgroundId
+            if (id !== DEFAULT_COSMETIC_ID) {
+              this.cosmetics.purchaseBackground(id, (amount) =>
+                this.score.spendCoins(amount),
+              )
+            }
+            return
+          }
+          if (
             hitRect(p.x, p.y, areas.slingshotPicker) ||
+            hitRect(p.x, p.y, areas.backgroundPicker) ||
             hitRect(p.x, p.y, areas.ballPicker)
           ) {
             return
@@ -1044,7 +1065,10 @@ export class Game implements BotGameApi {
 
   private draw(dt: number): void {
     const cam = this.camera
-    this.renderer.begin(cam, dt, this.score.startHeight)
+    const bestHeight = this.score.bestMaxHeight
+    const highScore = this.score.highScore
+    const backgroundStyle = this.cosmetics.getEquippedBackgroundStyle(bestHeight, highScore)
+    this.renderer.begin(cam, dt, this.score.startHeight, backgroundStyle)
     this.renderer.drawAltitudeMarkers(cam, this.score.startHeight)
     this.renderer.drawMaxHeightLine(
       cam,
@@ -1101,8 +1125,6 @@ export class Game implements BotGameApi {
           : 0
 
     const slingStyle = this.freeMoveActive ? "freeMove" : this.powActive ? "pow" : "normal"
-    const bestHeight = this.score.bestMaxHeight
-    const highScore = this.score.highScore
     const slingshotStyle = this.cosmetics.getEquippedSlingshotStyle()
     const ballStyle = this.cosmetics.getEquippedBallStyle(bestHeight, highScore)
     this.renderer.drawSlingshot(
@@ -1133,6 +1155,7 @@ export class Game implements BotGameApi {
 
     if (this.menuDemo || this.state === "menu") {
       const slingshotLocked = this.cosmetics.isSlingshotSelectionLocked()
+      const backgroundLocked = this.cosmetics.isBackgroundSelectionLocked(bestHeight, highScore)
       const ballLocked = this.cosmetics.isBallSelectionLocked(bestHeight, highScore)
 
       this.menuHitAreas = this.renderer.drawMainMenu(
@@ -1142,10 +1165,14 @@ export class Game implements BotGameApi {
         this.score.lifetimeCoins,
         this.anim,
         this.cosmetics.getSelectedSlingshotStyle(),
+        this.cosmetics.getSelectedBackgroundStyle(),
         this.cosmetics.getSelectedBallStyle(),
         slingshotLocked,
+        backgroundLocked,
         ballLocked,
         slingshotLocked ? this.cosmetics.previewSlingshotPrice() : null,
+        backgroundLocked ? this.cosmetics.previewBackgroundPrice() : null,
+        backgroundLocked ? this.cosmetics.getSelectedBackgroundUnlockHint() : null,
         ballLocked ? this.cosmetics.getSelectedBallUnlockHint() : null,
       )
       return

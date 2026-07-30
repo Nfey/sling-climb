@@ -121,8 +121,8 @@ function drawSoccerBall(ctx: CanvasRenderingContext2D, radius: number): void {
     ctx.closePath()
     ctx.fill()
   }
-  ctx.strokeStyle = "rgba(0,0,0,0.15)"
-  ctx.lineWidth = 1.5
+  ctx.strokeStyle = "#374151"
+  ctx.lineWidth = Math.max(2, radius * 0.12)
   ctx.stroke()
 }
 
