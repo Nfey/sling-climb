@@ -5,6 +5,23 @@ export type GameState =
   | "aiming"
   | "flying"
   | "gameOver"
+  | "adEnd"
+
+/** Read-only view of the run for autopilot / tooling. */
+export interface GameSnapshot {
+  state: GameState
+  ball: {
+    x: number
+    y: number
+    vx: number
+    vy: number
+    inSlingshot: boolean
+  }
+  slingshot: { x: number; y: number }
+  killWorldY: number
+  width: number
+  height: number
+}
 
 export interface PointerState {
   down: boolean

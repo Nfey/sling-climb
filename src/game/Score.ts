@@ -32,10 +32,15 @@ export class Score {
    * max-height line is drawn. Does not rise during the current run.
    */
   runHeightLine = 0
+  /** When false, skip localStorage load/save (playable / bot). */
+  private persistScores: boolean
 
-  constructor() {
-    this.highScore = this.loadNumber(HIGH_SCORE_KEY)
-    this.bestMaxHeight = this.loadNumber(MAX_HEIGHT_KEY)
+  constructor(persistScores = true) {
+    this.persistScores = persistScores
+    if (this.persistScores) {
+      this.highScore = this.loadNumber(HIGH_SCORE_KEY)
+      this.bestMaxHeight = this.loadNumber(MAX_HEIGHT_KEY)
+    }
   }
 
   reset(startY: number): void {
@@ -142,13 +147,13 @@ export class Score {
     this.isNewHighScore = runScore > this.highScore
     if (this.isNewHighScore) {
       this.highScore = runScore
-      this.saveNumber(HIGH_SCORE_KEY, this.highScore)
+      if (this.persistScores) this.saveNumber(HIGH_SCORE_KEY, this.highScore)
     }
 
     this.isNewBestHeight = this.climbHeight > this.bestMaxHeight
     if (this.isNewBestHeight) {
       this.bestMaxHeight = this.climbHeight
-      this.saveNumber(MAX_HEIGHT_KEY, this.bestMaxHeight)
+      if (this.persistScores) this.saveNumber(MAX_HEIGHT_KEY, this.bestMaxHeight)
     }
 
     return this.isNewHighScore

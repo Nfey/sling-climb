@@ -22,6 +22,36 @@ Add to Home Screen for a fullscreen feel.
 
 The band under the slingshot line is reserved for future powerups/upgrades.
 
+## Playable ad
+
+A stripped HTML5 playable lives at `/playable.html` (built to `dist/playable.html`).
+
+```bash
+npm run dev -- --host
+# open http://localhost:5173/playable.html
+# optional store URL: /playable.html?installUrl=https://example.com/store
+```
+
+Session ends on first game over or after **30 seconds**, then an Install CTA appears. The CTA uses MRAID → `clickTag` → `window.open` (`src/playable/install.ts`). Scores are not persisted.
+
+After `npm run build`, zip the playable assets for an ad network (typically `dist/playable.html` plus its hashed JS/CSS from `dist/assets/`, or host the built URL). Network upload is manual.
+
+## Autopilot video bot
+
+Run the main game with a bot that keeps the slingshot under the ball and fires on its own:
+
+```bash
+npm run dev -- --host
+# Perfect tracking + random aims:
+#   http://localhost:5173/?bot=perfect
+# Human-like lag + noisy aims:
+#   http://localhost:5173/?bot=human
+# Auto-start WebM recording:
+#   http://localhost:5173/?bot=human&record=1
+```
+
+Use the **Record** / **Stop & save** control (top-right) to download a `.webm` (Chrome/Edge recommended). You can also screen-record the tab for TikTok/Reels MP4s. The bot auto-restarts on game over and does not write high scores.
+
 ## Deploy (Cloudflare Worker)
 
 Static build is served by a Cloudflare Worker (`wrangler.jsonc` → `assets.directory = ./dist`).
