@@ -102,9 +102,33 @@ function drawClassicBall(
   ctx.stroke()
 }
 
+function drawSoccerPentagon(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  pentR: number,
+  rotation: number,
+): void {
+  ctx.beginPath()
+  for (let v = 0; v < 5; v++) {
+    const va = rotation + (v * 2 * Math.PI) / 5
+    const x = cx + Math.cos(va) * pentR
+    const y = cy + Math.sin(va) * pentR
+    if (v === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
+  ctx.closePath()
+  ctx.fill()
+}
+
 function drawSoccerBall(ctx: CanvasRenderingContext2D, radius: number, phase: BallDrawPhase): void {
   if (phase !== "pattern") {
     drawClassicBall(ctx, radius, "#ffffff", "#f8fafc", "#cbd5e1")
+    ctx.beginPath()
+    ctx.arc(0, 0, radius, 0, Math.PI * 2)
+    ctx.strokeStyle = "#374151"
+    ctx.lineWidth = Math.max(2, radius * 0.12)
+    ctx.stroke()
   }
   if (phase !== "lighting") {
     ctx.fillStyle = "#111827"
@@ -113,20 +137,8 @@ function drawSoccerBall(ctx: CanvasRenderingContext2D, radius: number, phase: Ba
       const a = (i / 5) * Math.PI * 2 - Math.PI / 2
       const px = Math.cos(a) * radius * 0.42
       const py = Math.sin(a) * radius * 0.42
-      ctx.beginPath()
-      for (let v = 0; v < 5; v++) {
-        const va = a + (v / 5) * Math.PI * 2
-        const x = px + Math.cos(va) * pentR
-        const y = py + Math.sin(va) * pentR
-        if (v === 0) ctx.moveTo(x, y)
-        else ctx.lineTo(x, y)
-      }
-      ctx.closePath()
-      ctx.fill()
+      drawSoccerPentagon(ctx, px, py, pentR, a)
     }
-    ctx.strokeStyle = "#374151"
-    ctx.lineWidth = Math.max(2, radius * 0.12)
-    ctx.stroke()
   }
 }
 
@@ -308,20 +320,34 @@ function drawTennisBall(ctx: CanvasRenderingContext2D, radius: number, phase: Ba
   }
 
   if (phase !== "lighting") {
-    ctx.save()
-    ctx.beginPath()
-    ctx.arc(0, 0, radius, 0, Math.PI * 2)
-    ctx.clip()
-    ctx.strokeStyle = "#ecece8"
-    ctx.lineWidth = Math.max(2.5, radius * 0.16)
-    ctx.lineCap = "round"
-    for (const side of [-1, 1]) {
-      ctx.beginPath()
-      ctx.ellipse(side * radius * 0.08, 0, radius * 0.55, radius * 0.95, side * 0.35, 0, Math.PI * 2)
-      ctx.stroke()
-    }
-    ctx.restore()
+    drawTennisBallSeams(ctx, radius)
   }
+}
+
+/** Two curved felt seams — upper-left and lower-right arcs on the ball surface. */
+function drawTennisBallSeams(ctx: CanvasRenderingContext2D, radius: number): void {
+  const r = radius
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(0, 0, r, 0, Math.PI * 2)
+  ctx.clip()
+  ctx.strokeStyle = "#ecece8"
+  ctx.lineWidth = Math.max(2.5, r * 0.16)
+  ctx.lineCap = "round"
+
+  // Upper-left seam: left edge → inward bow → top edge
+  ctx.beginPath()
+  ctx.moveTo(-r * 0.7, -r * 0.55)
+  ctx.bezierCurveTo(-r * 0.38, -r * 0.06, -r * 0.04, -r * 0.15, r * 0.1, -r * 0.9)
+  ctx.stroke()
+
+  // Lower-right seam: bottom edge → inward bow → right edge
+  ctx.beginPath()
+  ctx.moveTo(-r * 0.2, r * 0.9)
+  ctx.bezierCurveTo(r * 0.06, r * 0.36, r * 0.4, r * 0.06, r * 0.9, -r * 0.12)
+  ctx.stroke()
+
+  ctx.restore()
 }
 
 function drawPingPongBall(ctx: CanvasRenderingContext2D, radius: number, phase: BallDrawPhase): void {
