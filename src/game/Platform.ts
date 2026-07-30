@@ -17,6 +17,7 @@ import {
   MOVING_PLATFORM_AMPLITUDE,
   MOVING_PLATFORM_CHANCE,
   MOVING_PLATFORM_SPEED,
+  NORMAL_PLATFORM_CHANCE,
   PLATFORM_HEIGHT,
   PLATFORM_HORIZONTAL_MARGIN,
   PLATFORM_MAX_WIDTH,
@@ -51,14 +52,23 @@ function rand(min: number, max: number): number {
   return min + Math.random() * (max - min)
 }
 
-function pickPlatformKind(): PlatformKind {
+function pickPlatformKind(): PlatformKind | null {
   const r = Math.random()
   if (r < BONUS_PLATFORM_CHANCE) return "bonus"
   if (r < BONUS_PLATFORM_CHANCE + CRUMBLING_PLATFORM_CHANCE) return "crumbling"
   if (r < BONUS_PLATFORM_CHANCE + CRUMBLING_PLATFORM_CHANCE + MOVING_PLATFORM_CHANCE) {
     return "moving"
   }
-  return "normal"
+  if (
+    r <
+    BONUS_PLATFORM_CHANCE +
+      CRUMBLING_PLATFORM_CHANCE +
+      MOVING_PLATFORM_CHANCE +
+      NORMAL_PLATFORM_CHANCE
+  ) {
+    return "normal"
+  }
+  return null
 }
 
 export class PlatformManager {
@@ -134,8 +144,12 @@ export class PlatformManager {
   }
 
   private spawnOne(): void {
-    const width = rand(PLATFORM_MIN_WIDTH, PLATFORM_MAX_WIDTH)
     const kind = pickPlatformKind()
+    if (kind === null) {
+      this.nextY += rand(PLATFORM_VERTICAL_GAP_MIN, PLATFORM_VERTICAL_GAP_MAX)
+      return
+    }
+    const width = rand(PLATFORM_MIN_WIDTH, PLATFORM_MAX_WIDTH)
     const amplitude =
       kind === "moving" ? MOVING_PLATFORM_AMPLITUDE : 0
     const minX = PLATFORM_HORIZONTAL_MARGIN + amplitude

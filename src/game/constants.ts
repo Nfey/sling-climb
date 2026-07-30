@@ -57,6 +57,17 @@ export const BONUS_PLATFORM_CHANCE = 0.18
 export const CRUMBLING_PLATFORM_CHANCE = 0.08
 /** Green platforms that oscillate side to side. */
 export const MOVING_PLATFORM_CHANCE = 0.1
+/**
+ * Brown platforms — reduced by grey+green additions so overall platform
+ * density matches the pre-variant climb.
+ */
+export const NORMAL_PLATFORM_CHANCE =
+  1 -
+  BONUS_PLATFORM_CHANCE -
+  CRUMBLING_PLATFORM_CHANCE -
+  MOVING_PLATFORM_CHANCE -
+  CRUMBLING_PLATFORM_CHANCE -
+  MOVING_PLATFORM_CHANCE
 /** Half-width of the side-to-side sweep for moving platforms (px). */
 export const MOVING_PLATFORM_AMPLITUDE = 48
 /** Angular speed of moving platform oscillation (rad/s). */
