@@ -28,3 +28,11 @@ if (config.mode === "bot") {
 }
 
 game.start()
+
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      /* installability still works without a registered SW in some browsers */
+    })
+  })
+}

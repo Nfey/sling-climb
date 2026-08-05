@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Full-bleed app icon: slingshot + ball -->
+  <rect width="512" height="512" fill="#1e3a5f"/>
+  <!-- Soft vignette -->
+  <circle cx="256" cy="256" r="220" fill="#244a73" opacity="0.45"/>
+
+  <!-- Slingshot post + Y fork (safe zone for maskable) -->
+  <path
+    d="M256 400V248M168 168L256 256L344 168"
+    stroke="#f0c14a"
+    stroke-width="36"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- Rubber bands to pouch -->
+  <path
+    d="M168 168Q210 230 256 214Q302 230 344 168"
+    stroke="#e8a54b"
+    stroke-width="18"
+    stroke-linecap="round"
+    fill="none"
+  />
+
+  <!-- Ball seated in the pouch -->
+  <circle cx="256" cy="140" r="58" fill="#f5f0e6"/>
+  <circle cx="236" cy="122" r="16" fill="rgba(255,255,255,0.55)"/>
+  <circle cx="256" cy="140" r="58" stroke="rgba(30,58,95,0.2)" stroke-width="4"/>
+</svg>
