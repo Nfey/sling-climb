@@ -39,23 +39,24 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
 }
 
 /** Dev helper: /?exportIcons=1 downloads default PWA PNGs from the live renderer. */
-if (import.meta.env.DEV && new URLSearchParams(location.search).has("exportIcons")) {
-  void exportDefaultAppIconPngs().then((files) => {
-    for (const [name, blob] of Object.entries(files)) {
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = name
-      a.click()
-      URL.revokeObjectURL(url)
-    }
-  })
+if (import.meta.env.DEV) {
+  window.__exportDefaultAppIconPngs = exportDefaultAppIconPngs
+  if (new URLSearchParams(location.search).has("exportIcons")) {
+    void exportDefaultAppIconPngs().then((files) => {
+      for (const [name, blob] of Object.entries(files)) {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = name
+        a.click()
+        URL.revokeObjectURL(url)
+      }
+    })
+  }
 }
 
-// Exposed for headless icon export scripts.
 declare global {
   interface Window {
     __exportDefaultAppIconPngs?: typeof exportDefaultAppIconPngs
   }
 }
-window.__exportDefaultAppIconPngs = exportDefaultAppIconPngs
