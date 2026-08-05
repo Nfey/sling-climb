@@ -1,7 +1,7 @@
 {
-  "name": "Sling Climb",
-  "short_name": "Sling Climb",
-  "description": "Slingshot climbing — drag to aim, catch, and climb higher.",
+  "name": "Slinger",
+  "short_name": "Slinger",
+  "description": "Slinger — drag to aim, catch, and climb higher.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -1,4 +1,4 @@
-# Sling Climb
+# Slinger
 
 Mobile web prototype of a slingshot climbing game (Doodle Jump meets slingshot aiming).
 
