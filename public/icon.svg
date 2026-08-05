@@ -1,29 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <!-- Full-bleed app icon: slingshot + ball -->
-  <rect width="512" height="512" fill="#1e3a5f"/>
-  <!-- Soft vignette -->
-  <circle cx="256" cy="256" r="220" fill="#244a73" opacity="0.45"/>
+  <!-- Classic default PWA icon: white sky, blue slingshot, cream ball, half-pull down-left -->
+  <rect width="512" height="512" fill="#ffffff"/>
+  <g opacity="0.04" stroke="#111111" stroke-width="4">
+    <path d="M0 64L512 128M0 176L512 240M0 288L512 352M0 400L512 464"/>
+  </g>
 
-  <!-- Slingshot post + Y fork (safe zone for maskable) -->
+  <!-- Slingshot Y (classic), biased right for pull clearance -->
   <path
-    d="M256 400V248M168 168L256 256L344 168"
-    stroke="#f0c14a"
+    d="M300 410V270M200 175L300 270L400 175"
+    stroke="#2f6fed"
     stroke-width="36"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
 
-  <!-- Rubber bands to pouch -->
+  <!-- Rubber bands to pouch (halfway down-left) -->
   <path
-    d="M168 168Q210 230 256 214Q302 230 344 168"
-    stroke="#e8a54b"
-    stroke-width="18"
+    d="M200 175Q175 275 190 320"
+    stroke="#1d4fbf"
+    stroke-width="14"
+    stroke-linecap="round"
+    fill="none"
+  />
+  <path
+    d="M400 175Q280 290 190 320"
+    stroke="#1d4fbf"
+    stroke-width="14"
     stroke-linecap="round"
     fill="none"
   />
 
-  <!-- Ball seated in the pouch -->
-  <circle cx="256" cy="140" r="58" fill="#f5f0e6"/>
-  <circle cx="236" cy="122" r="16" fill="rgba(255,255,255,0.55)"/>
-  <circle cx="256" cy="140" r="58" stroke="rgba(30,58,95,0.2)" stroke-width="4"/>
+  <!-- Classic cream ball -->
+  <circle cx="190" cy="320" r="58" fill="#f0d9a0"/>
+  <circle cx="168" cy="296" r="18" fill="#fff6dd"/>
+  <circle cx="190" cy="320" r="58" stroke="rgba(90,60,30,0.25)" stroke-width="4"/>
 </svg>

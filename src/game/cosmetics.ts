@@ -169,6 +169,8 @@ export class CosmeticsStore {
   equippedBallId = DEFAULT_COSMETIC_ID
   equippedBackgroundId = DEFAULT_COSMETIC_ID
   private persist: boolean
+  /** Fired after equipped ids change (shop cycle / equip / purchase). */
+  onEquippedChange: (() => void) | null = null
 
   constructor(persist = true) {
     this.persist = persist
@@ -429,14 +431,16 @@ export class CosmeticsStore {
   }
 
   private saveEquipped(): void {
-    if (!this.persist) return
-    try {
-      localStorage.setItem(EQUIPPED_SLINGSHOT_KEY, this.equippedSlingshotId)
-      localStorage.setItem(EQUIPPED_BALL_KEY, this.equippedBallId)
-      localStorage.setItem(EQUIPPED_BACKGROUND_KEY, this.equippedBackgroundId)
-    } catch {
-      // ignore
+    if (this.persist) {
+      try {
+        localStorage.setItem(EQUIPPED_SLINGSHOT_KEY, this.equippedSlingshotId)
+        localStorage.setItem(EQUIPPED_BALL_KEY, this.equippedBallId)
+        localStorage.setItem(EQUIPPED_BACKGROUND_KEY, this.equippedBackgroundId)
+      } catch {
+        // ignore
+      }
     }
+    this.onEquippedChange?.()
   }
 
   private loadString(key: string): string | null {

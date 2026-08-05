@@ -11,7 +11,7 @@ npm run dev -- --host
 
 Open the printed URL on your iPhone (same Wi‑Fi), or use Safari on a Mac with responsive mode.
 
-**Install as a PWA:** Add to Home Screen (iOS) or Install app (Android/Chrome). The app ships a web manifest, sling-and-ball icons (`192`/`512`/Apple touch), and a service worker for standalone install.
+**Install as a PWA:** Add to Home Screen (iOS) or Install app (Android/Chrome). The app ships a web manifest, icons drawn from the default sling/ball/background (pulled pose), and a service worker. Equipped cosmetics update the tab favicon (and Apple touch link) live.
 
 ## Controls
 
