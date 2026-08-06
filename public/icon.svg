@@ -3,40 +3,37 @@
   <g opacity="0.04" stroke="#111111" stroke-width="4">
     <path d="M0 64L512 128M0 176L512 240M0 288L512 352M0 400L512 464"/>
   </g>
-  <!-- Upright long-handle sling, pulled aiming top-right, trajectory dots -->
-  <g transform="translate(220 280)">
-    <ellipse cx="12" cy="188" rx="52" ry="16" fill="rgba(17,17,17,0.08)"/>
+  <g transform="translate(220 250)">
     <g fill="#2f6fed">
-      <circle cx="48" cy="-52" r="10" opacity="0.8"/>
-      <circle cx="92" cy="-92" r="9" opacity="0.68"/>
-      <circle cx="132" cy="-118" r="8" opacity="0.55"/>
-      <circle cx="168" cy="-130" r="7" opacity="0.42"/>
-      <circle cx="200" cy="-128" r="6" opacity="0.3"/>
-      <circle cx="228" cy="-112" r="5" opacity="0.2"/>
+      <circle cx="60" cy="-60" r="9" opacity="0.75"/>
+      <circle cx="105" cy="-100" r="8" opacity="0.6"/>
+      <circle cx="145" cy="-125" r="7" opacity="0.48"/>
+      <circle cx="180" cy="-132" r="6" opacity="0.35"/>
+      <circle cx="210" cy="-122" r="5" opacity="0.22"/>
     </g>
     <path
-      d="M0 170V0M-78 -68L0 0L78 -68"
+      d="M0 190V0M-72 -60L0 0L72 -60"
       stroke="#2f6fed"
-      stroke-width="32"
+      stroke-width="34"
       stroke-linecap="round"
       stroke-linejoin="round"
     />
     <path
-      d="M-78 -68Q-70 40 -48 70"
+      d="M-72 -60Q-50 50 -28 78"
       stroke="#1d4fbf"
-      stroke-width="14"
+      stroke-width="12"
       stroke-linecap="round"
       fill="none"
     />
     <path
-      d="M78 -68Q10 40 -48 70"
+      d="M72 -60Q20 50 -28 78"
       stroke="#1d4fbf"
-      stroke-width="14"
+      stroke-width="12"
       stroke-linecap="round"
       fill="none"
     />
-    <circle cx="-48" cy="78" r="48" fill="#f0d9a0"/>
-    <circle cx="-66" cy="58" r="14" fill="#fff6dd"/>
-    <circle cx="-48" cy="78" r="48" stroke="rgba(90,60,30,0.25)" stroke-width="3"/>
+    <circle cx="-28" cy="86" r="46" fill="#f0d9a0"/>
+    <circle cx="-46" cy="68" r="14" fill="#fff6dd"/>
+    <circle cx="-28" cy="86" r="46" stroke="rgba(90,60,30,0.25)" stroke-width="3"/>
   </g>
 </svg>
