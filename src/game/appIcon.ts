@@ -25,8 +25,8 @@ export const DEFAULT_APP_ICON_STYLES: AppIconStyles = {
 }
 
 /**
- * Paint the Slinger app icon: equipped (or default) background, a 3D-tilted
- * slingshot with a long handle and slack wavy bands, and ball in the pouch.
+ * Paint the Slinger app icon: upright slingshot aiming top-right with
+ * trajectory dots, using equipped (or default) cosmetics.
  */
 export function renderAppIcon(
   size: number,
@@ -120,30 +120,24 @@ interface Pt3 {
 interface Pt2 {
   x: number
   y: number
-  /** Perspective scale at this point (1 = focal plane). */
   s: number
 }
 
-/** Local sling model: longer handle than wings, pouch resting with slack. */
+/** Upright sling: long handle, short wings, mild depth for a 3D read. */
 function iconSlingModel(unit: number): {
   base: Pt3
   rest: Pt3
   left: Pt3
   right: Pt3
-  pouch: Pt3
 } {
-  // Handle clearly longer than each wing (~2×).
-  const handleLen = unit * 1.55
-  const wingLen = unit * 0.36
-  const wingSpread = unit * 0.55
+  const handleLen = unit * 1.5
+  const wingLen = unit * 0.38
+  const wingSpread = unit * 0.56
   return {
     base: { x: 0, y: handleLen, z: 0 },
     rest: { x: 0, y: 0, z: 0 },
-    // Depth baked for -45° yaw: right tip nearer, left tip farther.
-    left: { x: -wingSpread * 1.15, y: -wingLen * 0.9, z: -unit * 0.5 },
-    right: { x: wingSpread * 0.9, y: -wingLen, z: unit * 0.4 },
-    // Soft pouch hangs on-axis below the crotch — bands stay slack.
-    pouch: { x: 0, y: unit * 0.42, z: unit * 0.12 },
+    left: { x: -wingSpread, y: -wingLen, z: unit * 0.22 },
+    right: { x: wingSpread, y: -wingLen, z: -unit * 0.22 },
   }
 }
 
@@ -157,41 +151,12 @@ function yawPt(p: Pt3, angle: number): Pt3 {
   }
 }
 
-function pitchPt(p: Pt3, angle: number): Pt3 {
-  const c = Math.cos(angle)
-  const s = Math.sin(angle)
-  return {
-    x: p.x,
-    y: p.y * c - p.z * s,
-    z: p.y * s + p.z * c,
-  }
-}
-
-function projectPt(
-  p: Pt3,
-  cx: number,
-  cy: number,
-  scale: number,
-  focal: number,
-): Pt2 {
+function projectPt(p: Pt3, cx: number, cy: number, focal: number): Pt2 {
   const s = focal / (focal + p.z)
   return {
-    x: cx + p.x * scale * s,
-    y: cy + p.y * scale * s,
+    x: cx + p.x * s,
+    y: cy + p.y * s,
     s,
-  }
-}
-
-/** Rotate a projected point around the icon center (canvas angle, y-down). */
-function rotate2d(p: Pt2, angle: number, cx: number, cy: number): Pt2 {
-  const c = Math.cos(angle)
-  const s = Math.sin(angle)
-  const dx = p.x
-  const dy = p.y
-  return {
-    x: cx + dx * c - dy * s,
-    y: cy + dx * s + dy * c,
-    s: p.s,
   }
 }
 
@@ -201,56 +166,56 @@ function drawIconSlingAndBall(
   styles: AppIconStyles,
   time: number,
 ): void {
-  const cx = size * 0.5
-  const cy = size * 0.46
-  const unit = size * 0.24
+  // Bias slightly left/down so the top-right aim arc has room.
+  const cx = size * 0.46
+  const cy = size * 0.52
+  const unit = size * 0.26
   const model = iconSlingModel(unit)
 
-  // -45° 3D yaw; +45° screen rotation aims the fork at the top-right corner.
-  const yaw = -Math.PI / 4
-  const pitch = -0.14
-  const face = Math.PI / 4
-  const focal = unit * 2.6
-
-  const mapRaw = (p: Pt3): Pt2 =>
-    projectPt(pitchPt(yawPt(p, yaw), pitch), 0, 0, 1, focal)
-
-  const map = (p: Pt3): Pt2 => rotate2d(mapRaw(p), face, cx, cy)
+  // Mild yaw only — keep the sling upright (handle vertical).
+  const yaw = 0.28
+  const focal = unit * 3.4
+  const map = (p: Pt3): Pt2 => projectPt(yawPt(p, yaw), cx, cy, focal)
 
   const base = map(model.base)
   const rest = map(model.rest)
   const left = map(model.left)
   const right = map(model.right)
-  const pouch = map(model.pouch)
 
-  // Soft ground contact shadow under the handle tip.
+  // Aim top-right ⇒ pull pouch halfway down-left.
+  const pullLen = unit * 0.72
+  const pouch: Pt2 = {
+    x: rest.x - pullLen * Math.SQRT1_2,
+    y: rest.y + pullLen * Math.SQRT1_2,
+    s: (left.s + right.s) * 0.5,
+  }
+
+  // Soft contact shadow.
   ctx.save()
   ctx.fillStyle = "rgba(17, 17, 17, 0.1)"
   ctx.beginPath()
-  ctx.ellipse(
-    base.x - size * 0.02,
-    base.y + size * 0.015,
-    size * 0.11,
-    size * 0.032,
-    -0.25,
-    0,
-    Math.PI * 2,
-  )
+  ctx.ellipse(base.x + size * 0.01, base.y + size * 0.012, size * 0.1, size * 0.03, 0.15, 0, Math.PI * 2)
   ctx.fill()
   ctx.restore()
+
+  // Trajectory aim indicator (launch opposite the pull → top-right).
+  drawAimTrajectory(ctx, rest, pouch, size)
 
   const accent = slingshotAccentColor(styles.slingshot, time)
   const handleW = Math.max(4, size * 0.055)
   const wingW = Math.max(3, size * 0.04)
 
-  // Far wing first, then handle, then near wing (painter's algorithm).
-  const far = left.s <= right.s ? left : right
-  const near = left.s > right.s ? left : right
-  drawTubeSegment(ctx, rest, far, wingW * far.s, shade(accent, -0.18), shade(accent, -0.32))
-  drawTubeSegment(ctx, base, rest, handleW * ((base.s + rest.s) * 0.5), shade(accent, 0.06), shade(accent, -0.12))
-  drawTubeSegment(ctx, rest, near, wingW * near.s, shade(accent, 0.14), shade(accent, -0.05))
+  drawTubeSegment(ctx, rest, right, wingW * right.s, shade(accent, -0.12), shade(accent, -0.28))
+  drawTubeSegment(
+    ctx,
+    base,
+    rest,
+    handleW * ((base.s + rest.s) * 0.5),
+    shade(accent, 0.08),
+    shade(accent, -0.1),
+  )
+  drawTubeSegment(ctx, rest, left, wingW * left.s, shade(accent, 0.14), shade(accent, -0.04))
 
-  // Keep special style flourishes on top of the 3D tubes.
   if (styles.slingshot !== "classic") {
     const geom: SlingshotGeom = {
       base: { x: base.x, y: base.y },
@@ -260,36 +225,13 @@ function drawIconSlingAndBall(
     }
     ctx.save()
     ctx.globalAlpha = styles.slingshot === "twig" || styles.slingshot === "rainbow" ? 0.95 : 0.55
-    drawSlingshotFork(
-      ctx,
-      geom,
-      styles.slingshot,
-      time,
-      handleW * 0.85,
-      wingW * 0.85,
-    )
+    drawSlingshotFork(ctx, geom, styles.slingshot, time, handleW * 0.85, wingW * 0.85)
     ctx.restore()
   }
 
-  const bandWidth = Math.max(2.5, size * 0.024)
-  drawSlackBand(
-    ctx,
-    left,
-    pouch,
-    bandColor(styles.slingshot, time, 0),
-    bandWidth * left.s,
-    size * 0.1,
-    1,
-  )
-  drawSlackBand(
-    ctx,
-    right,
-    pouch,
-    bandColor(styles.slingshot, time, 30),
-    bandWidth * Math.max(0.75, right.s),
-    size * 0.12,
-    -1,
-  )
+  const bandWidth = Math.max(2.5, size * 0.022)
+  drawAimBand(ctx, left, pouch, bandColor(styles.slingshot, time, 0), bandWidth * left.s)
+  drawAimBand(ctx, right, pouch, bandColor(styles.slingshot, time, 30), bandWidth * right.s)
 
   const ballRadius = size * 0.1 * pouch.s
   ctx.save()
@@ -298,7 +240,71 @@ function drawIconSlingAndBall(
   ctx.restore()
 }
 
-/** Rounded tube stroke with a light/dark edge to sell cylindrical depth. */
+/** Dotted trajectory arc toward the top-right (matches in-game aim indicator). */
+function drawAimTrajectory(
+  ctx: CanvasRenderingContext2D,
+  rest: Pt2,
+  pouch: Pt2,
+  size: number,
+): void {
+  // Start just ahead of the fork in the launch direction (opposite pull).
+  const pdx = rest.x - pouch.x
+  const pdy = rest.y - pouch.y
+  const plen = Math.hypot(pdx, pdy) || 1
+  const dirX = pdx / plen
+  const dirY = pdy / plen
+
+  let x = rest.x + dirX * size * 0.04
+  let y = rest.y + dirY * size * 0.04
+  const speed = size * 0.72
+  let vx = dirX * speed
+  let vy = dirY * speed
+  const dt = 1 / 32
+  const g = size * 1.55
+
+  ctx.save()
+  ctx.fillStyle = COLORS.trajectory
+  for (let i = 0; i < 16; i++) {
+    vy += g * dt
+    x += vx * dt
+    y += vy * dt
+    if (x < size * 0.06 || x > size * 0.94 || y < size * 0.06 || y > size * 0.88) break
+    const r = Math.max(size * 0.01, size * 0.022 - i * size * 0.0008)
+    ctx.globalAlpha = Math.max(0.22, 0.92 - i * 0.048)
+    ctx.beginPath()
+    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.fill()
+  }
+  ctx.restore()
+}
+
+/** Pulled band from fork tip to pouch (gentle curve, not slack). */
+function drawAimBand(
+  ctx: CanvasRenderingContext2D,
+  from: Pt2,
+  to: Pt2,
+  color: string,
+  width: number,
+): void {
+  const mx = (from.x + to.x) * 0.5
+  const my = (from.y + to.y) * 0.5 + Math.abs(to.x - from.x) * 0.08
+  ctx.save()
+  ctx.lineCap = "round"
+  ctx.strokeStyle = color
+  ctx.lineWidth = width
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.quadraticCurveTo(mx, my, to.x, to.y)
+  ctx.stroke()
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.28)"
+  ctx.lineWidth = Math.max(1, width * 0.28)
+  ctx.beginPath()
+  ctx.moveTo(from.x, from.y)
+  ctx.quadraticCurveTo(mx, my - 1, to.x, to.y)
+  ctx.stroke()
+  ctx.restore()
+}
+
 function drawTubeSegment(
   ctx: CanvasRenderingContext2D,
   a: Pt2,
@@ -318,7 +324,6 @@ function drawTubeSegment(
   ctx.lineTo(b.x, b.y)
   ctx.stroke()
 
-  // Offset highlight along the near (leftish) side of the segment.
   const dx = b.x - a.x
   const dy = b.y - a.y
   const len = Math.hypot(dx, dy) || 1
@@ -337,55 +342,11 @@ function shade(hex: string, amount: number): string {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex)
   if (!m) return hex
   const n = parseInt(m[1]!, 16)
-  const adj = (c: number) =>
-    Math.max(0, Math.min(255, Math.round(c + amount * 255)))
+  const adj = (c: number) => Math.max(0, Math.min(255, Math.round(c + amount * 255)))
   const r = adj((n >> 16) & 0xff)
   const g = adj((n >> 8) & 0xff)
   const b = adj(n & 0xff)
   return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`
-}
-
-/** Slack rubber band: sagging bezier with a stylized wave (not pulled taut). */
-function drawSlackBand(
-  ctx: CanvasRenderingContext2D,
-  from: Pt2,
-  to: Pt2,
-  color: string,
-  width: number,
-  wave: number,
-  side: number,
-): void {
-  const dx = to.x - from.x
-  const dy = to.y - from.y
-  const len = Math.hypot(dx, dy) || 1
-  const px = (-dy / len) * side
-  const py = (dx / len) * side
-
-  // Extra slack: droop well below the chord with an S-wave.
-  const sag = Math.max(Math.abs(wave) * 1.6, len * 0.28)
-  const c1x = from.x + dx * 0.22 + px * wave * 1.35
-  const c1y = from.y + dy * 0.12 + py * wave * 0.2 + sag * 0.95
-  const c2x = from.x + dx * 0.62 - px * wave * 1.05
-  const c2y = from.y + dy * 0.55 + sag * 1.45
-
-  ctx.save()
-  ctx.lineCap = "round"
-  ctx.lineJoin = "round"
-  ctx.strokeStyle = color
-  ctx.lineWidth = width
-  ctx.beginPath()
-  ctx.moveTo(from.x, from.y)
-  ctx.bezierCurveTo(c1x, c1y, c2x, c2y, to.x, to.y)
-  ctx.stroke()
-
-  // Thin highlight for a rubbery look.
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.3)"
-  ctx.lineWidth = Math.max(1, width * 0.3)
-  ctx.beginPath()
-  ctx.moveTo(from.x, from.y)
-  ctx.bezierCurveTo(c1x, c1y - 1.5, c2x, c2y - 1.5, to.x, to.y)
-  ctx.stroke()
-  ctx.restore()
 }
 
 function bandColor(style: SlingshotStyle, time: number, offset: number): string {
