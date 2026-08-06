@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" fill="#ffffff"/>
+  <g opacity="0.04" stroke="#111111" stroke-width="4">
+    <path d="M0 64L512 128M0 176L512 240M0 288L512 352M0 400L512 464"/>
+  </g>
+  <g transform="translate(220 250)">
+    <g fill="#2f6fed">
+      <circle cx="60" cy="-60" r="9" opacity="0.75"/>
+      <circle cx="105" cy="-100" r="8" opacity="0.6"/>
+      <circle cx="145" cy="-125" r="7" opacity="0.48"/>
+      <circle cx="180" cy="-132" r="6" opacity="0.35"/>
+      <circle cx="210" cy="-122" r="5" opacity="0.22"/>
+    </g>
+    <path
+      d="M0 190V0M-72 -60L0 0L72 -60"
+      stroke="#2f6fed"
+      stroke-width="34"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M-72 -60Q-50 50 -28 78"
+      stroke="#1d4fbf"
+      stroke-width="12"
+      stroke-linecap="round"
+      fill="none"
+    />
+    <path
+      d="M72 -60Q20 50 -28 78"
+      stroke="#1d4fbf"
+      stroke-width="12"
+      stroke-linecap="round"
+      fill="none"
+    />
+    <circle cx="-28" cy="86" r="46" fill="#f0d9a0"/>
+    <circle cx="-46" cy="68" r="14" fill="#fff6dd"/>
+    <circle cx="-28" cy="86" r="46" stroke="rgba(90,60,30,0.25)" stroke-width="3"/>
+  </g>
+</svg>

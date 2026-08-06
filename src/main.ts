@@ -2,6 +2,7 @@ import "./style.css"
 import { BotController } from "./game/BotController"
 import { CanvasRecorder } from "./game/CanvasRecorder"
 import { configFromSearch } from "./game/config"
+import { exportDefaultAppIconPngs } from "./game/appIcon"
 import { Game } from "./game/Game"
 
 const canvas = document.querySelector<HTMLCanvasElement>("#game")
@@ -28,3 +29,34 @@ if (config.mode === "bot") {
 }
 
 game.start()
+
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      /* installability still works without a registered SW in some browsers */
+    })
+  })
+}
+
+/** Dev helper: /?exportIcons=1 downloads default PWA PNGs from the live renderer. */
+if (import.meta.env.DEV) {
+  window.__exportDefaultAppIconPngs = exportDefaultAppIconPngs
+  if (new URLSearchParams(location.search).has("exportIcons")) {
+    void exportDefaultAppIconPngs().then((files) => {
+      for (const [name, blob] of Object.entries(files)) {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = name
+        a.click()
+        URL.revokeObjectURL(url)
+      }
+    })
+  }
+}
+
+declare global {
+  interface Window {
+    __exportDefaultAppIconPngs?: typeof exportDefaultAppIconPngs
+  }
+}

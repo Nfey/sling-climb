@@ -1,5 +1,6 @@
 import { Ball } from "./Ball"
 import { Camera } from "./Camera"
+import { applyDocumentAppIcon } from "./appIcon"
 import { turretMuzzleWorld } from "./turret"
 import {
   BULLET_BEAM_HALF_WIDTH,
@@ -139,6 +140,7 @@ export class Game implements BotGameApi {
     this.config = defaultConfig(config)
     this.score = new Score(this.config.persistScores !== false)
     this.cosmetics = new CosmeticsStore(this.config.persistScores !== false)
+    this.cosmetics.onEquippedChange = () => this.refreshAppIcon()
     // Unlock audio inside the real gesture handlers (pointer/key), not rAF.
     this.input = new Input(
       canvas,
@@ -147,8 +149,18 @@ export class Game implements BotGameApi {
     )
     this.renderer = new Renderer(canvas)
     this.resize()
+    this.refreshAppIcon()
     window.addEventListener("resize", () => this.resize())
     window.addEventListener("orientationchange", () => this.resize())
+  }
+
+  /** Sync tab / home-screen icons to the selected sling, ball, and background. */
+  private refreshAppIcon(): void {
+    applyDocumentAppIcon({
+      slingshot: this.cosmetics.getSelectedSlingshotStyle(),
+      ball: this.cosmetics.getSelectedBallStyle(),
+      background: this.cosmetics.getSelectedBackgroundStyle(),
+    })
   }
 
   get autoRestart(): boolean {

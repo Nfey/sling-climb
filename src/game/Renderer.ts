@@ -903,7 +903,7 @@ export class Renderer {
 
     ctx.fillStyle = theme.ink
     ctx.font = "800 44px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText("Sling Climb", cx, y)
+    ctx.fillText("Slinger", cx, y)
     y += 36
 
     ctx.fillStyle = theme.inkDim

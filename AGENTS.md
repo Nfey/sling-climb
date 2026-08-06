@@ -1,4 +1,4 @@
-# Sling Climb
+# Slinger
 
 Mobile web prototype of a slingshot climbing game. Client-side only: a Vite + TypeScript
 app rendered to a `<canvas>`, using `localStorage` for persistence. In production the static

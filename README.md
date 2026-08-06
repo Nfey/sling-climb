@@ -1,4 +1,4 @@
-# Sling Climb
+# Slinger
 
 Mobile web prototype of a slingshot climbing game (Doodle Jump meets slingshot aiming).
 
@@ -11,7 +11,7 @@ npm run dev -- --host
 
 Open the printed URL on your iPhone (same Wi‑Fi), or use Safari on a Mac with responsive mode.
 
-Add to Home Screen for a fullscreen feel.
+**Install as a PWA:** Add to Home Screen (iOS) or Install app (Android/Chrome). The app ships a web manifest, icons drawn from the default sling/ball/background (pulled pose), and a service worker. Equipped cosmetics update the tab favicon (and Apple touch link) live.
 
 ## Controls
 

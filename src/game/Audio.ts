@@ -1,5 +1,5 @@
 /**
- * Procedural Web Audio SFX for Sling Climb.
+ * Procedural Web Audio SFX for Slinger.
  * No external assets — oscillators + noise. Pitch / filter drama scales with
  * combo and uninterrupted climb; gain stays mostly flat.
  */
