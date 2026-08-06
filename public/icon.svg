@@ -1,37 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <!-- Classic default PWA icon: white sky, blue slingshot, cream ball, half-pull down-left -->
   <rect width="512" height="512" fill="#ffffff"/>
   <g opacity="0.04" stroke="#111111" stroke-width="4">
     <path d="M0 64L512 128M0 176L512 240M0 288L512 352M0 400L512 464"/>
   </g>
-
-  <!-- Slingshot Y (classic), biased right for pull clearance -->
-  <path
-    d="M300 410V270M200 175L300 270L400 175"
-    stroke="#2f6fed"
-    stroke-width="36"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-
-  <!-- Rubber bands to pouch (halfway down-left) -->
-  <path
-    d="M200 175Q175 275 190 320"
-    stroke="#1d4fbf"
-    stroke-width="14"
-    stroke-linecap="round"
-    fill="none"
-  />
-  <path
-    d="M400 175Q280 290 190 320"
-    stroke="#1d4fbf"
-    stroke-width="14"
-    stroke-linecap="round"
-    fill="none"
-  />
-
-  <!-- Classic cream ball -->
-  <circle cx="190" cy="320" r="58" fill="#f0d9a0"/>
-  <circle cx="168" cy="296" r="18" fill="#fff6dd"/>
-  <circle cx="190" cy="320" r="58" stroke="rgba(90,60,30,0.25)" stroke-width="4"/>
+  <!-- Long handle > wings, yawed right in 3D, slack wavy bands, ball at rest -->
+  <g transform="translate(265 200) skewX(-18) rotate(14)">
+    <ellipse cx="10" cy="210" rx="52" ry="18" fill="rgba(17,17,17,0.08)"/>
+    <path
+      d="M0 200V0M-70 -68L0 0L88 -62"
+      stroke="#2f6fed"
+      stroke-width="32"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M-70 -68C-120 -10 -95 70 -8 88"
+      stroke="#1d4fbf"
+      stroke-width="15"
+      stroke-linecap="round"
+      fill="none"
+    />
+    <path
+      d="M88 -62C30 20 40 100 -8 88"
+      stroke="#1d4fbf"
+      stroke-width="15"
+      stroke-linecap="round"
+      fill="none"
+    />
+    <circle cx="-6" cy="96" r="50" fill="#f0d9a0"/>
+    <circle cx="-24" cy="76" r="15" fill="#fff6dd"/>
+    <circle cx="-6" cy="96" r="50" stroke="rgba(90,60,30,0.25)" stroke-width="3"/>
+  </g>
 </svg>

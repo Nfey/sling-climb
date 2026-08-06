@@ -1,33 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <!-- Classic default: white sky, blue slingshot, cream ball, pulled down-left -->
   <rect width="64" height="64" fill="#ffffff"/>
   <g opacity="0.04" stroke="#111111" stroke-width="1">
     <path d="M0 8L64 16M0 22L64 30M0 36L64 44M0 50L64 58"/>
   </g>
-  <!-- Slingshot fork (classic #2f6fed), biased right -->
-  <path
-    d="M38 52V34M26 22L38 34L50 22"
-    stroke="#2f6fed"
-    stroke-width="5"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-  <!-- Bands to pouch (down-left) -->
-  <path
-    d="M26 22Q22 34 24 40"
-    stroke="#1d4fbf"
-    stroke-width="2.5"
-    stroke-linecap="round"
-    fill="none"
-  />
-  <path
-    d="M50 22Q36 36 24 40"
-    stroke="#1d4fbf"
-    stroke-width="2.5"
-    stroke-linecap="round"
-    fill="none"
-  />
-  <!-- Classic cream ball in pouch -->
-  <circle cx="24" cy="40" r="8" fill="#f0d9a0"/>
-  <circle cx="21.5" cy="37" r="2.4" fill="#fff6dd"/>
+  <!-- Long handle, short wings, yawed right; slack wavy bands -->
+  <g transform="translate(33 26) skewX(-16) rotate(12)">
+    <ellipse cx="2" cy="28" rx="9" ry="3.2" fill="rgba(17,17,17,0.08)"/>
+    <path
+      d="M0 26V0M-9 -9L0 0L11 -8"
+      stroke="#2f6fed"
+      stroke-width="4.2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <path
+      d="M-9 -9C-16 0 -12 12 -1 14"
+      stroke="#1d4fbf"
+      stroke-width="2.3"
+      stroke-linecap="round"
+      fill="none"
+    />
+    <path
+      d="M11 -8C4 4 6 16 -1 14"
+      stroke="#1d4fbf"
+      stroke-width="2.3"
+      stroke-linecap="round"
+      fill="none"
+    />
+    <circle cx="-1" cy="15" r="6.5" fill="#f0d9a0"/>
+    <circle cx="-3" cy="12.5" r="1.8" fill="#fff6dd"/>
+  </g>
 </svg>
