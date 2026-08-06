@@ -3,31 +3,31 @@
   <g opacity="0.04" stroke="#111111" stroke-width="1">
     <path d="M0 8L64 16M0 22L64 30M0 36L64 44M0 50L64 58"/>
   </g>
-  <!-- Long handle, short wings, yawed right; slack wavy bands -->
-  <g transform="translate(33 26) skewX(-16) rotate(12)">
-    <ellipse cx="2" cy="28" rx="9" ry="3.2" fill="rgba(17,17,17,0.08)"/>
+  <!-- -45° yaw + facing top-right; long handle; slack bands -->
+  <g transform="translate(28 36) rotate(45) skewX(12)">
+    <ellipse cx="0" cy="26" rx="9" ry="3.2" fill="rgba(17,17,17,0.08)"/>
     <path
-      d="M0 26V0M-9 -9L0 0L11 -8"
+      d="M0 26V0M-10 -9L0 0L10 -9"
       stroke="#2f6fed"
       stroke-width="4.2"
       stroke-linecap="round"
       stroke-linejoin="round"
     />
     <path
-      d="M-9 -9C-16 0 -12 12 -1 14"
+      d="M-10 -9C-14 2 -8 12 0 13"
       stroke="#1d4fbf"
       stroke-width="2.3"
       stroke-linecap="round"
       fill="none"
     />
     <path
-      d="M11 -8C4 4 6 16 -1 14"
+      d="M10 -9C14 2 8 12 0 13"
       stroke="#1d4fbf"
       stroke-width="2.3"
       stroke-linecap="round"
       fill="none"
     />
-    <circle cx="-1" cy="15" r="6.5" fill="#f0d9a0"/>
-    <circle cx="-3" cy="12.5" r="1.8" fill="#fff6dd"/>
+    <circle cx="0" cy="14" r="6.5" fill="#f0d9a0"/>
+    <circle cx="-2" cy="11.5" r="1.8" fill="#fff6dd"/>
   </g>
 </svg>

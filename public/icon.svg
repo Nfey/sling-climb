@@ -3,32 +3,32 @@
   <g opacity="0.04" stroke="#111111" stroke-width="4">
     <path d="M0 64L512 128M0 176L512 240M0 288L512 352M0 400L512 464"/>
   </g>
-  <!-- Long handle > wings, yawed right in 3D, slack wavy bands, ball at rest -->
-  <g transform="translate(265 200) skewX(-18) rotate(14)">
-    <ellipse cx="10" cy="210" rx="52" ry="18" fill="rgba(17,17,17,0.08)"/>
+  <!-- -45° yaw + facing top-right; long handle; slack wavy bands -->
+  <g transform="translate(220 290) rotate(45) skewX(14)">
+    <ellipse cx="0" cy="200" rx="52" ry="18" fill="rgba(17,17,17,0.08)"/>
     <path
-      d="M0 200V0M-70 -68L0 0L88 -62"
+      d="M0 200V0M-78 -68L0 0L78 -68"
       stroke="#2f6fed"
       stroke-width="32"
       stroke-linecap="round"
       stroke-linejoin="round"
     />
     <path
-      d="M-70 -68C-120 -10 -95 70 -8 88"
+      d="M-78 -68C-110 -10 -70 70 0 88"
       stroke="#1d4fbf"
       stroke-width="15"
       stroke-linecap="round"
       fill="none"
     />
     <path
-      d="M88 -62C30 20 40 100 -8 88"
+      d="M78 -68C110 -10 70 70 0 88"
       stroke="#1d4fbf"
       stroke-width="15"
       stroke-linecap="round"
       fill="none"
     />
-    <circle cx="-6" cy="96" r="50" fill="#f0d9a0"/>
-    <circle cx="-24" cy="76" r="15" fill="#fff6dd"/>
-    <circle cx="-6" cy="96" r="50" stroke="rgba(90,60,30,0.25)" stroke-width="3"/>
+    <circle cx="0" cy="96" r="50" fill="#f0d9a0"/>
+    <circle cx="-18" cy="76" r="15" fill="#fff6dd"/>
+    <circle cx="0" cy="96" r="50" stroke="rgba(90,60,30,0.25)" stroke-width="3"/>
   </g>
 </svg>

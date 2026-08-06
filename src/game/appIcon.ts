@@ -139,11 +139,11 @@ function iconSlingModel(unit: number): {
   return {
     base: { x: 0, y: handleLen, z: 0 },
     rest: { x: 0, y: 0, z: 0 },
-    // Left tip closer to camera, right tip recedes (yawed right).
-    left: { x: -wingSpread * 0.85, y: -wingLen, z: unit * 0.42 },
-    right: { x: wingSpread * 1.2, y: -wingLen * 0.85, z: -unit * 0.62 },
-    // Soft pouch hangs below the crotch — bands stay slack.
-    pouch: { x: -unit * 0.05, y: unit * 0.55, z: unit * 0.26 },
+    // Depth baked for -45° yaw: right tip nearer, left tip farther.
+    left: { x: -wingSpread * 1.15, y: -wingLen * 0.9, z: -unit * 0.5 },
+    right: { x: wingSpread * 0.9, y: -wingLen, z: unit * 0.4 },
+    // Soft pouch hangs on-axis below the crotch — bands stay slack.
+    pouch: { x: 0, y: unit * 0.42, z: unit * 0.12 },
   }
 }
 
@@ -182,24 +182,40 @@ function projectPt(
   }
 }
 
+/** Rotate a projected point around the icon center (canvas angle, y-down). */
+function rotate2d(p: Pt2, angle: number, cx: number, cy: number): Pt2 {
+  const c = Math.cos(angle)
+  const s = Math.sin(angle)
+  const dx = p.x
+  const dy = p.y
+  return {
+    x: cx + dx * c - dy * s,
+    y: cy + dx * s + dy * c,
+    s: p.s,
+  }
+}
+
 function drawIconSlingAndBall(
   ctx: CanvasRenderingContext2D,
   size: number,
   styles: AppIconStyles,
   time: number,
 ): void {
-  const cx = size * 0.48
-  const cy = size * 0.38
-  const unit = size * 0.25
+  const cx = size * 0.5
+  const cy = size * 0.46
+  const unit = size * 0.24
   const model = iconSlingModel(unit)
 
-  // Clear yaw to the right; light pitch so the long handle stays readable.
-  const yaw = 0.85
-  const pitch = -0.12
+  // -45° 3D yaw; +45° screen rotation aims the fork at the top-right corner.
+  const yaw = -Math.PI / 4
+  const pitch = -0.14
+  const face = Math.PI / 4
   const focal = unit * 2.6
 
-  const map = (p: Pt3): Pt2 =>
-    projectPt(pitchPt(yawPt(p, yaw), pitch), cx, cy, 1, focal)
+  const mapRaw = (p: Pt3): Pt2 =>
+    projectPt(pitchPt(yawPt(p, yaw), pitch), 0, 0, 1, focal)
+
+  const map = (p: Pt3): Pt2 => rotate2d(mapRaw(p), face, cx, cy)
 
   const base = map(model.base)
   const rest = map(model.rest)
@@ -212,11 +228,11 @@ function drawIconSlingAndBall(
   ctx.fillStyle = "rgba(17, 17, 17, 0.1)"
   ctx.beginPath()
   ctx.ellipse(
-    base.x + size * 0.025,
+    base.x - size * 0.02,
     base.y + size * 0.015,
     size * 0.11,
     size * 0.032,
-    0.25,
+    -0.25,
     0,
     Math.PI * 2,
   )
@@ -227,10 +243,12 @@ function drawIconSlingAndBall(
   const handleW = Math.max(4, size * 0.055)
   const wingW = Math.max(3, size * 0.04)
 
-  // Draw far wing first, then handle, then near wing (painter's algorithm).
-  drawTubeSegment(ctx, rest, right, wingW * right.s, shade(accent, -0.18), shade(accent, -0.32))
+  // Far wing first, then handle, then near wing (painter's algorithm).
+  const far = left.s <= right.s ? left : right
+  const near = left.s > right.s ? left : right
+  drawTubeSegment(ctx, rest, far, wingW * far.s, shade(accent, -0.18), shade(accent, -0.32))
   drawTubeSegment(ctx, base, rest, handleW * ((base.s + rest.s) * 0.5), shade(accent, 0.06), shade(accent, -0.12))
-  drawTubeSegment(ctx, rest, left, wingW * left.s, shade(accent, 0.14), shade(accent, -0.05))
+  drawTubeSegment(ctx, rest, near, wingW * near.s, shade(accent, 0.14), shade(accent, -0.05))
 
   // Keep special style flourishes on top of the 3D tubes.
   if (styles.slingshot !== "classic") {
