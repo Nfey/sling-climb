@@ -42,7 +42,7 @@ import type {
   TrailStyle,
 } from "./cosmetics"
 import { RARITY_COLOR, RARITY_LABEL } from "./rarity"
-import { RARITY_GLOW, type CosmeticRarity } from "./rarity"
+import { RARITY_GLOW } from "./rarity"
 import { drawHatStyle } from "./hats"
 import { drawTrailStyle, previewTrailPoints } from "./trails"
 import { DAILY_REWARDS, type DailyClaimResult, type PendingBoosts } from "./dailyLogin"
@@ -1897,15 +1897,12 @@ function drawGachaRevealOverlay(
 
   ctx.textAlign = "center"
   ctx.textBaseline = "middle"
-  ctx.fillStyle = color
-  ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
-  ctx.fillText(RARITY_LABEL[rarity].toUpperCase(), cx, cy - 110)
 
   if (reveal.phase === "charging") {
     const t = Math.min(1, reveal.elapsed / REVEAL_CHARGE_SEC)
     const shake = (1 - t) * 5 * Math.sin(reveal.elapsed * 40)
     const scale = 0.75 + t * 0.35
-    drawSealedOrb(ctx, cx + shake, cy, 54 * scale, rarity, color, glow, time)
+    drawSealedOrb(ctx, cx + shake, cy, 54 * scale, time)
     ctx.fillStyle = "rgba(255,255,255,0.9)"
     ctx.font = "600 14px 'DM Sans', sans-serif"
     ctx.fillText("Summoning…", cx, cy + 90)
@@ -1914,30 +1911,50 @@ function drawGachaRevealOverlay(
 
   if (reveal.phase === "sealed") {
     const pulse = 1 + Math.sin(time * 5) * 0.04
-    drawSealedOrb(ctx, cx, cy, 58 * pulse, rarity, color, glow, time)
+    drawSealedOrb(ctx, cx, cy, 58 * pulse, time)
     ctx.fillStyle = "#fff"
     ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
     ctx.fillText("Tap to reveal", cx, cy + 100)
     ctx.fillStyle = "rgba(255,255,255,0.7)"
     ctx.font = "500 13px 'DM Sans', sans-serif"
-    ctx.fillText(`${RARITY_LABEL[rarity]} pull ready`, cx, cy + 124)
+    ctx.fillText("What will it be?", cx, cy + 124)
     return
   }
 
   if (reveal.phase === "opening") {
     const t = Math.min(1, reveal.elapsed / REVEAL_OPEN_SEC)
-    const burst = t
+    // Rarity flashes in with the burst — not before.
+    const rarityReveal = Math.min(1, t / 0.28)
     ctx.save()
-    ctx.globalAlpha = 1 - t * 0.4
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2 + time
-      const dist = 30 + burst * 70
+    ctx.globalAlpha = rarityReveal
+    ctx.fillStyle = color
+    ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText(RARITY_LABEL[rarity].toUpperCase(), cx, cy - 110)
+    // Expanding rarity glow behind the orb / item.
+    const glowR = 40 + t * 110
+    const glowAlpha = (1 - t * 0.65) * rarityReveal
+    const glowGrd = ctx.createRadialGradient(cx, cy, 8, cx, cy, glowR)
+    glowGrd.addColorStop(0, color)
+    glowGrd.addColorStop(0.35, glow)
+    glowGrd.addColorStop(1, "rgba(0,0,0,0)")
+    ctx.globalAlpha = glowAlpha
+    ctx.fillStyle = glowGrd
+    ctx.beginPath()
+    ctx.arc(cx, cy, glowR, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+
+    ctx.save()
+    ctx.globalAlpha = (1 - t * 0.35) * rarityReveal
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2 + time
+      const dist = 24 + t * 85
       ctx.fillStyle = color
       ctx.beginPath()
       ctx.arc(
         cx + Math.cos(a) * dist,
         cy + Math.sin(a) * dist,
-        4 + (1 - t) * 4,
+        3 + (1 - t) * 5,
         0,
         Math.PI * 2,
       )
@@ -1952,28 +1969,37 @@ function drawGachaRevealOverlay(
       drawRevealedItem(ctx, cx, cy, result, ballStyle, time)
       ctx.globalAlpha = 1
     } else {
-      drawSealedOrb(ctx, cx, cy, 58 * (1 - t * 0.5), rarity, color, glow, time)
+      // Brief neutral orb that cracks as rarity glow takes over.
+      ctx.globalAlpha = 1 - t / 0.35
+      drawSealedOrb(ctx, cx, cy, 58 * (1 - t * 0.35), time)
+      ctx.globalAlpha = 1
     }
     return
   }
 }
 
+/** Neutral sealed capsule — rarity is hidden until the burst. */
 function drawSealedOrb(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
   radius: number,
-  rarity: CosmeticRarity,
-  color: string,
-  glow: string,
   time: number,
 ): void {
   ctx.save()
-  const grd = ctx.createRadialGradient(cx - radius * 0.3, cy - radius * 0.35, 4, cx, cy, radius)
-  grd.addColorStop(0, "#fff")
-  grd.addColorStop(0.35, color)
-  grd.addColorStop(1, "#0f172a")
-  ctx.fillStyle = glow
+  const grd = ctx.createRadialGradient(
+    cx - radius * 0.3,
+    cy - radius * 0.35,
+    4,
+    cx,
+    cy,
+    radius,
+  )
+  grd.addColorStop(0, "#f8fafc")
+  grd.addColorStop(0.4, "#94a3b8")
+  grd.addColorStop(1, "#1e293b")
+  // Soft neutral halo (same every pull).
+  ctx.fillStyle = "rgba(148, 163, 184, 0.28)"
   ctx.beginPath()
   ctx.arc(cx, cy, radius * 1.35, 0, Math.PI * 2)
   ctx.fill()
@@ -1981,17 +2007,16 @@ function drawSealedOrb(
   ctx.beginPath()
   ctx.arc(cx, cy, radius, 0, Math.PI * 2)
   ctx.fill()
-  ctx.strokeStyle = color
-  ctx.lineWidth = rarity === "epic" ? 4 : 3
+  ctx.strokeStyle = "#cbd5e1"
+  ctx.lineWidth = 3
   ctx.stroke()
 
-  // Inner sigil
   ctx.strokeStyle = "rgba(255,255,255,0.85)"
   ctx.lineWidth = 2
   ctx.beginPath()
   ctx.arc(cx, cy, radius * 0.45, 0, Math.PI * 2)
   ctx.stroke()
-  const spin = time * (rarity === "epic" ? 4 : 2)
+  const spin = time * 2.2
   for (let i = 0; i < 4; i++) {
     const a = spin + (i * Math.PI) / 2
     ctx.beginPath()
