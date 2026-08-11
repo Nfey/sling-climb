@@ -20,6 +20,8 @@ import type {
   BulletData,
   BumperData,
   CoinData,
+  DailyHitAreas,
+  GachaHitAreas,
   MainMenuHitAreas,
   PlatformData,
   PortalData,
@@ -32,7 +34,11 @@ import type {
   WallTurretData,
 } from "./types"
 import type { Slingshot } from "./Slingshot"
-import type { BallStyle, BackgroundStyle, SlingshotStyle } from "./cosmetics"
+import type { BallStyle, BackgroundStyle, HatStyle, SlingshotStyle } from "./cosmetics"
+import { RARITY_COLOR, RARITY_LABEL } from "./cosmetics"
+import { HAT_VARIANTS, drawHatStyle } from "./hats"
+import { DAILY_REWARDS, type DailyClaimResult, type PendingBoosts } from "./dailyLogin"
+import { GACHA_PULL_COST, type GachaPullResult } from "./gacha"
 import {
   drawBallStyle,
   drawSlingshotBands,
@@ -679,7 +685,12 @@ export class Renderer {
     ctx.globalAlpha = 1
   }
 
-  drawBall(camera: Camera, ball: Ball, ballStyle: BallStyle = "classic"): void {
+  drawBall(
+    camera: Camera,
+    ball: Ball,
+    ballStyle: BallStyle = "classic",
+    hatStyle: HatStyle = "none",
+  ): void {
     const ctx = this.ctx
     const s = camera.worldToScreen({ x: ball.x, y: ball.y })
     const squash = ball.squash
@@ -706,6 +717,9 @@ export class Renderer {
       drawBallStyle(ctx, ballStyle, ball.radius, this.time, "lighting")
       ctx.rotate(ball.spin)
       drawBallStyle(ctx, ballStyle, ball.radius, this.time, "pattern")
+      // Un-rotate so hats stay upright and readable mid-flight.
+      ctx.rotate(-ball.spin)
+      drawHatStyle(ctx, hatStyle, ball.radius, this.time)
     }
     ctx.restore()
   }
@@ -876,7 +890,7 @@ export class Renderer {
   }
 
   /**
-   * Title screen with top-right coins, bests, Play, and a Shop button.
+   * Title screen with top-right coins, bests, Play/Shop, and Daily/Hats.
    * Returns interactive regions for hit-testing.
    */
   drawMainMenu(
@@ -886,12 +900,13 @@ export class Renderer {
     lifetimeCoins: number,
     anim: number,
     backgroundStyle: BackgroundStyle,
+    dailyClaimable: boolean,
   ): MainMenuHitAreas {
     const ctx = this.ctx
     const { width } = camera
     const cx = width / 2
     const theme = getBackgroundTheme(backgroundStyle)
-    let y = camera.slingshotScreenY - 168
+    let y = camera.slingshotScreenY - 188
 
     ctx.fillStyle = theme.menuOverlay
     ctx.fillRect(0, 0, width, camera.killScreenY)
@@ -909,17 +924,17 @@ export class Renderer {
     ctx.fillStyle = theme.inkDim
     ctx.font = "500 15px 'DM Sans', sans-serif"
     ctx.fillText("Pull back to launch · catch to climb", cx, y)
-    y += 40
+    y += 36
 
     const showBests = highScore > 0 || bestHeight > 0
 
     if (showBests) {
       const rowW = Math.min(280, width - 48)
       const rowX = cx - rowW / 2
-      const rowH = 64
+      const rowH = 58
       ctx.fillStyle = theme.statsCard
       ctx.beginPath()
-      roundRect(ctx, rowX, y - 22, rowW, rowH, 12)
+      roundRect(ctx, rowX, y - 20, rowW, rowH, 12)
       ctx.fill()
 
       const leftX = rowX + rowW * 0.28
@@ -927,25 +942,25 @@ export class Renderer {
 
       ctx.fillStyle = theme.inkDim
       ctx.font = "500 11px 'DM Sans', sans-serif"
-      ctx.fillText("BEST SCORE", leftX, y - 8)
-      ctx.fillText("BEST HEIGHT", rightX, y - 8)
+      ctx.fillText("BEST SCORE", leftX, y - 6)
+      ctx.fillText("BEST HEIGHT", rightX, y - 6)
 
       ctx.fillStyle = COLORS.accent
-      ctx.font = "800 22px 'Bricolage Grotesque', sans-serif"
+      ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
       ctx.fillText(highScore > 0 ? String(highScore) : "—", leftX, y + 14)
       ctx.fillText(
         bestHeight > 0 ? formatHeightLabel(bestHeight) : "—",
         rightX,
         y + 14,
       )
-      y += 56
+      y += 50
     } else {
-      y += 12
+      y += 8
     }
 
     const pulse = 0.92 + Math.sin(anim * 3.2) * 0.08
     const btnW = 120
-    const btnH = 52
+    const btnH = 48
     const btnGap = 12
     const pairW = btnW * 2 + btnGap
     const pairX = cx - pairW / 2
@@ -987,13 +1002,319 @@ export class Renderer {
     ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
     ctx.fillText("Shop", shop.x + btnW / 2, y + 1)
 
-    y += 48
+    y += 52
+    const subW = 110
+    const subH = 40
+    const subGap = 12
+    const subPairW = subW * 2 + subGap
+    const subX = cx - subPairW / 2
+    const daily: ScreenRect = {
+      x: subX,
+      y: y - subH / 2,
+      w: subW,
+      h: subH,
+    }
+    const gacha: ScreenRect = {
+      x: subX + subW + subGap,
+      y: y - subH / 2,
+      w: subW,
+      h: subH,
+    }
+
+    drawSecondaryMenuButton(ctx, daily, "Daily", dailyClaimable)
+    drawSecondaryMenuButton(ctx, gacha, "Hats", false)
+
+    y += 42
     ctx.fillStyle = theme.inkDim
     ctx.font = "500 13px 'DM Sans', sans-serif"
     ctx.fillText("or tap anywhere to start", cx, y)
 
     ctx.textBaseline = "alphabetic"
-    return { play, shop }
+    return { play, shop, daily, gacha }
+  }
+
+  /**
+   * 7-day login calendar: streak, day cells, claim / pending boost status.
+   */
+  drawDaily(
+    camera: Camera,
+    lifetimeCoins: number,
+    backgroundStyle: BackgroundStyle,
+    streak: number,
+    nextDay: number,
+    claimedToday: boolean,
+    claimedDays: ReadonlySet<number>,
+    pending: PendingBoosts,
+    lastClaim: DailyClaimResult | null,
+  ): DailyHitAreas {
+    const ctx = this.ctx
+    const { width, height } = camera
+    const cx = width / 2
+    const theme = getBackgroundTheme(backgroundStyle)
+
+    ctx.fillStyle = theme.menuOverlay
+    ctx.fillRect(0, 0, width, height)
+
+    drawLifetimeCoins(ctx, width, lifetimeCoins)
+
+    const topPad = 36 + safeAreaInsetTop()
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    ctx.fillStyle = theme.ink
+    ctx.font = "800 32px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText("Daily Login", cx, topPad + 8)
+
+    ctx.fillStyle = theme.inkDim
+    ctx.font = "600 14px 'DM Sans', sans-serif"
+    ctx.fillText(
+      streak > 0 ? `Streak · ${streak} day${streak === 1 ? "" : "s"}` : "Start your streak",
+      cx,
+      topPad + 36,
+    )
+
+    const cellGap = 6
+    const cellW = Math.min(44, (width - 40 - cellGap * 6) / 7)
+    const cellH = 64
+    const gridW = cellW * 7 + cellGap * 6
+    const gridX = cx - gridW / 2
+    const gridY = topPad + 58
+
+    for (let i = 0; i < 7; i++) {
+      const day = i + 1
+      const reward = DAILY_REWARDS[i]!
+      const x = gridX + i * (cellW + cellGap)
+      const claimed = claimedDays.has(day)
+      const isNext = !claimedToday && day === nextDay
+
+      ctx.fillStyle = claimed
+        ? "rgba(34, 197, 94, 0.22)"
+        : isNext
+          ? "rgba(47, 111, 237, 0.18)"
+          : "rgba(255, 255, 255, 0.78)"
+      ctx.beginPath()
+      roundRect(ctx, x, gridY, cellW, cellH, 10)
+      ctx.fill()
+      if (isNext) {
+        ctx.strokeStyle = COLORS.accent
+        ctx.lineWidth = 2
+        ctx.stroke()
+      }
+
+      ctx.fillStyle = theme.inkDim
+      ctx.font = "700 10px 'DM Sans', sans-serif"
+      ctx.fillText(`D${day}`, x + cellW / 2, gridY + 12)
+
+      ctx.fillStyle = theme.ink
+      ctx.font = "700 11px 'DM Sans', sans-serif"
+      const short =
+        reward.kind === "coins"
+          ? `${reward.amount}¢`
+          : reward.kind === "pow"
+            ? "POW"
+            : reward.kind === "coinMult"
+              ? "2×¢"
+              : "Hat"
+      ctx.fillText(short, x + cellW / 2, gridY + 34)
+
+      if (claimed) {
+        ctx.fillStyle = "#16a34a"
+        ctx.font = "800 14px 'Bricolage Grotesque', sans-serif"
+        ctx.fillText("✓", x + cellW / 2, gridY + 52)
+      }
+    }
+
+    let y = gridY + cellH + 28
+    const todayReward = DAILY_REWARDS[(nextDay - 1) % 7]!
+    ctx.fillStyle = theme.ink
+    ctx.font = "700 15px 'DM Sans', sans-serif"
+    if (claimedToday) {
+      ctx.fillText("Come back tomorrow!", cx, y)
+    } else {
+      ctx.fillText(`Today · ${todayReward.label}`, cx, y)
+    }
+    y += 28
+
+    if (pending.powSeconds > 0 || (pending.coinMult > 1 && pending.coinMultSeconds > 0)) {
+      const bits: string[] = []
+      if (pending.powSeconds > 0) bits.push(`POW ${pending.powSeconds}s`)
+      if (pending.coinMult > 1) {
+        bits.push(`${pending.coinMult}× coins ${pending.coinMultSeconds}s`)
+      }
+      ctx.fillStyle = COLORS.accent
+      ctx.font = "600 13px 'DM Sans', sans-serif"
+      ctx.fillText(`Ready next run · ${bits.join(" · ")}`, cx, y)
+      y += 24
+    }
+
+    if (lastClaim) {
+      ctx.fillStyle = "#16a34a"
+      ctx.font = "600 13px 'DM Sans', sans-serif"
+      ctx.fillText(lastClaim.message, cx, y)
+      y += 24
+    }
+
+    const claimW = 160
+    const claimH = 48
+    let claim: ScreenRect | null = null
+    if (!claimedToday) {
+      claim = {
+        x: cx - claimW / 2,
+        y,
+        w: claimW,
+        h: claimH,
+      }
+      ctx.fillStyle = COLORS.accent
+      ctx.beginPath()
+      roundRect(ctx, claim.x, claim.y, claim.w, claim.h, 14)
+      ctx.fill()
+      ctx.fillStyle = "#fff"
+      ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText("Claim", cx, claim.y + claimH / 2 + 1)
+      y += claimH + 20
+    } else {
+      y += 12
+    }
+
+    const backW = 140
+    const backH = 44
+    const back: ScreenRect = {
+      x: cx - backW / 2,
+      y: Math.min(height - backH - 20, Math.max(y, height - backH - 28)),
+      w: backW,
+      h: backH,
+    }
+    ctx.fillStyle = COLORS.accent
+    ctx.beginPath()
+    roundRect(ctx, back.x, back.y, back.w, back.h, 12)
+    ctx.fill()
+    ctx.fillStyle = "#fff"
+    ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText("Back", cx, back.y + backH / 2 + 1)
+
+    ctx.textBaseline = "alphabetic"
+    return { back, claim }
+  }
+
+  /**
+   * Hat gacha: pull button, equip cycling for owned hats, last result.
+   */
+  drawGacha(
+    camera: Camera,
+    lifetimeCoins: number,
+    backgroundStyle: BackgroundStyle,
+    ballStyle: BallStyle,
+    hatStyle: HatStyle,
+    hatName: string,
+    ownedCount: number,
+    pityLeft: number,
+    lastPull: GachaPullResult | null,
+  ): GachaHitAreas {
+    const ctx = this.ctx
+    const { width, height } = camera
+    const cx = width / 2
+    const theme = getBackgroundTheme(backgroundStyle)
+
+    ctx.fillStyle = theme.menuOverlay
+    ctx.fillRect(0, 0, width, height)
+
+    drawLifetimeCoins(ctx, width, lifetimeCoins)
+
+    const topPad = 36 + safeAreaInsetTop()
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    ctx.fillStyle = theme.ink
+    ctx.font = "800 32px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText("Hat Gacha", cx, topPad + 8)
+
+    ctx.fillStyle = theme.inkDim
+    ctx.font = "500 13px 'DM Sans', sans-serif"
+    ctx.fillText(
+      `${ownedCount}/${HAT_VARIANTS.length} hats · pity in ${pityLeft}`,
+      cx,
+      topPad + 34,
+    )
+
+    const previewY = topPad + 110
+    ctx.save()
+    ctx.translate(cx, previewY)
+    drawBallStyle(ctx, ballStyle, 36, this.time)
+    drawHatStyle(ctx, hatStyle, 36, this.time)
+    ctx.restore()
+
+    ctx.fillStyle = theme.ink
+    ctx.font = "700 16px 'DM Sans', sans-serif"
+    ctx.fillText(hatName, cx, previewY + 58)
+
+    if (lastPull) {
+      const col = RARITY_COLOR[lastPull.rarity]
+      ctx.fillStyle = col
+      ctx.font = "800 14px 'Bricolage Grotesque', sans-serif"
+      const tag = lastPull.isNew ? "NEW" : `Dupe +${lastPull.duplicateRefund}¢`
+      ctx.fillText(
+        `${RARITY_LABEL[lastPull.rarity]} · ${lastPull.hat.name} · ${tag}`,
+        cx,
+        previewY + 80,
+      )
+    }
+
+    const arrowW = 40
+    const equipY = previewY + 100
+    const hatPrev: ScreenRect = { x: cx - 100, y: equipY, w: arrowW, h: 36 }
+    const hatNext: ScreenRect = { x: cx + 60, y: equipY, w: arrowW, h: 36 }
+    ctx.fillStyle = "rgba(255,255,255,0.78)"
+    ctx.beginPath()
+    roundRect(ctx, hatPrev.x, hatPrev.y, hatPrev.w, hatPrev.h, 10)
+    ctx.fill()
+    ctx.beginPath()
+    roundRect(ctx, hatNext.x, hatNext.y, hatNext.w, hatNext.h, 10)
+    ctx.fill()
+    ctx.fillStyle = COLORS.accent
+    ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText("‹", hatPrev.x + arrowW / 2, equipY + 19)
+    ctx.fillText("›", hatNext.x + arrowW / 2, equipY + 19)
+    ctx.fillStyle = theme.inkDim
+    ctx.font = "600 12px 'DM Sans', sans-serif"
+    ctx.fillText("Equip owned", cx, equipY + 18)
+
+    const canAfford = lifetimeCoins >= GACHA_PULL_COST
+    const pullW = 180
+    const pullH = 52
+    const pull: ScreenRect = {
+      x: cx - pullW / 2,
+      y: equipY + 52,
+      w: pullW,
+      h: pullH,
+    }
+    ctx.fillStyle = canAfford ? COLORS.accent : "rgba(100, 116, 139, 0.55)"
+    ctx.beginPath()
+    roundRect(ctx, pull.x, pull.y, pull.w, pull.h, 14)
+    ctx.fill()
+    ctx.fillStyle = "#fff"
+    ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText(`Pull · ${GACHA_PULL_COST}¢`, cx, pull.y + pullH / 2 + 1)
+
+    ctx.fillStyle = theme.inkDim
+    ctx.font = "500 11px 'DM Sans', sans-serif"
+    ctx.fillText("60% C · 25% U · 12% R · 3% E", cx, pull.y + pullH + 18)
+
+    const backW = 140
+    const backH = 44
+    const back: ScreenRect = {
+      x: cx - backW / 2,
+      y: Math.min(height - backH - 20, pull.y + pullH + 40),
+      w: backW,
+      h: backH,
+    }
+    ctx.fillStyle = COLORS.accent
+    ctx.beginPath()
+    roundRect(ctx, back.x, back.y, back.w, back.h, 12)
+    ctx.fill()
+    ctx.fillStyle = "#fff"
+    ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText("Back", cx, back.y + backH / 2 + 1)
+
+    ctx.textBaseline = "alphabetic"
+    return { back, pull, hatPrev, hatNext }
   }
 
   /**
@@ -1442,6 +1763,34 @@ function drawLifetimeCoins(
   ctx.textAlign = "right"
   ctx.textBaseline = "middle"
   ctx.fillText(coinLabel, coinRight, coinY + 1)
+}
+
+function drawSecondaryMenuButton(
+  ctx: CanvasRenderingContext2D,
+  rect: ScreenRect,
+  label: string,
+  highlight: boolean,
+): void {
+  ctx.fillStyle = highlight ? "rgba(47, 111, 237, 0.16)" : "rgba(255, 255, 255, 0.72)"
+  ctx.beginPath()
+  roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 12)
+  ctx.fill()
+  ctx.strokeStyle = highlight ? COLORS.accent : "rgba(17, 17, 17, 0.12)"
+  ctx.lineWidth = highlight ? 2 : 1
+  ctx.beginPath()
+  roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 12)
+  ctx.stroke()
+  ctx.fillStyle = COLORS.accent
+  ctx.font = "800 16px 'Bricolage Grotesque', sans-serif"
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  ctx.fillText(label, rect.x + rect.w / 2, rect.y + rect.h / 2 + 1)
+  if (highlight) {
+    ctx.fillStyle = "#ef4444"
+    ctx.beginPath()
+    ctx.arc(rect.x + rect.w - 10, rect.y + 10, 5, 0, Math.PI * 2)
+    ctx.fill()
+  }
 }
 
 /** Coin-price buy chip under a locked picker icon. */
