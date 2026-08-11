@@ -1,33 +1,53 @@
 /**
- * Hat gacha: coin pulls with rarity weights, pity, and duplicate refunds.
+ * Generic cosmetic gacha: coin pulls, rarity weights, pity, duplicate refunds.
  */
 
+import { DUPLICATE_REFUND, type CosmeticRarity } from "./rarity"
 import {
   GACHA_PITY_KEY,
-  HAT_DUPLICATE_REFUND,
   HAT_VARIANTS,
+  LEGACY_GACHA_PITY_KEY,
   findHatVariant,
   hatsByRarity,
-  type HatRarity,
   type HatVariant,
 } from "./hats"
+import {
+  TRAIL_GACHA_PITY_KEY,
+  TRAIL_VARIANTS,
+  findTrailVariant,
+  trailsByRarity,
+  type TrailVariant,
+} from "./trails"
 
-/** Coins spent per single pull. */
+/** Coins spent per single pull (hats and trails). */
 export const GACHA_PULL_COST = 12
 
 /** Pulls without rare+ before a guaranteed rare-or-better. */
 export const GACHA_PITY_THRESHOLD = 15
 
-const RARITY_WEIGHTS: { rarity: HatRarity; weight: number }[] = [
+const RARITY_WEIGHTS: { rarity: CosmeticRarity; weight: number }[] = [
   { rarity: "common", weight: 60 },
   { rarity: "uncommon", weight: 25 },
   { rarity: "rare", weight: 12 },
   { rarity: "epic", weight: 3 },
 ]
 
+export type GachaPool = "hat" | "trail"
+
+export interface GachaItem {
+  id: string
+  name: string
+  rarity: CosmeticRarity
+}
+
 export interface GachaPullResult {
-  hat: HatVariant
-  rarity: HatRarity
+  pool: GachaPool
+  item: GachaItem
+  /** Present when pool === "hat". */
+  hat: HatVariant | null
+  /** Present when pool === "trail". */
+  trail: TrailVariant | null
+  rarity: CosmeticRarity
   isNew: boolean
   coinsSpent: number
   duplicateRefund: number
@@ -36,11 +56,14 @@ export interface GachaPullResult {
 }
 
 export class GachaStore {
-  /** Pulls since last rare+ (or start). */
   pityCounter = 0
   private persist: boolean
+  private readonly storageKey: string
+  private readonly legacyKey: string | null
 
-  constructor(persist = true) {
+  constructor(storageKey: string, persist = true, legacyKey: string | null = null) {
+    this.storageKey = storageKey
+    this.legacyKey = legacyKey
     this.persist = persist
     if (this.persist) this.load()
   }
@@ -50,10 +73,11 @@ export class GachaStore {
   }
 
   pull(opts: {
+    pool: GachaPool
     lifetimeCoins: number
-    ownedHatIds: ReadonlySet<string>
+    ownedIds: ReadonlySet<string>
     spendCoins: (amount: number) => boolean
-    grantHat: (id: string) => void
+    grant: (id: string) => void
     addCoins: (n: number) => void
   }): GachaPullResult | null {
     if (opts.lifetimeCoins < GACHA_PULL_COST) return null
@@ -61,19 +85,23 @@ export class GachaStore {
 
     const pityTriggered = this.pityCounter + 1 >= GACHA_PITY_THRESHOLD
     const rarity = pityTriggered ? rollRareOrBetter() : rollRarity()
-    const hat = pickRandomHat(rarity)
-    if (!hat) return null
+    const picked = pickItem(opts.pool, rarity)
+    if (!picked) return null
 
-    const isNew = !opts.ownedHatIds.has(hat.id)
+    const isNew = !opts.ownedIds.has(picked.item.id)
     let duplicateRefund = 0
     if (isNew) {
-      opts.grantHat(hat.id)
+      opts.grant(picked.item.id)
     } else {
-      duplicateRefund = HAT_DUPLICATE_REFUND[hat.rarity]
+      duplicateRefund = DUPLICATE_REFUND[picked.item.rarity]
       opts.addCoins(duplicateRefund)
     }
 
-    if (hat.rarity === "rare" || hat.rarity === "epic" || pityTriggered) {
+    if (
+      picked.item.rarity === "rare" ||
+      picked.item.rarity === "epic" ||
+      pityTriggered
+    ) {
       this.pityCounter = 0
     } else {
       this.pityCounter += 1
@@ -81,8 +109,11 @@ export class GachaStore {
     this.save()
 
     return {
-      hat,
-      rarity: hat.rarity,
+      pool: opts.pool,
+      item: picked.item,
+      hat: picked.hat,
+      trail: picked.trail,
+      rarity: picked.item.rarity,
       isNew,
       coinsSpent: GACHA_PULL_COST,
       duplicateRefund,
@@ -93,7 +124,10 @@ export class GachaStore {
 
   private load(): void {
     try {
-      const raw = localStorage.getItem(GACHA_PITY_KEY)
+      let raw = localStorage.getItem(this.storageKey)
+      if ((raw == null || raw === "") && this.legacyKey) {
+        raw = localStorage.getItem(this.legacyKey)
+      }
       const n = raw ? Number(raw) : 0
       this.pityCounter = Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
     } catch {
@@ -104,14 +138,22 @@ export class GachaStore {
   private save(): void {
     if (!this.persist) return
     try {
-      localStorage.setItem(GACHA_PITY_KEY, String(this.pityCounter))
+      localStorage.setItem(this.storageKey, String(this.pityCounter))
     } catch {
       // ignore
     }
   }
 }
 
-function rollRarity(): HatRarity {
+export function createHatGacha(persist = true): GachaStore {
+  return new GachaStore(GACHA_PITY_KEY, persist, LEGACY_GACHA_PITY_KEY)
+}
+
+export function createTrailGacha(persist = true): GachaStore {
+  return new GachaStore(TRAIL_GACHA_PITY_KEY, persist)
+}
+
+function rollRarity(): CosmeticRarity {
   const total = RARITY_WEIGHTS.reduce((s, r) => s + r.weight, 0)
   let roll = Math.random() * total
   for (const entry of RARITY_WEIGHTS) {
@@ -121,15 +163,32 @@ function rollRarity(): HatRarity {
   return "common"
 }
 
-function rollRareOrBetter(): HatRarity {
-  // ~80% rare, 20% epic when pity fires
+function rollRareOrBetter(): CosmeticRarity {
   return Math.random() < 0.8 ? "rare" : "epic"
 }
 
-function pickRandomHat(rarity: HatRarity): HatVariant | null {
-  const pool = hatsByRarity(rarity)
-  if (pool.length === 0) {
-    return findHatVariant(HAT_VARIANTS[0]!.id) ?? null
+function pickItem(
+  pool: GachaPool,
+  rarity: CosmeticRarity,
+): { item: GachaItem; hat: HatVariant | null; trail: TrailVariant | null } | null {
+  if (pool === "hat") {
+    const list = hatsByRarity(rarity)
+    const hat =
+      list[Math.floor(Math.random() * list.length)] ??
+      findHatVariant(HAT_VARIANTS[0]!.id) ??
+      null
+    if (!hat) return null
+    return { item: { id: hat.id, name: hat.name, rarity: hat.rarity }, hat, trail: null }
   }
-  return pool[Math.floor(Math.random() * pool.length)]!
+  const list = trailsByRarity(rarity)
+  const trail =
+    list[Math.floor(Math.random() * list.length)] ??
+    findTrailVariant(TRAIL_VARIANTS[0]!.id) ??
+    null
+  if (!trail) return null
+  return {
+    item: { id: trail.id, name: trail.name, rarity: trail.rarity },
+    hat: null,
+    trail,
+  }
 }
