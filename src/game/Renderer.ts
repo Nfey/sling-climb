@@ -38,6 +38,7 @@ import type { BallStyle, BackgroundStyle, HatStyle, SlingshotStyle } from "./cos
 import { RARITY_COLOR, RARITY_LABEL } from "./cosmetics"
 import { HAT_VARIANTS, drawHatStyle } from "./hats"
 import { DAILY_REWARDS, type DailyClaimResult, type PendingBoosts } from "./dailyLogin"
+import type { DailyMissionSlot } from "./dailyMissions"
 import { GACHA_PULL_COST, type GachaPullResult } from "./gacha"
 import {
   drawBallStyle,
@@ -1046,6 +1047,8 @@ export class Renderer {
     claimedDays: ReadonlySet<number>,
     pending: PendingBoosts,
     lastClaim: DailyClaimResult | null,
+    missions: readonly DailyMissionSlot[],
+    lastMissionClaimMessage: string | null,
   ): DailyHitAreas {
     const ctx = this.ctx
     const { width, height } = camera
@@ -1057,27 +1060,27 @@ export class Renderer {
 
     drawLifetimeCoins(ctx, width, lifetimeCoins)
 
-    const topPad = 36 + safeAreaInsetTop()
+    const topPad = 28 + safeAreaInsetTop()
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
     ctx.fillStyle = theme.ink
-    ctx.font = "800 32px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText("Daily Login", cx, topPad + 8)
+    ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText("Daily", cx, topPad + 6)
 
     ctx.fillStyle = theme.inkDim
-    ctx.font = "600 14px 'DM Sans', sans-serif"
+    ctx.font = "600 12px 'DM Sans', sans-serif"
     ctx.fillText(
-      streak > 0 ? `Streak · ${streak} day${streak === 1 ? "" : "s"}` : "Start your streak",
+      streak > 0 ? `Login streak · ${streak} day${streak === 1 ? "" : "s"}` : "Login streak",
       cx,
-      topPad + 36,
+      topPad + 28,
     )
 
-    const cellGap = 6
-    const cellW = Math.min(44, (width - 40 - cellGap * 6) / 7)
-    const cellH = 64
+    const cellGap = 5
+    const cellW = Math.min(40, (width - 36 - cellGap * 6) / 7)
+    const cellH = 48
     const gridW = cellW * 7 + cellGap * 6
     const gridX = cx - gridW / 2
-    const gridY = topPad + 58
+    const gridY = topPad + 44
 
     for (let i = 0; i < 7; i++) {
       const day = i + 1
@@ -1092,7 +1095,7 @@ export class Renderer {
           ? "rgba(47, 111, 237, 0.18)"
           : "rgba(255, 255, 255, 0.78)"
       ctx.beginPath()
-      roundRect(ctx, x, gridY, cellW, cellH, 10)
+      roundRect(ctx, x, gridY, cellW, cellH, 8)
       ctx.fill()
       if (isNext) {
         ctx.strokeStyle = COLORS.accent
@@ -1101,11 +1104,11 @@ export class Renderer {
       }
 
       ctx.fillStyle = theme.inkDim
-      ctx.font = "700 10px 'DM Sans', sans-serif"
-      ctx.fillText(`D${day}`, x + cellW / 2, gridY + 12)
+      ctx.font = "700 9px 'DM Sans', sans-serif"
+      ctx.fillText(`D${day}`, x + cellW / 2, gridY + 10)
 
       ctx.fillStyle = theme.ink
-      ctx.font = "700 11px 'DM Sans', sans-serif"
+      ctx.font = "700 10px 'DM Sans', sans-serif"
       const short =
         reward.kind === "coins"
           ? `${reward.amount}¢`
@@ -1114,47 +1117,20 @@ export class Renderer {
             : reward.kind === "coinMult"
               ? "2×¢"
               : "Hat"
-      ctx.fillText(short, x + cellW / 2, gridY + 34)
+      ctx.fillText(short, x + cellW / 2, gridY + 28)
 
       if (claimed) {
         ctx.fillStyle = "#16a34a"
-        ctx.font = "800 14px 'Bricolage Grotesque', sans-serif"
-        ctx.fillText("✓", x + cellW / 2, gridY + 52)
+        ctx.font = "800 12px 'Bricolage Grotesque', sans-serif"
+        ctx.fillText("✓", x + cellW / 2, gridY + 40)
       }
     }
 
-    let y = gridY + cellH + 28
+    let y = gridY + cellH + 16
     const todayReward = DAILY_REWARDS[(nextDay - 1) % 7]!
-    ctx.fillStyle = theme.ink
-    ctx.font = "700 15px 'DM Sans', sans-serif"
-    if (claimedToday) {
-      ctx.fillText("Come back tomorrow!", cx, y)
-    } else {
-      ctx.fillText(`Today · ${todayReward.label}`, cx, y)
-    }
-    y += 28
 
-    if (pending.powSeconds > 0 || (pending.coinMult > 1 && pending.coinMultSeconds > 0)) {
-      const bits: string[] = []
-      if (pending.powSeconds > 0) bits.push(`POW ${pending.powSeconds}s`)
-      if (pending.coinMult > 1) {
-        bits.push(`${pending.coinMult}× coins ${pending.coinMultSeconds}s`)
-      }
-      ctx.fillStyle = COLORS.accent
-      ctx.font = "600 13px 'DM Sans', sans-serif"
-      ctx.fillText(`Ready next run · ${bits.join(" · ")}`, cx, y)
-      y += 24
-    }
-
-    if (lastClaim) {
-      ctx.fillStyle = "#16a34a"
-      ctx.font = "600 13px 'DM Sans', sans-serif"
-      ctx.fillText(lastClaim.message, cx, y)
-      y += 24
-    }
-
-    const claimW = 160
-    const claimH = 48
+    const claimW = 132
+    const claimH = 36
     let claim: ScreenRect | null = null
     if (!claimedToday) {
       claim = {
@@ -1165,21 +1141,164 @@ export class Renderer {
       }
       ctx.fillStyle = COLORS.accent
       ctx.beginPath()
-      roundRect(ctx, claim.x, claim.y, claim.w, claim.h, 14)
+      roundRect(ctx, claim.x, claim.y, claim.w, claim.h, 12)
       ctx.fill()
       ctx.fillStyle = "#fff"
-      ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
-      ctx.fillText("Claim", cx, claim.y + claimH / 2 + 1)
-      y += claimH + 20
+      ctx.font = "800 15px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText(`Claim · ${todayReward.label}`, cx, claim.y + claimH / 2 + 1)
+      y += claimH + 10
     } else {
-      y += 12
+      ctx.fillStyle = theme.inkDim
+      ctx.font = "600 12px 'DM Sans', sans-serif"
+      ctx.fillText("Login claimed · come back tomorrow", cx, y + 4)
+      y += 22
+    }
+
+    if (pending.powSeconds > 0 || (pending.coinMult > 1 && pending.coinMultSeconds > 0)) {
+      const bits: string[] = []
+      if (pending.powSeconds > 0) bits.push(`POW ${pending.powSeconds}s`)
+      if (pending.coinMult > 1) {
+        bits.push(`${pending.coinMult}× coins ${pending.coinMultSeconds}s`)
+      }
+      ctx.fillStyle = COLORS.accent
+      ctx.font = "600 11px 'DM Sans', sans-serif"
+      ctx.fillText(`Ready next run · ${bits.join(" · ")}`, cx, y)
+      y += 16
+    }
+
+    if (lastClaim) {
+      ctx.fillStyle = "#16a34a"
+      ctx.font = "600 11px 'DM Sans', sans-serif"
+      ctx.fillText(lastClaim.message, cx, y)
+      y += 16
+    }
+
+    // Missions section
+    y += 6
+    ctx.fillStyle = theme.ink
+    ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText("Missions", cx, y)
+    y += 18
+
+    const missionClaims: (ScreenRect | null)[] = []
+    const rowGap = 8
+    const sidePad = 16
+    const rowW = width - sidePad * 2
+    const rowH = 58
+    const diffLabel: Record<string, string> = {
+      easy: "Easy",
+      medium: "Med",
+      hard: "Hard",
+    }
+    const diffColor: Record<string, string> = {
+      easy: "#16a34a",
+      medium: "#d97706",
+      hard: "#dc2626",
+    }
+
+    for (const slot of missions) {
+      const row: ScreenRect = {
+        x: sidePad,
+        y,
+        w: rowW,
+        h: rowH,
+      }
+      ctx.fillStyle = slot.claimed
+        ? "rgba(34, 197, 94, 0.16)"
+        : slot.complete
+          ? "rgba(47, 111, 237, 0.14)"
+          : "rgba(255, 255, 255, 0.82)"
+      ctx.beginPath()
+      roundRect(ctx, row.x, row.y, row.w, row.h, 12)
+      ctx.fill()
+
+      const badgeX = row.x + 10
+      const badgeY = row.y + 10
+      ctx.fillStyle = diffColor[slot.def.difficulty] ?? COLORS.accent
+      ctx.font = "800 10px 'DM Sans', sans-serif"
+      ctx.textAlign = "left"
+      ctx.fillText(diffLabel[slot.def.difficulty] ?? slot.def.difficulty, badgeX, badgeY + 4)
+
+      ctx.fillStyle = theme.inkDim
+      ctx.font = "600 10px 'DM Sans', sans-serif"
+      ctx.textAlign = "right"
+      ctx.fillText(`+${slot.def.reward}¢`, row.x + row.w - 10, badgeY + 4)
+
+      ctx.fillStyle = theme.ink
+      ctx.font = "600 12px 'DM Sans', sans-serif"
+      ctx.textAlign = "left"
+      const label = slot.def.label
+      // Wrap long labels roughly
+      const maxChars = 34
+      if (label.length <= maxChars) {
+        ctx.fillText(label, badgeX, row.y + 28)
+      } else {
+        const cut = label.lastIndexOf(" ", maxChars)
+        const a = label.slice(0, cut > 12 ? cut : maxChars)
+        const b = label.slice(a.length).trim()
+        ctx.fillText(a, badgeX, row.y + 24)
+        ctx.fillText(b, badgeX, row.y + 38)
+      }
+
+      const progText =
+        slot.def.kind === "heightRun"
+          ? `${Math.min(slot.progress, slot.def.target).toLocaleString()} / ${slot.def.target.toLocaleString()}`
+          : slot.def.kind === "scoreRun"
+            ? `${Math.min(slot.progress, slot.def.target).toLocaleString()} / ${slot.def.target.toLocaleString()}`
+            : `${Math.min(slot.progress, slot.def.target)} / ${slot.def.target}`
+
+      let claimRect: ScreenRect | null = null
+      if (slot.claimed) {
+        ctx.fillStyle = "#16a34a"
+        ctx.font = "800 13px 'Bricolage Grotesque', sans-serif"
+        ctx.textAlign = "right"
+        ctx.fillText("Done", row.x + row.w - 10, row.y + rowH - 14)
+      } else if (slot.complete) {
+        const bw = 64
+        const bh = 28
+        claimRect = {
+          x: row.x + row.w - bw - 8,
+          y: row.y + rowH - bh - 8,
+          w: bw,
+          h: bh,
+        }
+        ctx.fillStyle = COLORS.accent
+        ctx.beginPath()
+        roundRect(ctx, claimRect.x, claimRect.y, claimRect.w, claimRect.h, 10)
+        ctx.fill()
+        ctx.fillStyle = "#fff"
+        ctx.font = "800 13px 'Bricolage Grotesque', sans-serif"
+        ctx.textAlign = "center"
+        ctx.fillText("Claim", claimRect.x + bw / 2, claimRect.y + bh / 2 + 1)
+
+        ctx.fillStyle = theme.inkDim
+        ctx.font = "500 10px 'DM Sans', sans-serif"
+        ctx.textAlign = "left"
+        ctx.fillText("Complete!", badgeX, row.y + rowH - 12)
+      } else {
+        ctx.fillStyle = theme.inkDim
+        ctx.font = "600 11px 'DM Sans', sans-serif"
+        ctx.textAlign = "right"
+        ctx.fillText(progText, row.x + row.w - 10, row.y + rowH - 14)
+      }
+
+      missionClaims.push(claimRect)
+      y += rowH + rowGap
+    }
+
+    if (lastMissionClaimMessage) {
+      ctx.fillStyle = "#16a34a"
+      ctx.font = "600 12px 'DM Sans', sans-serif"
+      ctx.textAlign = "center"
+      ctx.fillText(lastMissionClaimMessage, cx, y + 2)
+      y += 16
     }
 
     const backW = 140
     const backH = 44
     const back: ScreenRect = {
       x: cx - backW / 2,
-      y: Math.min(height - backH - 20, Math.max(y, height - backH - 28)),
+      y: Math.min(height - backH - 16, Math.max(y + 4, height - backH - 24)),
       w: backW,
       h: backH,
     }
@@ -1189,10 +1308,11 @@ export class Renderer {
     ctx.fill()
     ctx.fillStyle = "#fff"
     ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+    ctx.textAlign = "center"
     ctx.fillText("Back", cx, back.y + backH / 2 + 1)
 
     ctx.textBaseline = "alphabetic"
-    return { back, claim }
+    return { back, claim, missionClaims }
   }
 
   /**
