@@ -44,6 +44,8 @@ export interface BallUpdateResult {
   /** Fresh bumper contact this frame (not continuous overlap). */
   bumperHit: boolean
   bumperAt: Vec2 | null
+  /** Stable bumper id for the fresh hit (position key), if any. */
+  bumperKey: string | null
   /** Arrow pad consumed this frame. */
   arrowHit: boolean
   arrowAt: Vec2 | null
@@ -186,9 +188,12 @@ export class Ball {
     return this.y - prevY
   }
 
-  private collideBumpers(bumpers: BumperData[]): { hit: boolean; at: Vec2 | null } {
+  private collideBumpers(
+    bumpers: BumperData[],
+  ): { hit: boolean; at: Vec2 | null; key: string | null } {
     let hit = false
     let at: Vec2 | null = null
+    let hitKey: string | null = null
     const current = new Set<string>()
     for (const b of bumpers) {
       const dx = this.x - b.x
@@ -228,10 +233,11 @@ export class Ball {
       if (entered && !hit) {
         hit = true
         at = { x: b.x, y: b.y + b.radius }
+        hitKey = key
       }
     }
     this.bumperOverlaps = current
-    return { hit, at }
+    return { hit, at, key: hitKey }
   }
 
   private collideArrowPads(
@@ -293,6 +299,7 @@ export class Ball {
       wallHit: false,
       bumperHit: false,
       bumperAt: null,
+      bumperKey: null,
       arrowHit: false,
       arrowAt: null,
       turretHit: false,
@@ -334,6 +341,7 @@ export class Ball {
     const bumper = this.collideBumpers(bumpers)
     result.bumperHit = bumper.hit
     result.bumperAt = bumper.at
+    result.bumperKey = bumper.key
     const arrow = this.collideArrowPads(arrowPads)
     result.arrowHit = arrow.hit
     result.arrowAt = arrow.at

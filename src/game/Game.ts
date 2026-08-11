@@ -58,6 +58,7 @@ import {
   DEFAULT_COSMETIC_ID,
 } from "./cosmetics"
 import { DailyLoginStore, type DailyClaimResult } from "./dailyLogin"
+import { DailyMissionsStore } from "./dailyMissions"
 import {
   createHatGacha,
   createTrailGacha,
@@ -103,8 +104,11 @@ export class Game implements BotGameApi {
   private score: Score
   private cosmetics: CosmeticsStore
   private dailyLogin: DailyLoginStore
+  private dailyMissions: DailyMissionsStore
   private hatGacha: GachaStore
   private trailGacha: GachaStore
+  /** Toast after claiming a mission reward from the Daily screen. */
+  private lastMissionClaimMessage: string | null = null
   private platforms = new PlatformManager()
   private audio = new GameAudio()
   private input: Input
@@ -174,6 +178,7 @@ export class Game implements BotGameApi {
     this.score = new Score(this.config.persistScores !== false)
     this.cosmetics = new CosmeticsStore(this.config.persistScores !== false)
     this.dailyLogin = new DailyLoginStore(this.config.persistScores !== false)
+    this.dailyMissions = new DailyMissionsStore(this.config.persistScores !== false)
     this.hatGacha = createHatGacha(this.config.persistScores !== false)
     this.trailGacha = createTrailGacha(this.config.persistScores !== false)
     // Unlock audio inside the real gesture handlers (pointer/key), not rAF.
@@ -433,6 +438,7 @@ export class Game implements BotGameApi {
     this.audio.setMasterVolume(DEFAULT_MASTER_VOLUME)
     this.audio.unlock()
     this.resetRun(false)
+    this.dailyMissions.onRunStart()
     this.applyPendingDailyBoosts()
   }
 
@@ -458,6 +464,27 @@ export class Game implements BotGameApi {
     this.audio.setClimb(0)
     this.audio.startFlight()
     this.audio.playLaunch(launchPower)
+    if (!this.menuDemo) this.dailyMissions.onFlingStart()
+  }
+
+  /** Forward in-run events to daily missions (real player runs only). */
+  private trackMissionsFromHit(hit: {
+    bumperHit: boolean
+    bumperKey: string | null
+    portalDeltaY: number
+    platformHit: boolean
+    arrowHit: boolean
+    coinsCollected: number
+    bonusCollected: boolean
+  }): void {
+    if (this.menuDemo) return
+    if (hit.bumperHit) this.dailyMissions.onBumperHit(hit.bumperKey)
+    if (hit.portalDeltaY !== 0) this.dailyMissions.onPortal()
+    if (hit.platformHit) this.dailyMissions.onPlatform()
+    if (hit.arrowHit) this.dailyMissions.onArrow()
+    if (hit.coinsCollected > 0) this.dailyMissions.onCoins(hit.coinsCollected)
+    if (hit.bonusCollected) this.dailyMissions.onBonus()
+    this.dailyMissions.onCombo(this.score.combo)
   }
 
   /**
@@ -705,6 +732,7 @@ export class Game implements BotGameApi {
             if (hitRect(p.x, p.y, areas.back)) {
               this.menuScreen = "title"
               this.dailyHitAreas = null
+              this.lastMissionClaimMessage = null
               return
             }
             if (areas.claim && hitRect(p.x, p.y, areas.claim)) {
@@ -718,6 +746,20 @@ export class Game implements BotGameApi {
                 },
               })
               if (result) this.lastDailyClaim = result
+              return
+            }
+            const slots = this.dailyMissions.slots
+            for (let i = 0; i < areas.missionClaims.length; i++) {
+              const rect = areas.missionClaims[i]
+              const slot = slots[i]
+              if (!rect || !slot) continue
+              if (!hitRect(p.x, p.y, rect)) continue
+              const reward = this.dailyMissions.claim(slot.def.id, (n) => {
+                this.score.addCoins(n)
+              })
+              if (reward != null) {
+                this.lastMissionClaimMessage = `+${reward} coins · ${slot.def.difficulty}`
+              }
               return
             }
           }
@@ -1028,10 +1070,15 @@ export class Game implements BotGameApi {
         const softGap = Math.max(0, this.ball.y - softMaxAbove - anchor)
         this.portalCatchupRemaining = Math.max(this.portalCatchupRemaining, softGap)
       }
+      this.trackMissionsFromHit(hit)
       // Portal teleports the ball immediately; camera/slingshot catch up
       // gradually via advanceWorld so the kill line doesn't jump onto the ball.
       this.score.observe(this.ball.y)
       this.recordTrailPoint()
+      if (!this.menuDemo) {
+        this.dailyMissions.onHeight(this.score.climbHeight)
+        this.dailyMissions.onScore(this.score.current)
+      }
 
       // Climb drama: peak height gained since this flight started.
       const climb = Math.max(0, this.ball.y - this.flightStartY)
@@ -1050,6 +1097,7 @@ export class Game implements BotGameApi {
         this.trailPoints = []
         this.score.resetCombo()
         this.endFlightCatch()
+        if (!this.menuDemo) this.dailyMissions.onCatch()
         // Catch even without a held finger; only enter aim if already holding.
         if (pointer) {
           this.state = "aiming"
@@ -1500,6 +1548,8 @@ export class Game implements BotGameApi {
           this.dailyLogin.claimedDaysInCycle(),
           this.dailyLogin.pending,
           this.lastDailyClaim,
+          this.dailyMissions.slots,
+          this.lastMissionClaimMessage,
         )
       } else if (
         this.menuScreen === "hatGacha" ||
@@ -1541,7 +1591,7 @@ export class Game implements BotGameApi {
           this.score.lifetimeCoins,
           this.anim,
           this.cosmetics.getSelectedBackgroundStyle(),
-          this.dailyLogin.canClaim,
+          this.dailyLogin.canClaim || this.dailyMissions.hasClaimable,
         )
       }
       return
