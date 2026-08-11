@@ -690,37 +690,8 @@ export class Game implements BotGameApi {
       if (this.menuScreen === "achievements") {
         const areas = this.achievementsHitAreas
         const releases = this.input.consumeReleases()
-        if (
-          this.achievementsDragId != null &&
-          releases.includes(this.achievementsDragId)
-        ) {
-          if (!this.achievementsDidDrag && this.achievementsPendingTapId != null) {
-            const tappedId = this.achievementsPendingTapId
-            this.achievementsSelectedId =
-              this.achievementsSelectedId === tappedId ? null : tappedId
-          }
-          this.achievementsDragId = null
-          this.achievementsPendingTapId = null
-          this.achievementsDidDrag = false
-        }
-        if (areas && this.achievementsDragId != null) {
-          const ptr = this.input.getPointer(this.achievementsDragId)
-          if (!ptr) {
-            this.achievementsDragId = null
-          } else {
-            const dy = ptr.y - this.achievementsDragLastY
-            if (Math.abs(ptr.y - ptr.startY) > 8) this.achievementsDidDrag = true
-            if (areas.maxScroll > 0) {
-              this.achievementsScroll = Math.max(
-                0,
-                Math.min(areas.maxScroll, this.achievementsScroll - dy),
-              )
-            }
-            this.achievementsDragLastY = ptr.y
-          }
-        }
-
         const menuPresses = this.input.consumePresses()
+
         if (menuPresses.length > 0) {
           const p = menuPresses[0]!
           const hitAreas = this.achievementsHitAreas
@@ -750,9 +721,6 @@ export class Game implements BotGameApi {
               }
             }
             if (hitRect(p.x, p.y, hitAreas.list)) {
-              this.achievementsDragId = p.id
-              this.achievementsDragLastY = p.y
-              this.achievementsDidDrag = false
               let tappedId: string | null = null
               for (const cell of hitAreas.cells) {
                 if (hitRect(p.x, p.y, cell.rect)) {
@@ -760,12 +728,51 @@ export class Game implements BotGameApi {
                   break
                 }
               }
-              this.achievementsPendingTapId = tappedId
+              // Select on press so quick taps always update the detail card.
+              if (tappedId) {
+                this.achievementsSelectedId =
+                  this.achievementsSelectedId === tappedId ? null : tappedId
+              }
+              if (releases.includes(p.id)) {
+                this.achievementsDragId = null
+                this.achievementsPendingTapId = null
+                this.achievementsDidDrag = false
+              } else {
+                this.achievementsDragId = p.id
+                this.achievementsDragLastY = p.y
+                this.achievementsDidDrag = false
+                this.achievementsPendingTapId = tappedId
+              }
               return
             }
           }
           // Stay on achievements for taps outside controls.
           return
+        }
+
+        if (
+          this.achievementsDragId != null &&
+          releases.includes(this.achievementsDragId)
+        ) {
+          // Selection already applied on press; just clear drag state.
+          this.achievementsDragId = null
+          this.achievementsPendingTapId = null
+          this.achievementsDidDrag = false
+        } else if (areas && this.achievementsDragId != null) {
+          const ptr = this.input.getPointer(this.achievementsDragId)
+          if (!ptr) {
+            this.achievementsDragId = null
+          } else {
+            const dy = ptr.y - this.achievementsDragLastY
+            if (Math.abs(ptr.y - ptr.startY) > 8) this.achievementsDidDrag = true
+            if (areas.maxScroll > 0) {
+              this.achievementsScroll = Math.max(
+                0,
+                Math.min(areas.maxScroll, this.achievementsScroll - dy),
+              )
+            }
+            this.achievementsDragLastY = ptr.y
+          }
         }
         // No press — fall through so attract-mode physics keep running.
       } else {
