@@ -25,6 +25,13 @@ import {
   type HatStyle,
   type HatVariant,
 } from "./hats"
+import {
+  EQUIPPED_TRAIL_KEY,
+  TRAIL_UNLOCKS_KEY,
+  TRAIL_VARIANTS,
+  findTrailVariant,
+  type TrailStyle,
+} from "./trails"
 
 export {
   BACKGROUND_VARIANTS,
@@ -39,12 +46,21 @@ export {
   EQUIPPED_HAT_KEY,
   HAT_UNLOCKS_KEY,
   HAT_VARIANTS,
-  RARITY_COLOR,
-  RARITY_LABEL,
   drawHatStyle,
   findHatVariant,
 } from "./hats"
 export type { HatRarity, HatStyle, HatVariant } from "./hats"
+export {
+  EQUIPPED_TRAIL_KEY,
+  TRAIL_UNLOCKS_KEY,
+  TRAIL_VARIANTS,
+  drawTrailStyle,
+  findTrailVariant,
+  previewTrailPoints,
+} from "./trails"
+export type { TrailStyle, TrailVariant } from "./trails"
+export { RARITY_COLOR, RARITY_LABEL } from "./rarity"
+export type { CosmeticRarity } from "./rarity"
 
 export type BallStyle =
   | "classic"
@@ -184,11 +200,14 @@ export class CosmeticsStore {
   private slingshotUnlocked = new Set<string>()
   private backgroundUnlocked = new Set<string>()
   private hatUnlocked = new Set<string>()
+  private trailUnlocked = new Set<string>()
   equippedSlingshotId = DEFAULT_COSMETIC_ID
   equippedBallId = DEFAULT_COSMETIC_ID
   equippedBackgroundId = DEFAULT_COSMETIC_ID
   /** `default` means no hat. */
   equippedHatId = DEFAULT_COSMETIC_ID
+  /** `default` means no trail. */
+  equippedTrailId = DEFAULT_COSMETIC_ID
   private persist: boolean
 
   constructor(persist = true) {
@@ -204,12 +223,24 @@ export class CosmeticsStore {
     return this.hatUnlocked.has(id)
   }
 
+  isTrailOwned(id: string): boolean {
+    return this.trailUnlocked.has(id)
+  }
+
   get ownedHatIds(): ReadonlySet<string> {
     return this.hatUnlocked
   }
 
+  get ownedTrailIds(): ReadonlySet<string> {
+    return this.trailUnlocked
+  }
+
   get ownedHatCount(): number {
     return this.hatUnlocked.size
+  }
+
+  get ownedTrailCount(): number {
+    return this.trailUnlocked.size
   }
 
   grantHat(id: string): boolean {
@@ -218,6 +249,17 @@ export class CosmeticsStore {
     this.equippedHatId = id
     if (this.persist) {
       this.saveHatUnlocks()
+      this.saveEquipped()
+    }
+    return true
+  }
+
+  grantTrail(id: string): boolean {
+    if (!findTrailVariant(id) || this.trailUnlocked.has(id)) return false
+    this.trailUnlocked.add(id)
+    this.equippedTrailId = id
+    if (this.persist) {
+      this.saveTrailUnlocks()
       this.saveEquipped()
     }
     return true
@@ -277,9 +319,31 @@ export class CosmeticsStore {
     this.saveEquipped()
   }
 
+  /** Cycle None + owned trails only. */
+  cycleTrailMenu(delta: number): void {
+    const allIds = [
+      DEFAULT_COSMETIC_ID,
+      ...TRAIL_VARIANTS.filter((v) => this.trailUnlocked.has(v.id)).map((v) => v.id),
+    ]
+    const current = allIds.indexOf(this.equippedTrailId)
+    const next =
+      current >= 0
+        ? allIds[(current + delta + allIds.length) % allIds.length]!
+        : DEFAULT_COSMETIC_ID
+    this.equippedTrailId = next
+    this.saveEquipped()
+  }
+
   equipHat(id: string): void {
     if (id === DEFAULT_COSMETIC_ID || this.isHatOwned(id)) {
       this.equippedHatId = id
+      this.saveEquipped()
+    }
+  }
+
+  equipTrail(id: string): void {
+    if (id === DEFAULT_COSMETIC_ID || this.isTrailOwned(id)) {
+      this.equippedTrailId = id
       this.saveEquipped()
     }
   }
@@ -376,6 +440,22 @@ export class CosmeticsStore {
   getSelectedHatName(): string {
     if (this.equippedHatId === DEFAULT_COSMETIC_ID) return "None"
     return findHatVariant(this.equippedHatId)?.name ?? "None"
+  }
+
+  getEquippedTrailStyle(): TrailStyle {
+    if (this.equippedTrailId === DEFAULT_COSMETIC_ID) return "none"
+    if (!this.isTrailOwned(this.equippedTrailId)) return "none"
+    return findTrailVariant(this.equippedTrailId)?.style ?? "none"
+  }
+
+  getSelectedTrailStyle(): TrailStyle {
+    if (this.equippedTrailId === DEFAULT_COSMETIC_ID) return "none"
+    return findTrailVariant(this.equippedTrailId)?.style ?? "none"
+  }
+
+  getSelectedTrailName(): string {
+    if (this.equippedTrailId === DEFAULT_COSMETIC_ID) return "None"
+    return findTrailVariant(this.equippedTrailId)?.name ?? "None"
   }
 
   getSelectedBackgroundStyle(): BackgroundStyle {
@@ -477,6 +557,7 @@ export class CosmeticsStore {
     this.equippedBackgroundId =
       this.loadString(EQUIPPED_BACKGROUND_KEY) ?? DEFAULT_COSMETIC_ID
     this.equippedHatId = this.loadString(EQUIPPED_HAT_KEY) ?? DEFAULT_COSMETIC_ID
+    this.equippedTrailId = this.loadString(EQUIPPED_TRAIL_KEY) ?? DEFAULT_COSMETIC_ID
 
     try {
       const raw = localStorage.getItem(BACKGROUND_UNLOCKS_KEY)
@@ -510,11 +591,33 @@ export class CosmeticsStore {
       // ignore
     }
 
+    try {
+      const raw = localStorage.getItem(TRAIL_UNLOCKS_KEY)
+      if (raw) {
+        const ids = JSON.parse(raw) as string[]
+        if (Array.isArray(ids)) {
+          for (const id of ids) {
+            if (TRAIL_VARIANTS.some((v) => v.id === id)) {
+              this.trailUnlocked.add(id)
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
     if (
       this.equippedHatId !== DEFAULT_COSMETIC_ID &&
       !this.hatUnlocked.has(this.equippedHatId)
     ) {
       this.equippedHatId = DEFAULT_COSMETIC_ID
+    }
+    if (
+      this.equippedTrailId !== DEFAULT_COSMETIC_ID &&
+      !this.trailUnlocked.has(this.equippedTrailId)
+    ) {
+      this.equippedTrailId = DEFAULT_COSMETIC_ID
     }
   }
 
@@ -548,6 +651,14 @@ export class CosmeticsStore {
     }
   }
 
+  private saveTrailUnlocks(): void {
+    try {
+      localStorage.setItem(TRAIL_UNLOCKS_KEY, JSON.stringify([...this.trailUnlocked]))
+    } catch {
+      // ignore
+    }
+  }
+
   private saveEquipped(): void {
     if (!this.persist) return
     try {
@@ -555,6 +666,7 @@ export class CosmeticsStore {
       localStorage.setItem(EQUIPPED_BALL_KEY, this.equippedBallId)
       localStorage.setItem(EQUIPPED_BACKGROUND_KEY, this.equippedBackgroundId)
       localStorage.setItem(EQUIPPED_HAT_KEY, this.equippedHatId)
+      localStorage.setItem(EQUIPPED_TRAIL_KEY, this.equippedTrailId)
     } catch {
       // ignore
     }

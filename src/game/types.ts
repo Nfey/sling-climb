@@ -48,14 +48,21 @@ export interface ScreenRect {
 }
 
 /** Which overlay is shown while the attract-mode menu is active. */
-export type MenuScreen = "title" | "shop" | "daily" | "gacha" | "achievements"
+export type MenuScreen =
+  | "title"
+  | "shop"
+  | "daily"
+  | "hatGacha"
+  | "trailGacha"
+  | "achievements"
 
-/** Interactive regions on the title menu (Play / Shop / Daily / Gacha / Achievements). */
+/** Interactive regions on the title menu. */
 export interface MainMenuHitAreas {
   play: ScreenRect
   shop: ScreenRect
   daily: ScreenRect
-  gacha: ScreenRect
+  hats: ScreenRect
+  trails: ScreenRect
   achievements: ScreenRect
 }
 
@@ -88,12 +95,14 @@ export interface DailyHitAreas {
   missionClaims: (ScreenRect | null)[]
 }
 
-/** Interactive regions on the hat gacha screen. */
+/** Interactive regions on a cosmetic gacha screen. */
 export interface GachaHitAreas {
   back: ScreenRect
   pull: ScreenRect
-  hatPrev: ScreenRect
-  hatNext: ScreenRect
+  equipPrev: ScreenRect
+  equipNext: ScreenRect
+  /** Full-screen tap target while a sealed pull awaits reveal. */
+  reveal: ScreenRect | null
 }
 
 /** Interactive regions on the cosmetics shop screen. */
