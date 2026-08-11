@@ -1,6 +1,14 @@
 /** Ball-top hats: gacha / login cosmetics (visual only). */
 
-export type HatRarity = "common" | "uncommon" | "rare" | "epic"
+import {
+  DUPLICATE_REFUND,
+  RARITY_COLOR,
+  RARITY_LABEL,
+  type CosmeticRarity,
+} from "./rarity"
+
+export type HatRarity = CosmeticRarity
+export { RARITY_COLOR, RARITY_LABEL, DUPLICATE_REFUND as HAT_DUPLICATE_REFUND }
 
 export type HatStyle =
   | "none"
@@ -30,7 +38,9 @@ export interface HatVariant {
 
 export const HAT_UNLOCKS_KEY = "sling-climb-hat-unlocks"
 export const EQUIPPED_HAT_KEY = "sling-climb-equipped-hat"
-export const GACHA_PITY_KEY = "sling-climb-gacha-pity"
+export const GACHA_PITY_KEY = "sling-climb-hat-gacha-pity"
+/** @deprecated kept so old pity progress still loads once */
+export const LEGACY_GACHA_PITY_KEY = "sling-climb-gacha-pity"
 
 export const HAT_VARIANTS: readonly HatVariant[] = [
   { id: "party", name: "Party Cone", style: "party", rarity: "common" },
@@ -50,28 +60,6 @@ export const HAT_VARIANTS: readonly HatVariant[] = [
   { id: "halo", name: "Halo", style: "halo", rarity: "epic" },
   { id: "rainbow", name: "Rainbow Cap", style: "rainbow", rarity: "epic" },
 ]
-
-export const RARITY_LABEL: Record<HatRarity, string> = {
-  common: "Common",
-  uncommon: "Uncommon",
-  rare: "Rare",
-  epic: "Epic",
-}
-
-export const RARITY_COLOR: Record<HatRarity, string> = {
-  common: "#64748b",
-  uncommon: "#16a34a",
-  rare: "#2563eb",
-  epic: "#c026d3",
-}
-
-/** Coin refund when a gacha pull duplicates an owned hat. */
-export const HAT_DUPLICATE_REFUND: Record<HatRarity, number> = {
-  common: 2,
-  uncommon: 4,
-  rare: 8,
-  epic: 15,
-}
 
 export function findHatVariant(id: string): HatVariant | undefined {
   return HAT_VARIANTS.find((v) => v.id === id)

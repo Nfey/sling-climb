@@ -58,7 +58,23 @@ import {
   DEFAULT_COSMETIC_ID,
 } from "./cosmetics"
 import { DailyLoginStore, type DailyClaimResult } from "./dailyLogin"
-import { GachaStore, type GachaPullResult } from "./gacha"
+import {
+  createHatGacha,
+  createTrailGacha,
+  type GachaPullResult,
+  type GachaStore,
+} from "./gacha"
+import { HAT_VARIANTS } from "./hats"
+import { TRAIL_VARIANTS } from "./trails"
+import {
+  beginReveal,
+  dismissReveal,
+  idleReveal,
+  revealBlocksInput,
+  tapReveal,
+  tickReveal,
+  type GachaRevealState,
+} from "./gachaReveal"
 import type {
   BulletData,
   BotAimTarget,
@@ -87,7 +103,8 @@ export class Game implements BotGameApi {
   private score: Score
   private cosmetics: CosmeticsStore
   private dailyLogin: DailyLoginStore
-  private gacha: GachaStore
+  private hatGacha: GachaStore
+  private trailGacha: GachaStore
   private platforms = new PlatformManager()
   private audio = new GameAudio()
   private input: Input
@@ -111,7 +128,11 @@ export class Game implements BotGameApi {
   private dailyHitAreas: DailyHitAreas | null = null
   private gachaHitAreas: GachaHitAreas | null = null
   private lastDailyClaim: DailyClaimResult | null = null
-  private lastGachaPull: GachaPullResult | null = null
+  private lastHatPull: GachaPullResult | null = null
+  private lastTrailPull: GachaPullResult | null = null
+  private gachaReveal: GachaRevealState = idleReveal()
+  /** Recent ball positions for equipped trail FX (world space, oldest first). */
+  private trailPoints: Vec2[] = []
   /** Active coin multiplier from a claimed daily boost (1 = none). */
   private runCoinMult = 1
   private runCoinMultRemaining = 0
@@ -153,7 +174,8 @@ export class Game implements BotGameApi {
     this.score = new Score(this.config.persistScores !== false)
     this.cosmetics = new CosmeticsStore(this.config.persistScores !== false)
     this.dailyLogin = new DailyLoginStore(this.config.persistScores !== false)
-    this.gacha = new GachaStore(this.config.persistScores !== false)
+    this.hatGacha = createHatGacha(this.config.persistScores !== false)
+    this.trailGacha = createTrailGacha(this.config.persistScores !== false)
     // Unlock audio inside the real gesture handlers (pointer/key), not rAF.
     this.input = new Input(
       canvas,
@@ -371,6 +393,7 @@ export class Game implements BotGameApi {
     this.flightStartY = 0
     this.runCoinMult = 1
     this.runCoinMultRemaining = 0
+    this.trailPoints = []
   }
 
   private endPlayableSession(): void {
@@ -388,6 +411,7 @@ export class Game implements BotGameApi {
     this.shopHitAreas = null
     this.dailyHitAreas = null
     this.gachaHitAreas = null
+    this.gachaReveal = idleReveal()
     this.audio.setMasterVolume(MENU_DEMO_MASTER_VOLUME)
     if (!this.menuDemoBot) {
       this.menuDemoBot = new BotController("perfect-seek")
@@ -404,6 +428,7 @@ export class Game implements BotGameApi {
     this.shopHitAreas = null
     this.dailyHitAreas = null
     this.gachaHitAreas = null
+    this.gachaReveal = idleReveal()
     this.controller = null
     this.audio.setMasterVolume(DEFAULT_MASTER_VOLUME)
     this.audio.unlock()
@@ -485,6 +510,23 @@ export class Game implements BotGameApi {
     requestAnimationFrame((t) => this.frame(t))
   }
 
+  /** Sample ball path for cosmetic trails while airborne. */
+  private recordTrailPoint(): void {
+    if (this.cosmetics.getEquippedTrailStyle() === "none") {
+      this.trailPoints = []
+      return
+    }
+    const last = this.trailPoints[this.trailPoints.length - 1]
+    if (last && Math.hypot(this.ball.x - last.x, this.ball.y - last.y) < 6) {
+      return
+    }
+    this.trailPoints.push({ x: this.ball.x, y: this.ball.y })
+    const max = 18
+    if (this.trailPoints.length > max) {
+      this.trailPoints.splice(0, this.trailPoints.length - max)
+    }
+  }
+
   private spawnPurpleBall(): void {
     const b = new Ball()
     const side = Math.random() < 0.5 ? -1 : 1
@@ -554,6 +596,13 @@ export class Game implements BotGameApi {
   }
 
   private update(dt: number): void {
+    if (
+      this.menuDemo &&
+      (this.menuScreen === "hatGacha" || this.menuScreen === "trailGacha")
+    ) {
+      this.gachaReveal = tickReveal(this.gachaReveal, dt)
+    }
+
     if (this.state === "adEnd") {
       this.input.consumePresses()
       this.input.consumeReleases()
@@ -675,35 +724,61 @@ export class Game implements BotGameApi {
           return
         }
 
-        if (this.menuScreen === "gacha") {
+        if (this.menuScreen === "hatGacha" || this.menuScreen === "trailGacha") {
           const areas = this.gachaHitAreas
+          const pool = this.menuScreen === "hatGacha" ? "hat" : "trail"
+
+          if (revealBlocksInput(this.gachaReveal)) {
+            if (
+              this.gachaReveal.phase === "sealed" &&
+              areas?.reveal &&
+              hitRect(p.x, p.y, areas.reveal)
+            ) {
+              this.gachaReveal = tapReveal(this.gachaReveal)
+            }
+            return
+          }
+
           if (areas) {
             if (hitRect(p.x, p.y, areas.back)) {
               this.menuScreen = "title"
               this.gachaHitAreas = null
+              this.gachaReveal = dismissReveal(this.gachaReveal)
               return
             }
-            if (hitRect(p.x, p.y, areas.hatPrev)) {
-              this.cosmetics.cycleHatMenu(-1)
+            if (hitRect(p.x, p.y, areas.equipPrev)) {
+              if (pool === "hat") this.cosmetics.cycleHatMenu(-1)
+              else this.cosmetics.cycleTrailMenu(-1)
               return
             }
-            if (hitRect(p.x, p.y, areas.hatNext)) {
-              this.cosmetics.cycleHatMenu(1)
+            if (hitRect(p.x, p.y, areas.equipNext)) {
+              if (pool === "hat") this.cosmetics.cycleHatMenu(1)
+              else this.cosmetics.cycleTrailMenu(1)
               return
             }
             if (hitRect(p.x, p.y, areas.pull)) {
-              const result = this.gacha.pull({
+              const store = pool === "hat" ? this.hatGacha : this.trailGacha
+              const result = store.pull({
+                pool,
                 lifetimeCoins: this.score.lifetimeCoins,
-                ownedHatIds: this.cosmetics.ownedHatIds,
+                ownedIds:
+                  pool === "hat"
+                    ? this.cosmetics.ownedHatIds
+                    : this.cosmetics.ownedTrailIds,
                 spendCoins: (amount) => this.score.spendCoins(amount),
-                grantHat: (id) => {
-                  this.cosmetics.grantHat(id)
+                grant: (id) => {
+                  if (pool === "hat") this.cosmetics.grantHat(id)
+                  else this.cosmetics.grantTrail(id)
                 },
                 addCoins: (n) => {
                   this.score.addCoins(n)
                 },
               })
-              if (result) this.lastGachaPull = result
+              if (result) {
+                if (pool === "hat") this.lastHatPull = result
+                else this.lastTrailPull = result
+                this.gachaReveal = beginReveal(pool, result)
+              }
               return
             }
           }
@@ -722,9 +797,16 @@ export class Game implements BotGameApi {
             this.menuHitAreas = null
             return
           }
-          if (hitRect(p.x, p.y, areas.gacha)) {
-            this.menuScreen = "gacha"
+          if (hitRect(p.x, p.y, areas.hats)) {
+            this.menuScreen = "hatGacha"
             this.menuHitAreas = null
+            this.gachaReveal = idleReveal()
+            return
+          }
+          if (hitRect(p.x, p.y, areas.trails)) {
+            this.menuScreen = "trailGacha"
+            this.menuHitAreas = null
+            this.gachaReveal = idleReveal()
             return
           }
           if (hitRect(p.x, p.y, areas.play)) {
@@ -808,6 +890,7 @@ export class Game implements BotGameApi {
       this.slingshot.frozen = true
       this.ball.x = this.slingshot.x
       this.ball.y = this.slingshot.y
+      this.trailPoints = []
 
       // Only a fresh press starts aiming — a held finger after
       // "tap to play again" must not immediately pull the slingshot.
@@ -944,6 +1027,7 @@ export class Game implements BotGameApi {
       // Portal teleports the ball immediately; camera/slingshot catch up
       // gradually via advanceWorld so the kill line doesn't jump onto the ball.
       this.score.observe(this.ball.y)
+      this.recordTrailPoint()
 
       // Climb drama: peak height gained since this flight started.
       const climb = Math.max(0, this.ball.y - this.flightStartY)
@@ -959,6 +1043,7 @@ export class Game implements BotGameApi {
         this.lastAimPull = null
         this.scriptedAim = false
         this.catchBurst = CATCH_BURST_DURATION
+        this.trailPoints = []
         this.score.resetCombo()
         this.endFlightCatch()
         // Catch even without a held finger; only enter aim if already holding.
@@ -1361,6 +1446,10 @@ export class Game implements BotGameApi {
       this.renderer.drawBall(cam, b)
     }
     const hatStyle = this.cosmetics.getEquippedHatStyle()
+    const trailStyle = this.cosmetics.getEquippedTrailStyle()
+    if (!this.ball.inSlingshot && trailStyle !== "none") {
+      this.renderer.drawTrail(cam, this.trailPoints, trailStyle)
+    }
     this.renderer.drawBall(cam, this.ball, ballStyle, hatStyle)
 
     if (this.menuDemo || this.state === "menu") {
@@ -1408,20 +1497,34 @@ export class Game implements BotGameApi {
           this.dailyLogin.pending,
           this.lastDailyClaim,
         )
-      } else if (this.menuScreen === "gacha") {
+      } else if (
+        this.menuScreen === "hatGacha" ||
+        this.menuScreen === "trailGacha"
+      ) {
         this.menuHitAreas = null
         this.shopHitAreas = null
         this.dailyHitAreas = null
-        this.gachaHitAreas = this.renderer.drawGacha(
+        const pool = this.menuScreen === "hatGacha" ? "hat" : "trail"
+        this.gachaHitAreas = this.renderer.drawCosmeticGacha(
           cam,
           this.score.lifetimeCoins,
           this.cosmetics.getSelectedBackgroundStyle(),
+          pool,
           this.cosmetics.getSelectedBallStyle(),
           this.cosmetics.getSelectedHatStyle(),
-          this.cosmetics.getSelectedHatName(),
-          this.cosmetics.ownedHatCount,
-          this.gacha.pullsUntilPity(),
-          this.lastGachaPull,
+          this.cosmetics.getSelectedTrailStyle(),
+          pool === "hat"
+            ? this.cosmetics.getSelectedHatName()
+            : this.cosmetics.getSelectedTrailName(),
+          pool === "hat"
+            ? this.cosmetics.ownedHatCount
+            : this.cosmetics.ownedTrailCount,
+          pool === "hat" ? HAT_VARIANTS.length : TRAIL_VARIANTS.length,
+          pool === "hat"
+            ? this.hatGacha.pullsUntilPity()
+            : this.trailGacha.pullsUntilPity(),
+          pool === "hat" ? this.lastHatPull : this.lastTrailPull,
+          this.gachaReveal,
         )
       } else {
         this.shopHitAreas = null

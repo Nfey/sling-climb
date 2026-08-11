@@ -34,11 +34,24 @@ import type {
   WallTurretData,
 } from "./types"
 import type { Slingshot } from "./Slingshot"
-import type { BallStyle, BackgroundStyle, HatStyle, SlingshotStyle } from "./cosmetics"
-import { RARITY_COLOR, RARITY_LABEL } from "./cosmetics"
-import { HAT_VARIANTS, drawHatStyle } from "./hats"
+import type {
+  BallStyle,
+  BackgroundStyle,
+  HatStyle,
+  SlingshotStyle,
+  TrailStyle,
+} from "./cosmetics"
+import { RARITY_COLOR, RARITY_LABEL } from "./rarity"
+import { RARITY_GLOW, type CosmeticRarity } from "./rarity"
+import { drawHatStyle } from "./hats"
+import { drawTrailStyle, previewTrailPoints } from "./trails"
 import { DAILY_REWARDS, type DailyClaimResult, type PendingBoosts } from "./dailyLogin"
-import { GACHA_PULL_COST, type GachaPullResult } from "./gacha"
+import { GACHA_PULL_COST, type GachaPool, type GachaPullResult } from "./gacha"
+import {
+  REVEAL_CHARGE_SEC,
+  REVEAL_OPEN_SEC,
+  type GachaRevealState,
+} from "./gachaReveal"
 import {
   drawBallStyle,
   drawSlingshotBands,
@@ -685,6 +698,16 @@ export class Renderer {
     ctx.globalAlpha = 1
   }
 
+  drawTrail(
+    camera: Camera,
+    worldPoints: readonly { x: number; y: number }[],
+    trailStyle: TrailStyle,
+  ): void {
+    if (trailStyle === "none" || worldPoints.length < 2) return
+    const screenPts = worldPoints.map((p) => camera.worldToScreen(p))
+    drawTrailStyle(this.ctx, trailStyle, screenPts, this.time)
+  }
+
   drawBall(
     camera: Camera,
     ball: Ball,
@@ -1003,10 +1026,10 @@ export class Renderer {
     ctx.fillText("Shop", shop.x + btnW / 2, y + 1)
 
     y += 52
-    const subW = 110
+    const subW = 96
     const subH = 40
-    const subGap = 12
-    const subPairW = subW * 2 + subGap
+    const subGap = 8
+    const subPairW = subW * 3 + subGap * 2
     const subX = cx - subPairW / 2
     const daily: ScreenRect = {
       x: subX,
@@ -1014,15 +1037,22 @@ export class Renderer {
       w: subW,
       h: subH,
     }
-    const gacha: ScreenRect = {
+    const hats: ScreenRect = {
       x: subX + subW + subGap,
+      y: y - subH / 2,
+      w: subW,
+      h: subH,
+    }
+    const trails: ScreenRect = {
+      x: subX + (subW + subGap) * 2,
       y: y - subH / 2,
       w: subW,
       h: subH,
     }
 
     drawSecondaryMenuButton(ctx, daily, "Daily", dailyClaimable)
-    drawSecondaryMenuButton(ctx, gacha, "Hats", false)
+    drawSecondaryMenuButton(ctx, hats, "Hats", false)
+    drawSecondaryMenuButton(ctx, trails, "Trails", false)
 
     y += 42
     ctx.fillStyle = theme.inkDim
@@ -1030,7 +1060,7 @@ export class Renderer {
     ctx.fillText("or tap anywhere to start", cx, y)
 
     ctx.textBaseline = "alphabetic"
-    return { play, shop, daily, gacha }
+    return { play, shop, daily, hats, trails }
   }
 
   /**
@@ -1196,23 +1226,31 @@ export class Renderer {
   }
 
   /**
-   * Hat gacha: pull button, equip cycling for owned hats, last result.
+   * Hat or trail gacha: pull, equip cycling, and optional reveal overlay.
    */
-  drawGacha(
+  drawCosmeticGacha(
     camera: Camera,
     lifetimeCoins: number,
     backgroundStyle: BackgroundStyle,
+    pool: GachaPool,
     ballStyle: BallStyle,
     hatStyle: HatStyle,
-    hatName: string,
+    trailStyle: TrailStyle,
+    equippedName: string,
     ownedCount: number,
+    catalogCount: number,
     pityLeft: number,
     lastPull: GachaPullResult | null,
+    reveal: GachaRevealState,
   ): GachaHitAreas {
     const ctx = this.ctx
     const { width, height } = camera
     const cx = width / 2
     const theme = getBackgroundTheme(backgroundStyle)
+    const revealing =
+      reveal.phase === "charging" ||
+      reveal.phase === "sealed" ||
+      reveal.phase === "opening"
 
     ctx.fillStyle = theme.menuOverlay
     ctx.fillRect(0, 0, width, height)
@@ -1223,58 +1261,80 @@ export class Renderer {
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
     ctx.fillStyle = theme.ink
-    ctx.font = "800 32px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText("Hat Gacha", cx, topPad + 8)
+    ctx.font = "800 30px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText(pool === "hat" ? "Hat Gacha" : "Trail Gacha", cx, topPad + 8)
 
     ctx.fillStyle = theme.inkDim
     ctx.font = "500 13px 'DM Sans', sans-serif"
+    const kind = pool === "hat" ? "hats" : "trails"
     ctx.fillText(
-      `${ownedCount}/${HAT_VARIANTS.length} hats · pity in ${pityLeft}`,
+      `${ownedCount}/${catalogCount} ${kind} · pity in ${pityLeft}`,
       cx,
       topPad + 34,
     )
 
-    const previewY = topPad + 110
-    ctx.save()
-    ctx.translate(cx, previewY)
-    drawBallStyle(ctx, ballStyle, 36, this.time)
-    drawHatStyle(ctx, hatStyle, 36, this.time)
-    ctx.restore()
+    const previewY = topPad + 108
+    if (!revealing) {
+      ctx.save()
+      ctx.translate(cx, previewY)
+      if (pool === "hat") {
+        drawBallStyle(ctx, ballStyle, 36, this.time)
+        drawHatStyle(ctx, hatStyle, 36, this.time)
+      } else {
+        const local = previewTrailPoints(0, 8, 54)
+        drawTrailStyle(ctx, trailStyle, local, this.time)
+        drawBallStyle(ctx, ballStyle, 28, this.time)
+        drawHatStyle(ctx, hatStyle, 28, this.time)
+      }
+      ctx.restore()
 
-    ctx.fillStyle = theme.ink
-    ctx.font = "700 16px 'DM Sans', sans-serif"
-    ctx.fillText(hatName, cx, previewY + 58)
+      ctx.fillStyle = theme.ink
+      ctx.font = "700 16px 'DM Sans', sans-serif"
+      ctx.fillText(equippedName, cx, previewY + 58)
 
-    if (lastPull) {
-      const col = RARITY_COLOR[lastPull.rarity]
-      ctx.fillStyle = col
-      ctx.font = "800 14px 'Bricolage Grotesque', sans-serif"
-      const tag = lastPull.isNew ? "NEW" : `Dupe +${lastPull.duplicateRefund}¢`
-      ctx.fillText(
-        `${RARITY_LABEL[lastPull.rarity]} · ${lastPull.hat.name} · ${tag}`,
-        cx,
-        previewY + 80,
-      )
+      if (lastPull && lastPull.pool === pool && reveal.phase === "shown") {
+        const col = RARITY_COLOR[lastPull.rarity]
+        ctx.fillStyle = col
+        ctx.font = "800 14px 'Bricolage Grotesque', sans-serif"
+        const tag = lastPull.isNew ? "NEW" : `Dupe +${lastPull.duplicateRefund}¢`
+        ctx.fillText(
+          `${RARITY_LABEL[lastPull.rarity]} · ${lastPull.item.name} · ${tag}`,
+          cx,
+          previewY + 80,
+        )
+      } else if (lastPull && lastPull.pool === pool && reveal.phase === "idle") {
+        const col = RARITY_COLOR[lastPull.rarity]
+        ctx.fillStyle = col
+        ctx.font = "800 14px 'Bricolage Grotesque', sans-serif"
+        const tag = lastPull.isNew ? "NEW" : `Dupe +${lastPull.duplicateRefund}¢`
+        ctx.fillText(
+          `${RARITY_LABEL[lastPull.rarity]} · ${lastPull.item.name} · ${tag}`,
+          cx,
+          previewY + 80,
+        )
+      }
     }
 
     const arrowW = 40
     const equipY = previewY + 100
-    const hatPrev: ScreenRect = { x: cx - 100, y: equipY, w: arrowW, h: 36 }
-    const hatNext: ScreenRect = { x: cx + 60, y: equipY, w: arrowW, h: 36 }
-    ctx.fillStyle = "rgba(255,255,255,0.78)"
-    ctx.beginPath()
-    roundRect(ctx, hatPrev.x, hatPrev.y, hatPrev.w, hatPrev.h, 10)
-    ctx.fill()
-    ctx.beginPath()
-    roundRect(ctx, hatNext.x, hatNext.y, hatNext.w, hatNext.h, 10)
-    ctx.fill()
-    ctx.fillStyle = COLORS.accent
-    ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText("‹", hatPrev.x + arrowW / 2, equipY + 19)
-    ctx.fillText("›", hatNext.x + arrowW / 2, equipY + 19)
-    ctx.fillStyle = theme.inkDim
-    ctx.font = "600 12px 'DM Sans', sans-serif"
-    ctx.fillText("Equip owned", cx, equipY + 18)
+    const equipPrev: ScreenRect = { x: cx - 100, y: equipY, w: arrowW, h: 36 }
+    const equipNext: ScreenRect = { x: cx + 60, y: equipY, w: arrowW, h: 36 }
+    if (!revealing) {
+      ctx.fillStyle = "rgba(255,255,255,0.78)"
+      ctx.beginPath()
+      roundRect(ctx, equipPrev.x, equipPrev.y, equipPrev.w, equipPrev.h, 10)
+      ctx.fill()
+      ctx.beginPath()
+      roundRect(ctx, equipNext.x, equipNext.y, equipNext.w, equipNext.h, 10)
+      ctx.fill()
+      ctx.fillStyle = COLORS.accent
+      ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText("‹", equipPrev.x + arrowW / 2, equipY + 19)
+      ctx.fillText("›", equipNext.x + arrowW / 2, equipY + 19)
+      ctx.fillStyle = theme.inkDim
+      ctx.font = "600 12px 'DM Sans', sans-serif"
+      ctx.fillText("Equip owned", cx, equipY + 18)
+    }
 
     const canAfford = lifetimeCoins >= GACHA_PULL_COST
     const pullW = 180
@@ -1285,17 +1345,19 @@ export class Renderer {
       w: pullW,
       h: pullH,
     }
-    ctx.fillStyle = canAfford ? COLORS.accent : "rgba(100, 116, 139, 0.55)"
-    ctx.beginPath()
-    roundRect(ctx, pull.x, pull.y, pull.w, pull.h, 14)
-    ctx.fill()
-    ctx.fillStyle = "#fff"
-    ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText(`Pull · ${GACHA_PULL_COST}¢`, cx, pull.y + pullH / 2 + 1)
+    if (!revealing) {
+      ctx.fillStyle = canAfford ? COLORS.accent : "rgba(100, 116, 139, 0.55)"
+      ctx.beginPath()
+      roundRect(ctx, pull.x, pull.y, pull.w, pull.h, 14)
+      ctx.fill()
+      ctx.fillStyle = "#fff"
+      ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText(`Pull · ${GACHA_PULL_COST}¢`, cx, pull.y + pullH / 2 + 1)
 
-    ctx.fillStyle = theme.inkDim
-    ctx.font = "500 11px 'DM Sans', sans-serif"
-    ctx.fillText("60% C · 25% U · 12% R · 3% E", cx, pull.y + pullH + 18)
+      ctx.fillStyle = theme.inkDim
+      ctx.font = "500 11px 'DM Sans', sans-serif"
+      ctx.fillText("60% C · 25% U · 12% R · 3% E", cx, pull.y + pullH + 18)
+    }
 
     const backW = 140
     const backH = 44
@@ -1305,16 +1367,37 @@ export class Renderer {
       w: backW,
       h: backH,
     }
-    ctx.fillStyle = COLORS.accent
-    ctx.beginPath()
-    roundRect(ctx, back.x, back.y, back.w, back.h, 12)
-    ctx.fill()
-    ctx.fillStyle = "#fff"
-    ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText("Back", cx, back.y + backH / 2 + 1)
+    if (!revealing) {
+      ctx.fillStyle = COLORS.accent
+      ctx.beginPath()
+      roundRect(ctx, back.x, back.y, back.w, back.h, 12)
+      ctx.fill()
+      ctx.fillStyle = "#fff"
+      ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText("Back", cx, back.y + backH / 2 + 1)
+    }
+
+    let revealHit: ScreenRect | null = null
+    if (revealing && reveal.result) {
+      revealHit = { x: 0, y: 0, w: width, h: height }
+      drawGachaRevealOverlay(
+        ctx,
+        width,
+        height,
+        reveal,
+        ballStyle,
+        this.time,
+      )
+    }
 
     ctx.textBaseline = "alphabetic"
-    return { back, pull, hatPrev, hatNext }
+    return {
+      back,
+      pull,
+      equipPrev,
+      equipNext,
+      reveal: revealHit,
+    }
   }
 
   /**
@@ -1791,6 +1874,160 @@ function drawSecondaryMenuButton(
     ctx.arc(rect.x + rect.w - 10, rect.y + 10, 5, 0, Math.PI * 2)
     ctx.fill()
   }
+}
+
+function drawGachaRevealOverlay(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  reveal: GachaRevealState,
+  ballStyle: BallStyle,
+  time: number,
+): void {
+  const result = reveal.result
+  if (!result) return
+  const rarity = result.rarity
+  const color = RARITY_COLOR[rarity]
+  const glow = RARITY_GLOW[rarity]
+  const cx = width / 2
+  const cy = height * 0.42
+
+  ctx.fillStyle = "rgba(15, 23, 42, 0.55)"
+  ctx.fillRect(0, 0, width, height)
+
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  ctx.fillStyle = color
+  ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+  ctx.fillText(RARITY_LABEL[rarity].toUpperCase(), cx, cy - 110)
+
+  if (reveal.phase === "charging") {
+    const t = Math.min(1, reveal.elapsed / REVEAL_CHARGE_SEC)
+    const shake = (1 - t) * 5 * Math.sin(reveal.elapsed * 40)
+    const scale = 0.75 + t * 0.35
+    drawSealedOrb(ctx, cx + shake, cy, 54 * scale, rarity, color, glow, time)
+    ctx.fillStyle = "rgba(255,255,255,0.9)"
+    ctx.font = "600 14px 'DM Sans', sans-serif"
+    ctx.fillText("Summoning…", cx, cy + 90)
+    return
+  }
+
+  if (reveal.phase === "sealed") {
+    const pulse = 1 + Math.sin(time * 5) * 0.04
+    drawSealedOrb(ctx, cx, cy, 58 * pulse, rarity, color, glow, time)
+    ctx.fillStyle = "#fff"
+    ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText("Tap to reveal", cx, cy + 100)
+    ctx.fillStyle = "rgba(255,255,255,0.7)"
+    ctx.font = "500 13px 'DM Sans', sans-serif"
+    ctx.fillText(`${RARITY_LABEL[rarity]} pull ready`, cx, cy + 124)
+    return
+  }
+
+  if (reveal.phase === "opening") {
+    const t = Math.min(1, reveal.elapsed / REVEAL_OPEN_SEC)
+    const burst = t
+    ctx.save()
+    ctx.globalAlpha = 1 - t * 0.4
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 + time
+      const dist = 30 + burst * 70
+      ctx.fillStyle = color
+      ctx.beginPath()
+      ctx.arc(
+        cx + Math.cos(a) * dist,
+        cy + Math.sin(a) * dist,
+        4 + (1 - t) * 4,
+        0,
+        Math.PI * 2,
+      )
+      ctx.fill()
+    }
+    ctx.restore()
+
+    const showItem = t > 0.35
+    if (showItem) {
+      const fade = Math.min(1, (t - 0.35) / 0.4)
+      ctx.globalAlpha = fade
+      drawRevealedItem(ctx, cx, cy, result, ballStyle, time)
+      ctx.globalAlpha = 1
+    } else {
+      drawSealedOrb(ctx, cx, cy, 58 * (1 - t * 0.5), rarity, color, glow, time)
+    }
+    return
+  }
+}
+
+function drawSealedOrb(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radius: number,
+  rarity: CosmeticRarity,
+  color: string,
+  glow: string,
+  time: number,
+): void {
+  ctx.save()
+  const grd = ctx.createRadialGradient(cx - radius * 0.3, cy - radius * 0.35, 4, cx, cy, radius)
+  grd.addColorStop(0, "#fff")
+  grd.addColorStop(0.35, color)
+  grd.addColorStop(1, "#0f172a")
+  ctx.fillStyle = glow
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius * 1.35, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = grd
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.strokeStyle = color
+  ctx.lineWidth = rarity === "epic" ? 4 : 3
+  ctx.stroke()
+
+  // Inner sigil
+  ctx.strokeStyle = "rgba(255,255,255,0.85)"
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.arc(cx, cy, radius * 0.45, 0, Math.PI * 2)
+  ctx.stroke()
+  const spin = time * (rarity === "epic" ? 4 : 2)
+  for (let i = 0; i < 4; i++) {
+    const a = spin + (i * Math.PI) / 2
+    ctx.beginPath()
+    ctx.moveTo(cx, cy)
+    ctx.lineTo(cx + Math.cos(a) * radius * 0.42, cy + Math.sin(a) * radius * 0.42)
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
+function drawRevealedItem(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  result: GachaPullResult,
+  ballStyle: BallStyle,
+  time: number,
+): void {
+  ctx.save()
+  ctx.translate(cx, cy)
+  if (result.pool === "hat" && result.hat) {
+    drawBallStyle(ctx, ballStyle, 40, time)
+    drawHatStyle(ctx, result.hat.style, 40, time)
+  } else if (result.pool === "trail" && result.trail) {
+    const local = previewTrailPoints(0, 10, 60)
+    drawTrailStyle(ctx, result.trail.style, local, time)
+    drawBallStyle(ctx, ballStyle, 32, time)
+  }
+  ctx.restore()
+
+  ctx.fillStyle = RARITY_COLOR[result.rarity]
+  ctx.font = "800 16px 'Bricolage Grotesque', sans-serif"
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  const tag = result.isNew ? "NEW" : `Dupe +${result.duplicateRefund}¢`
+  ctx.fillText(`${result.item.name} · ${tag}`, cx, cy + 78)
 }
 
 /** Coin-price buy chip under a locked picker icon. */
