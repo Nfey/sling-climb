@@ -32,6 +32,7 @@ import {
   SCORE_POPUP_DURATION,
   SLINGSHOT_FORK_WIDTH,
   SLINGSHOT_KEYBOARD_SPEED,
+  SLINGSHOT_CATCH_RADIUS,
   TURRET_AIM_ARC,
   TURRET_AIM_SPEED,
   TURRET_BODY_RADIUS,
@@ -59,8 +60,14 @@ import {
 } from "./cosmetics"
 import { DailyLoginStore, type DailyClaimResult } from "./dailyLogin"
 import { DailyMissionsStore } from "./dailyMissions"
+import {
+  AchievementsStore,
+  ACHIEVEMENT_CATEGORIES,
+  type AchievementCategory,
+} from "./achievements"
 import { GachaStore, type GachaPullResult } from "./gacha"
 import type {
+  AchievementsHitAreas,
   BulletData,
   BotAimTarget,
   CoinData,
@@ -89,6 +96,7 @@ export class Game implements BotGameApi {
   private cosmetics: CosmeticsStore
   private dailyLogin: DailyLoginStore
   private dailyMissions: DailyMissionsStore
+  private achievements: AchievementsStore
   private gacha: GachaStore
   /** Toast after claiming a mission reward from the Daily screen. */
   private lastMissionClaimMessage: string | null = null
@@ -108,12 +116,15 @@ export class Game implements BotGameApi {
   private menuDemo = false
   /** Title overlay vs cosmetics shop while attract-mode menu is active. */
   private menuScreen: MenuScreen = "title"
+  /** Selected category tab on the achievements screen. */
+  private achievementsCategory: AchievementCategory = "speed"
   /** Hit regions from the previous title-menu draw pass (screen space). */
   private menuHitAreas: MainMenuHitAreas | null = null
   /** Hit regions from the previous shop draw pass (screen space). */
   private shopHitAreas: ShopHitAreas | null = null
   private dailyHitAreas: DailyHitAreas | null = null
   private gachaHitAreas: GachaHitAreas | null = null
+  private achievementsHitAreas: AchievementsHitAreas | null = null
   private lastDailyClaim: DailyClaimResult | null = null
   private lastGachaPull: GachaPullResult | null = null
   /** Active coin multiplier from a claimed daily boost (1 = none). */
@@ -158,7 +169,10 @@ export class Game implements BotGameApi {
     this.cosmetics = new CosmeticsStore(this.config.persistScores !== false)
     this.dailyLogin = new DailyLoginStore(this.config.persistScores !== false)
     this.dailyMissions = new DailyMissionsStore(this.config.persistScores !== false)
+    this.achievements = new AchievementsStore(this.config.persistScores !== false)
     this.gacha = new GachaStore(this.config.persistScores !== false)
+    // Seed coin progress from bank so existing players aren't reset to zero.
+    this.achievements.seedCoinsFromBank(this.score.lifetimeCoins)
     // Unlock audio inside the real gesture handlers (pointer/key), not rAF.
     this.input = new Input(
       canvas,
@@ -393,6 +407,7 @@ export class Game implements BotGameApi {
     this.shopHitAreas = null
     this.dailyHitAreas = null
     this.gachaHitAreas = null
+    this.achievementsHitAreas = null
     this.audio.setMasterVolume(MENU_DEMO_MASTER_VOLUME)
     if (!this.menuDemoBot) {
       this.menuDemoBot = new BotController("perfect-seek")
@@ -409,11 +424,13 @@ export class Game implements BotGameApi {
     this.shopHitAreas = null
     this.dailyHitAreas = null
     this.gachaHitAreas = null
+    this.achievementsHitAreas = null
     this.controller = null
     this.audio.setMasterVolume(DEFAULT_MASTER_VOLUME)
     this.audio.unlock()
     this.resetRun(false)
     this.dailyMissions.onRunStart()
+    this.achievements.onRunStart()
     this.applyPendingDailyBoosts()
   }
 
@@ -439,26 +456,53 @@ export class Game implements BotGameApi {
     this.audio.setClimb(0)
     this.audio.startFlight()
     this.audio.playLaunch(launchPower)
-    if (!this.menuDemo) this.dailyMissions.onFlingStart()
+    if (!this.menuDemo) {
+      this.dailyMissions.onFlingStart()
+      this.achievements.onFlingStart(this.ball.y)
+    }
   }
 
-  /** Forward in-run events to daily missions (real player runs only). */
+  /** Forward in-run events to daily missions and achievements (real player runs only). */
   private trackMissionsFromHit(hit: {
     bumperHit: boolean
     bumperKey: string | null
     portalDeltaY: number
     platformHit: boolean
     arrowHit: boolean
+    arrowDir: number | null
     coinsCollected: number
     bonusCollected: boolean
+    turretHit: boolean
   }): void {
     if (this.menuDemo) return
-    if (hit.bumperHit) this.dailyMissions.onBumperHit(hit.bumperKey)
-    if (hit.portalDeltaY !== 0) this.dailyMissions.onPortal()
-    if (hit.platformHit) this.dailyMissions.onPlatform()
-    if (hit.arrowHit) this.dailyMissions.onArrow()
-    if (hit.coinsCollected > 0) this.dailyMissions.onCoins(hit.coinsCollected)
+    if (hit.bumperHit) {
+      this.dailyMissions.onBumperHit(hit.bumperKey)
+      this.achievements.onObstacleHit("bumper")
+    }
+    if (hit.portalDeltaY !== 0) {
+      this.dailyMissions.onPortal()
+      this.achievements.onObstacleHit("portal")
+    }
+    if (hit.platformHit) {
+      this.dailyMissions.onPlatform()
+      this.achievements.onObstacleHit("platform")
+    }
+    if (hit.arrowHit) {
+      this.dailyMissions.onArrow()
+      const arrowDown =
+        hit.arrowDir === 3 || hit.arrowDir === 4 || hit.arrowDir === 5
+      this.achievements.onObstacleHit("arrow", arrowDown)
+    }
+    if (hit.coinsCollected > 0) {
+      this.dailyMissions.onCoins(hit.coinsCollected)
+      this.achievements.onCoinsCollected(
+        this.runCoinMult > 1
+          ? hit.coinsCollected * this.runCoinMult
+          : hit.coinsCollected,
+      )
+    }
     if (hit.bonusCollected) this.dailyMissions.onBonus()
+    if (hit.turretHit) this.achievements.onTurretHit()
     this.dailyMissions.onCombo(this.score.combo)
   }
 
@@ -694,6 +738,7 @@ export class Game implements BotGameApi {
                 },
                 addCoins: (n) => {
                   this.score.addCoins(n)
+                  this.achievements.onCoinsCollected(n)
                 },
               })
               if (result) this.lastDailyClaim = result
@@ -707,6 +752,7 @@ export class Game implements BotGameApi {
               if (!hitRect(p.x, p.y, rect)) continue
               const reward = this.dailyMissions.claim(slot.def.id, (n) => {
                 this.score.addCoins(n)
+                this.achievements.onCoinsCollected(n)
               })
               if (reward != null) {
                 this.lastMissionClaimMessage = `+${reward} coins · ${slot.def.difficulty}`
@@ -743,10 +789,32 @@ export class Game implements BotGameApi {
                 },
                 addCoins: (n) => {
                   this.score.addCoins(n)
+                  this.achievements.onCoinsCollected(n)
                 },
               })
               if (result) this.lastGachaPull = result
               return
+            }
+          }
+          return
+        }
+
+        if (this.menuScreen === "achievements") {
+          const areas = this.achievementsHitAreas
+          if (areas) {
+            if (hitRect(p.x, p.y, areas.back)) {
+              this.menuScreen = "title"
+              this.achievementsHitAreas = null
+              return
+            }
+            for (let i = 0; i < areas.categories.length; i++) {
+              const rect = areas.categories[i]
+              const cat = ACHIEVEMENT_CATEGORIES[i]
+              if (!rect || !cat) continue
+              if (hitRect(p.x, p.y, rect)) {
+                this.achievementsCategory = cat
+                return
+              }
             }
           }
           return
@@ -766,6 +834,11 @@ export class Game implements BotGameApi {
           }
           if (hitRect(p.x, p.y, areas.gacha)) {
             this.menuScreen = "gacha"
+            this.menuHitAreas = null
+            return
+          }
+          if (hitRect(p.x, p.y, areas.achievements)) {
+            this.menuScreen = "achievements"
             this.menuHitAreas = null
             return
           }
@@ -988,8 +1061,11 @@ export class Game implements BotGameApi {
       // gradually via advanceWorld so the kill line doesn't jump onto the ball.
       this.score.observe(this.ball.y)
       if (!this.menuDemo) {
+        this.achievements.onFlightFrame(this.ball.vx, this.ball.vy, this.ball.y)
         this.dailyMissions.onHeight(this.score.climbHeight)
         this.dailyMissions.onScore(this.score.current)
+        this.achievements.onHeight(this.score.climbHeight)
+        this.achievements.onScore(this.score.current)
       }
 
       // Climb drama: peak height gained since this flight started.
@@ -1008,7 +1084,10 @@ export class Game implements BotGameApi {
         this.catchBurst = CATCH_BURST_DURATION
         this.score.resetCombo()
         this.endFlightCatch()
-        if (!this.menuDemo) this.dailyMissions.onCatch()
+        if (!this.menuDemo) {
+          this.dailyMissions.onCatch()
+          this.achievements.onCatch()
+        }
         // Catch even without a held finger; only enter aim if already holding.
         if (pointer) {
           this.state = "aiming"
@@ -1026,6 +1105,14 @@ export class Game implements BotGameApi {
       ) {
         // Menu attract demo is visual-only — never touch player records.
         if (!this.menuDemo) {
+          this.achievements.onGameOver({
+            ballX: this.ball.x,
+            ballY: this.ball.y,
+            slingX: this.slingshot.x,
+            slingY: this.slingshot.y,
+            catchRadius: SLINGSHOT_CATCH_RADIUS,
+            runScore: this.score.current,
+          })
           this.score.commitHighScore()
         }
         this.audio.playGameOver()
@@ -1425,6 +1512,7 @@ export class Game implements BotGameApi {
         this.menuHitAreas = null
         this.dailyHitAreas = null
         this.gachaHitAreas = null
+        this.achievementsHitAreas = null
         this.shopHitAreas = this.renderer.drawShop(
           cam,
           this.score.lifetimeCoins,
@@ -1445,6 +1533,7 @@ export class Game implements BotGameApi {
         this.menuHitAreas = null
         this.shopHitAreas = null
         this.gachaHitAreas = null
+        this.achievementsHitAreas = null
         this.dailyHitAreas = this.renderer.drawDaily(
           cam,
           this.score.lifetimeCoins,
@@ -1462,6 +1551,7 @@ export class Game implements BotGameApi {
         this.menuHitAreas = null
         this.shopHitAreas = null
         this.dailyHitAreas = null
+        this.achievementsHitAreas = null
         this.gachaHitAreas = this.renderer.drawGacha(
           cam,
           this.score.lifetimeCoins,
@@ -1473,10 +1563,25 @@ export class Game implements BotGameApi {
           this.gacha.pullsUntilPity(),
           this.lastGachaPull,
         )
+      } else if (this.menuScreen === "achievements") {
+        this.menuHitAreas = null
+        this.shopHitAreas = null
+        this.dailyHitAreas = null
+        this.gachaHitAreas = null
+        this.achievementsHitAreas = this.renderer.drawAchievements(
+          cam,
+          this.score.lifetimeCoins,
+          this.cosmetics.getSelectedBackgroundStyle(),
+          this.achievementsCategory,
+          this.achievements.list(this.achievementsCategory),
+          this.achievements.unlockedCount,
+          this.achievements.totalCount,
+        )
       } else {
         this.shopHitAreas = null
         this.dailyHitAreas = null
         this.gachaHitAreas = null
+        this.achievementsHitAreas = null
         this.menuHitAreas = this.renderer.drawMainMenu(
           cam,
           highScore,

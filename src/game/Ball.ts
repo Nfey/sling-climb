@@ -49,6 +49,8 @@ export interface BallUpdateResult {
   /** Arrow pad consumed this frame. */
   arrowHit: boolean
   arrowAt: Vec2 | null
+  /** Direction of the arrow pad that launched the ball (when arrowHit). */
+  arrowDir: CardinalDir | null
   /** Turret shot hit this frame. */
   turretHit: boolean
 }
@@ -242,7 +244,7 @@ export class Ball {
 
   private collideArrowPads(
     pads: ArrowPadData[],
-  ): { hit: boolean; at: Vec2 | null } {
+  ): { hit: boolean; at: Vec2 | null; dir: CardinalDir | null } {
     for (let i = pads.length - 1; i >= 0; i--) {
       const pad = pads[i]!
       const dist = Math.hypot(this.x - pad.x, this.y - pad.y)
@@ -253,10 +255,11 @@ export class Ball {
       this.vy = dir.y < 0 ? dir.y * ARROW_PAD_SPEED * 0.45 : dir.y * ARROW_PAD_SPEED
       this.squash = 0.75
       const at = { x: pad.x, y: pad.y + pad.radius }
+      const arrowDir = pad.dir
       pads.splice(i, 1)
-      return { hit: true, at }
+      return { hit: true, at, dir: arrowDir }
     }
-    return { hit: false, at: null }
+    return { hit: false, at: null, dir: null }
   }
 
   private collideTurretShots(shots: TurretShotData[]): boolean {
@@ -302,6 +305,7 @@ export class Ball {
       bumperKey: null,
       arrowHit: false,
       arrowAt: null,
+      arrowDir: null,
       turretHit: false,
     }
     if (this.inSlingshot) {
@@ -345,6 +349,7 @@ export class Ball {
     const arrow = this.collideArrowPads(arrowPads)
     result.arrowHit = arrow.hit
     result.arrowAt = arrow.at
+    result.arrowDir = arrow.dir
     result.turretHit = this.collideTurretShots(turretShots)
 
     // Only the player ball collects pickups and coins

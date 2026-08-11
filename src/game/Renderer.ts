@@ -16,6 +16,7 @@ import { turretMuzzleAngle } from "./turret"
 import type { Ball } from "./Ball"
 import type { Camera } from "./Camera"
 import type {
+  AchievementsHitAreas,
   ArrowPadData,
   BulletData,
   BumperData,
@@ -39,6 +40,12 @@ import { RARITY_COLOR, RARITY_LABEL } from "./cosmetics"
 import { HAT_VARIANTS, drawHatStyle } from "./hats"
 import { DAILY_REWARDS, type DailyClaimResult, type PendingBoosts } from "./dailyLogin"
 import type { DailyMissionSlot } from "./dailyMissions"
+import {
+  ACHIEVEMENT_CATEGORIES,
+  ACHIEVEMENT_CATEGORY_LABELS,
+  type AchievementCategory,
+  type AchievementView,
+} from "./achievements"
 import { GACHA_PULL_COST, type GachaPullResult } from "./gacha"
 import {
   drawBallStyle,
@@ -891,7 +898,7 @@ export class Renderer {
   }
 
   /**
-   * Title screen with top-right coins, bests, Play/Shop, and Daily/Hats.
+   * Title screen with top-right coins, bests, Play/Shop, and Daily/Hats/Achievements.
    * Returns interactive regions for hit-testing.
    */
   drawMainMenu(
@@ -907,7 +914,7 @@ export class Renderer {
     const { width } = camera
     const cx = width / 2
     const theme = getBackgroundTheme(backgroundStyle)
-    let y = camera.slingshotScreenY - 188
+    let y = camera.slingshotScreenY - 208
 
     ctx.fillStyle = theme.menuOverlay
     ctx.fillRect(0, 0, width, camera.killScreenY)
@@ -1025,13 +1032,157 @@ export class Renderer {
     drawSecondaryMenuButton(ctx, daily, "Daily", dailyClaimable)
     drawSecondaryMenuButton(ctx, gacha, "Hats", false)
 
+    y += 48
+    const achW = Math.min(232, width - 48)
+    const achH = 40
+    const achievements: ScreenRect = {
+      x: cx - achW / 2,
+      y: y - achH / 2,
+      w: achW,
+      h: achH,
+    }
+    drawSecondaryMenuButton(ctx, achievements, "Achievements", false)
+
     y += 42
     ctx.fillStyle = theme.inkDim
     ctx.font = "500 13px 'DM Sans', sans-serif"
     ctx.fillText("or tap anywhere to start", cx, y)
 
     ctx.textBaseline = "alphabetic"
-    return { play, shop, daily, gacha }
+    return { play, shop, daily, gacha, achievements }
+  }
+
+  /**
+   * Achievements browser: category tabs + unlocked/locked rows with how-to text.
+   */
+  drawAchievements(
+    camera: Camera,
+    lifetimeCoins: number,
+    backgroundStyle: BackgroundStyle,
+    selectedCategory: AchievementCategory,
+    items: readonly AchievementView[],
+    unlockedCount: number,
+    totalCount: number,
+  ): AchievementsHitAreas {
+    const ctx = this.ctx
+    const { width, height } = camera
+    const cx = width / 2
+    const theme = getBackgroundTheme(backgroundStyle)
+
+    ctx.fillStyle = theme.menuOverlay
+    ctx.fillRect(0, 0, width, height)
+
+    drawLifetimeCoins(ctx, width, lifetimeCoins)
+
+    const topPad = 28 + safeAreaInsetTop()
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    ctx.fillStyle = theme.ink
+    ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText("Achievements", cx, topPad + 6)
+
+    ctx.fillStyle = theme.inkDim
+    ctx.font = "600 12px 'DM Sans', sans-serif"
+    ctx.fillText(`${unlockedCount} / ${totalCount} unlocked`, cx, topPad + 28)
+
+    const tabGap = 5
+    const tabH = 30
+    const sidePad = 12
+    const tabCount = ACHIEVEMENT_CATEGORIES.length
+    const tabW = (width - sidePad * 2 - tabGap * (tabCount - 1)) / tabCount
+    const tabY = topPad + 44
+    const categories: ScreenRect[] = []
+
+    for (let i = 0; i < tabCount; i++) {
+      const cat = ACHIEVEMENT_CATEGORIES[i]!
+      const rect: ScreenRect = {
+        x: sidePad + i * (tabW + tabGap),
+        y: tabY,
+        w: tabW,
+        h: tabH,
+      }
+      categories.push(rect)
+      const selected = cat === selectedCategory
+      ctx.fillStyle = selected
+        ? "rgba(47, 111, 237, 0.22)"
+        : "rgba(255, 255, 255, 0.78)"
+      ctx.beginPath()
+      roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 10)
+      ctx.fill()
+      if (selected) {
+        ctx.strokeStyle = COLORS.accent
+        ctx.lineWidth = 2
+        ctx.stroke()
+      }
+      ctx.fillStyle = selected ? COLORS.accent : theme.inkDim
+      ctx.font = "700 10px 'DM Sans', sans-serif"
+      ctx.textAlign = "center"
+      ctx.fillText(ACHIEVEMENT_CATEGORY_LABELS[cat], rect.x + rect.w / 2, rect.y + tabH / 2 + 1)
+    }
+
+    const backW = 140
+    const backH = 44
+    const back: ScreenRect = {
+      x: cx - backW / 2,
+      y: height - backH - 16,
+      w: backW,
+      h: backH,
+    }
+
+    let y = tabY + tabH + 14
+    const rowGap = 8
+    const rowW = width - sidePad * 2
+    const rowH = 62
+    const listBottom = back.y - 12
+
+    for (const item of items) {
+      if (y + rowH > listBottom) break
+      const row: ScreenRect = {
+        x: sidePad,
+        y,
+        w: rowW,
+        h: rowH,
+      }
+      ctx.fillStyle = item.unlocked
+        ? "rgba(34, 197, 94, 0.16)"
+        : "rgba(255, 255, 255, 0.82)"
+      ctx.beginPath()
+      roundRect(ctx, row.x, row.y, row.w, row.h, 12)
+      ctx.fill()
+
+      const textX = row.x + 12
+      ctx.textAlign = "left"
+      ctx.fillStyle = item.unlocked ? theme.ink : theme.inkDim
+      ctx.font = "800 15px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText(item.def.name, textX, row.y + 18)
+
+      ctx.fillStyle = item.unlocked ? "#16a34a" : theme.inkDim
+      ctx.font = "600 11px 'DM Sans', sans-serif"
+      const detail = item.unlocked ? "Unlocked!" : item.def.howTo
+      wrapMenuText(ctx, detail, textX, row.y + 36, row.w - 24, 14, 2)
+
+      if (item.unlocked) {
+        ctx.fillStyle = "#16a34a"
+        ctx.font = "800 16px 'Bricolage Grotesque', sans-serif"
+        ctx.textAlign = "right"
+        ctx.fillText("✓", row.x + row.w - 12, row.y + 20)
+      }
+
+      y += rowH + rowGap
+    }
+
+    ctx.fillStyle = COLORS.accent
+    ctx.beginPath()
+    roundRect(ctx, back.x, back.y, back.w, back.h, 12)
+    ctx.fill()
+    ctx.fillStyle = "#fff"
+    ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    ctx.fillText("Back", cx, back.y + backH / 2 + 1)
+
+    ctx.textBaseline = "alphabetic"
+    return { back, categories }
   }
 
   /**
@@ -1866,6 +2017,46 @@ function hitRect(px: number, py: number, rect: ScreenRect): boolean {
 }
 
 export { hitRect }
+
+/** Draw up to `maxLines` of wrapped text; returns the y after the last line. */
+function wrapMenuText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines: number,
+): number {
+  const words = text.split(" ")
+  const lines: string[] = []
+  let line = ""
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word
+    if (ctx.measureText(next).width <= maxWidth) {
+      line = next
+    } else {
+      if (line) lines.push(line)
+      line = word
+      if (lines.length >= maxLines) break
+    }
+  }
+  if (line && lines.length < maxLines) lines.push(line)
+  if (lines.length === maxLines) {
+    const last = lines[maxLines - 1]!
+    if (words.join(" ").length > last.length) {
+      let trimmed = last
+      while (trimmed.length > 3 && ctx.measureText(`${trimmed}…`).width > maxWidth) {
+        trimmed = trimmed.slice(0, -1)
+      }
+      lines[maxLines - 1] = `${trimmed}…`
+    }
+  }
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i]!, x, y + i * lineHeight)
+  }
+  return y + Math.max(0, lines.length - 1) * lineHeight
+}
 
 /** Lifetime coin total in the top-right corner of menu overlays. */
 function drawLifetimeCoins(
