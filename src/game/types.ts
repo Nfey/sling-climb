@@ -62,6 +62,8 @@ export interface MainMenuHitAreas {
 export interface DailyHitAreas {
   back: ScreenRect
   claim: ScreenRect | null
+  /** Claim buttons for today's missions (null when not claimable). */
+  missionClaims: (ScreenRect | null)[]
 }
 
 /** Interactive regions on the hat gacha screen. */
