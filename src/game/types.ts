@@ -62,8 +62,6 @@ export interface MainMenuHitAreas {
 /** Interactive regions on the achievements screen. */
 export interface AchievementsHitAreas {
   back: ScreenRect
-  /** Category tab buttons in display order. */
-  categories: ScreenRect[]
   /** Scrollable grid bounds (for drag-scroll hit testing). */
   list: ScreenRect
   /** Max scroll offset in px (0 when content fits). */

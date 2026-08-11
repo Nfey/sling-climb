@@ -41,9 +41,6 @@ import { HAT_VARIANTS, drawHatStyle } from "./hats"
 import { DAILY_REWARDS, type DailyClaimResult, type PendingBoosts } from "./dailyLogin"
 import type { DailyMissionSlot } from "./dailyMissions"
 import {
-  ACHIEVEMENT_CATEGORIES,
-  ACHIEVEMENT_CATEGORY_LABELS,
-  type AchievementCategory,
   type AchievementView,
 } from "./achievements"
 import { drawAchievementIcon } from "./achievementIcons"
@@ -1055,13 +1052,12 @@ export class Renderer {
   }
 
   /**
-   * Achievements browser: category tabs + icon grid; tap a cell for details.
+   * Achievements browser: scrollable icon grid; tap a cell for details.
    */
   drawAchievements(
     camera: Camera,
     lifetimeCoins: number,
     backgroundStyle: BackgroundStyle,
-    selectedCategory: AchievementCategory,
     items: readonly AchievementView[],
     unlockedCount: number,
     totalCount: number,
@@ -1079,6 +1075,7 @@ export class Renderer {
     drawLifetimeCoins(ctx, width, lifetimeCoins)
 
     const topPad = 28 + safeAreaInsetTop()
+    const sidePad = 12
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
     ctx.fillStyle = theme.ink
@@ -1088,45 +1085,6 @@ export class Renderer {
     ctx.fillStyle = theme.inkDim
     ctx.font = "600 12px 'DM Sans', sans-serif"
     ctx.fillText(`${unlockedCount} / ${totalCount} unlocked`, cx, topPad + 28)
-
-    const tabGap = 5
-    const tabH = 30
-    const sidePad = 12
-    const tabCount = ACHIEVEMENT_CATEGORIES.length
-    const tabW = (width - sidePad * 2 - tabGap * (tabCount - 1)) / tabCount
-    const tabY = topPad + 44
-    const categories: ScreenRect[] = []
-
-    for (let i = 0; i < tabCount; i++) {
-      const cat = ACHIEVEMENT_CATEGORIES[i]!
-      const rect: ScreenRect = {
-        x: sidePad + i * (tabW + tabGap),
-        y: tabY,
-        w: tabW,
-        h: tabH,
-      }
-      categories.push(rect)
-      const selected = cat === selectedCategory
-      ctx.fillStyle = selected
-        ? "rgba(47, 111, 237, 0.22)"
-        : "rgba(255, 255, 255, 0.78)"
-      ctx.beginPath()
-      roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 10)
-      ctx.fill()
-      if (selected) {
-        ctx.strokeStyle = COLORS.accent
-        ctx.lineWidth = 2
-        ctx.stroke()
-      }
-      ctx.fillStyle = selected ? COLORS.accent : theme.inkDim
-      ctx.font = "700 10px 'DM Sans', sans-serif"
-      ctx.textAlign = "center"
-      ctx.fillText(
-        ACHIEVEMENT_CATEGORY_LABELS[cat],
-        rect.x + rect.w / 2,
-        rect.y + tabH / 2 + 1,
-      )
-    }
 
     const backW = 140
     const backH = 44
@@ -1143,7 +1101,7 @@ export class Renderer {
     const detailH = selected ? 78 : 36
     const detailBottom = back.y - 10
     const detailTop = detailBottom - detailH
-    const listTop = tabY + tabH + 12
+    const listTop = topPad + 48
     const listBottom = detailTop - 10
     const listH = Math.max(0, listBottom - listTop)
     const list: ScreenRect = {
@@ -1247,7 +1205,7 @@ export class Renderer {
     ctx.fillText("Back", cx, back.y + backH / 2 + 1)
 
     ctx.textBaseline = "alphabetic"
-    return { back, categories, list, maxScroll, cells }
+    return { back, list, maxScroll, cells }
   }
 
   /**

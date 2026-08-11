@@ -62,8 +62,6 @@ import { DailyLoginStore, type DailyClaimResult } from "./dailyLogin"
 import { DailyMissionsStore } from "./dailyMissions"
 import {
   AchievementsStore,
-  ACHIEVEMENT_CATEGORIES,
-  type AchievementCategory,
 } from "./achievements"
 import type { AchievementIconKind } from "./achievementIcons"
 import { GachaStore, type GachaPullResult } from "./gacha"
@@ -118,17 +116,12 @@ export class Game implements BotGameApi {
   private menuDemo = false
   /** Title overlay vs cosmetics shop while attract-mode menu is active. */
   private menuScreen: MenuScreen = "title"
-  /** Selected category tab on the achievements screen. */
-  private achievementsCategory: AchievementCategory = "speed"
   /** Selected achievement id on the achievements grid (for detail card). */
   private achievementsSelectedId: string | null = null
   /** Vertical scroll offset (px) for the achievements list. */
   private achievementsScroll = 0
   private achievementsDragId: number | null = null
   private achievementsDragLastY = 0
-  private achievementsDidDrag = false
-  /** Icon id under pointer when a grid drag/tap began. */
-  private achievementsPendingTapId: string | null = null
   /** Mid-match unlock banners. */
   private achievementToasts: AchievementToast[] = []
   /** Hit regions from the previous title-menu draw pass (screen space). */
@@ -702,23 +695,7 @@ export class Game implements BotGameApi {
               this.achievementsScroll = 0
               this.achievementsSelectedId = null
               this.achievementsDragId = null
-              this.achievementsPendingTapId = null
-              this.achievementsDidDrag = false
               return
-            }
-            for (let i = 0; i < hitAreas.categories.length; i++) {
-              const rect = hitAreas.categories[i]
-              const cat = ACHIEVEMENT_CATEGORIES[i]
-              if (!rect || !cat) continue
-              if (hitRect(p.x, p.y, rect)) {
-                this.achievementsCategory = cat
-                this.achievementsScroll = 0
-                this.achievementsSelectedId = null
-                this.achievementsDragId = null
-                this.achievementsPendingTapId = null
-                this.achievementsDidDrag = false
-                return
-              }
             }
             if (hitRect(p.x, p.y, hitAreas.list)) {
               let tappedId: string | null = null
@@ -735,13 +712,9 @@ export class Game implements BotGameApi {
               }
               if (releases.includes(p.id)) {
                 this.achievementsDragId = null
-                this.achievementsPendingTapId = null
-                this.achievementsDidDrag = false
               } else {
                 this.achievementsDragId = p.id
                 this.achievementsDragLastY = p.y
-                this.achievementsDidDrag = false
-                this.achievementsPendingTapId = tappedId
               }
               return
             }
@@ -754,17 +727,13 @@ export class Game implements BotGameApi {
           this.achievementsDragId != null &&
           releases.includes(this.achievementsDragId)
         ) {
-          // Selection already applied on press; just clear drag state.
           this.achievementsDragId = null
-          this.achievementsPendingTapId = null
-          this.achievementsDidDrag = false
         } else if (areas && this.achievementsDragId != null) {
           const ptr = this.input.getPointer(this.achievementsDragId)
           if (!ptr) {
             this.achievementsDragId = null
           } else {
             const dy = ptr.y - this.achievementsDragLastY
-            if (Math.abs(ptr.y - ptr.startY) > 8) this.achievementsDidDrag = true
             if (areas.maxScroll > 0) {
               this.achievementsScroll = Math.max(
                 0,
@@ -953,8 +922,6 @@ export class Game implements BotGameApi {
             this.achievementsScroll = 0
             this.achievementsSelectedId = null
             this.achievementsDragId = null
-            this.achievementsPendingTapId = null
-            this.achievementsDidDrag = false
             return
           }
           if (hitRect(p.x, p.y, areas.play)) {
@@ -1703,8 +1670,7 @@ export class Game implements BotGameApi {
           cam,
           this.score.lifetimeCoins,
           this.cosmetics.getSelectedBackgroundStyle(),
-          this.achievementsCategory,
-          this.achievements.list(this.achievementsCategory),
+          this.achievements.list(),
           this.achievements.unlockedCount,
           this.achievements.totalCount,
           this.achievementsScroll,
