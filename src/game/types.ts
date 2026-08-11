@@ -64,10 +64,22 @@ export interface AchievementsHitAreas {
   back: ScreenRect
   /** Category tab buttons in display order. */
   categories: ScreenRect[]
-  /** Scrollable list bounds (for drag-scroll hit testing). */
+  /** Scrollable grid bounds (for drag-scroll hit testing). */
   list: ScreenRect
   /** Max scroll offset in px (0 when content fits). */
   maxScroll: number
+  /** Icon cells for tap-to-inspect. */
+  cells: { id: string; rect: ScreenRect }[]
+}
+
+/** Floating mid-match achievement unlock toast. */
+export interface AchievementToast {
+  id: string
+  name: string
+  icon: string
+  /** Seconds remaining. */
+  life: number
+  duration: number
 }
 
 /** Interactive regions on the daily login screen. */

@@ -3,6 +3,8 @@
  * Progress is tracked from the same in-run events as daily missions.
  */
 
+import type { AchievementIconKind } from "./achievementIcons"
+
 export const ACHIEVEMENTS_KEY = "sling-climb-achievements"
 
 export type AchievementCategory =
@@ -19,6 +21,7 @@ export interface AchievementDef {
   name: string
   /** Shown while locked — how to unlock. */
   howTo: string
+  icon: AchievementIconKind
 }
 
 export interface AchievementView {
@@ -51,24 +54,28 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     category: "speed",
     name: "Speedy Recovery",
     howTo: "Catch the ball after it hits 400 speed in one fling",
+    icon: "speed1",
   },
   {
     id: "speed-700",
     category: "speed",
     name: "Need for Speed",
     howTo: "Catch the ball after it hits 700 speed in one fling",
+    icon: "speed2",
   },
   {
     id: "speed-1000",
     category: "speed",
     name: "Sonic Boom",
     howTo: "Catch the ball after it hits 1,000 speed in one fling",
+    icon: "speed3",
   },
   {
     id: "speed-1400",
     category: "speed",
     name: "Warp Catch",
     howTo: "Catch the ball after it hits 1,400 speed in one fling",
+    icon: "speed4",
   },
 
   // Height — climb distance in a single run
@@ -77,24 +84,28 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     category: "height",
     name: "First Steps",
     howTo: "Climb 500 height in one run",
+    icon: "height1",
   },
   {
     id: "height-1500",
     category: "height",
     name: "Getting Air",
     howTo: "Climb 1,500 height in one run",
+    icon: "height2",
   },
   {
     id: "height-3500",
     category: "height",
     name: "Skybound",
     howTo: "Climb 3,500 height in one run",
+    icon: "height3",
   },
   {
     id: "height-7000",
     category: "height",
     name: "Stratosphere",
     howTo: "Climb 7,000 height in one run",
+    icon: "height4",
   },
 
   // Score — points in a single run
@@ -103,24 +114,28 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     category: "score",
     name: "Point Scout",
     howTo: "Score 500 points in one run",
+    icon: "score1",
   },
   {
     id: "score-2000",
     category: "score",
     name: "Score Chaser",
     howTo: "Score 2,000 points in one run",
+    icon: "score2",
   },
   {
     id: "score-5000",
     category: "score",
     name: "High Roller",
     howTo: "Score 5,000 points in one run",
+    icon: "score3",
   },
   {
     id: "score-10000",
     category: "score",
     name: "Point Legend",
     howTo: "Score 10,000 points in one run",
+    icon: "score4",
   },
 
   // Obstacles — hits in a single fling
@@ -129,24 +144,28 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     category: "obstacles",
     name: "Tap Tap",
     howTo: "Hit 3 obstacles in one fling",
+    icon: "hits1",
   },
   {
     id: "obstacles-6",
     category: "obstacles",
     name: "Obstacle Course",
     howTo: "Hit 6 obstacles in one fling",
+    icon: "hits2",
   },
   {
     id: "obstacles-10",
     category: "obstacles",
     name: "Chaos Cascade",
     howTo: "Hit 10 obstacles in one fling",
+    icon: "hits3",
   },
   {
     id: "obstacles-15",
     category: "obstacles",
     name: "Demolition Derby",
     howTo: "Hit 15 obstacles in one fling",
+    icon: "hits4",
   },
 
   // Coins — lifetime bank
@@ -155,24 +174,28 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     category: "coins",
     name: "Pocket Change",
     howTo: "Collect 10 coins total",
+    icon: "coins1",
   },
   {
     id: "coins-50",
     category: "coins",
     name: "Coin Purse",
     howTo: "Collect 50 coins total",
+    icon: "coins2",
   },
   {
     id: "coins-150",
     category: "coins",
     name: "Treasure Trove",
     howTo: "Collect 150 coins total",
+    icon: "coins3",
   },
   {
     id: "coins-400",
     category: "coins",
     name: "Dragon's Hoard",
     howTo: "Collect 400 coins total",
+    icon: "coins4",
   },
 
   // Funny fails
@@ -181,42 +204,49 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     category: "fails",
     name: "Bamboozled",
     howTo: "Lose after flinging the ball directly into an arrow",
+    icon: "failBamboozled",
   },
   {
     id: "fail-southbound",
     category: "fails",
     name: "Southbound Express",
     howTo: "Hit a downward arrow, then fall to your doom",
+    icon: "failSouth",
   },
   {
     id: "fail-whiff",
     category: "fails",
     name: "Total Whiff",
     howTo: "Lose a fling without hitting anything",
+    icon: "failWhiff",
   },
   {
     id: "fail-so-close",
     category: "fails",
     name: "So Close",
     howTo: "Die just beside the slingshot (almost caught it)",
+    icon: "failClose",
   },
   {
     id: "fail-icarus",
     category: "fails",
     name: "Icarus",
     howTo: "Climb 1,000+ in one fling, then miss the catch",
+    icon: "failIcarus",
   },
   {
     id: "fail-turret",
     category: "fails",
     name: "Cannon Fodder",
     howTo: "Get clipped by a turret shot, then lose the fling",
+    icon: "failTurret",
   },
   {
     id: "fail-cold-open",
     category: "fails",
     name: "Cold Open",
     howTo: "Die on your first fling before scoring 100 points",
+    icon: "failCold",
   },
 ]
 
@@ -254,10 +284,25 @@ export class AchievementsStore {
 
   /** Lifetime coins collected (not the spendable bank). */
   private coinsCollected = 0
+  /** Newly unlocked ids waiting to be shown as toasts. */
+  private pendingUnlocks: string[] = []
 
   constructor(persist = true) {
     this.persist = persist
     if (this.persist) this.load()
+  }
+
+  /** Drain recently unlocked achievements for mid-match toasts. */
+  drainUnlocks(): AchievementDef[] {
+    if (this.pendingUnlocks.length === 0) return []
+    const ids = this.pendingUnlocks
+    this.pendingUnlocks = []
+    const out: AchievementDef[] = []
+    for (const id of ids) {
+      const def = DEF_BY_ID.get(id)
+      if (def) out.push(def)
+    }
+    return out
   }
 
   get unlockedCount(): number {
@@ -349,6 +394,8 @@ export class AchievementsStore {
     if (bank <= this.coinsCollected) return
     this.coinsCollected = bank
     this.checkCoinThresholds()
+    // Historical seed unlocks should not toast.
+    this.pendingUnlocks = []
     this.save()
   }
 
@@ -390,6 +437,7 @@ export class AchievementsStore {
   private unlock(id: string): void {
     if (!DEF_BY_ID.has(id) || this.unlocked.has(id)) return
     this.unlocked.add(id)
+    this.pendingUnlocks.push(id)
     this.save()
   }
 

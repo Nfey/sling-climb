@@ -65,6 +65,7 @@ import {
   ACHIEVEMENT_CATEGORIES,
   type AchievementCategory,
 } from "./achievements"
+import type { AchievementIconKind } from "./achievementIcons"
 import { GachaStore, type GachaPullResult } from "./gacha"
 import type {
   AchievementsHitAreas,
@@ -81,6 +82,7 @@ import type {
   ScorePopup,
   TurretShotData,
   Vec2,
+  AchievementToast,
 } from "./types"
 
 export type FrameController = { update(dt: number, game: BotGameApi): void }
@@ -118,10 +120,17 @@ export class Game implements BotGameApi {
   private menuScreen: MenuScreen = "title"
   /** Selected category tab on the achievements screen. */
   private achievementsCategory: AchievementCategory = "speed"
+  /** Selected achievement id on the achievements grid (for detail card). */
+  private achievementsSelectedId: string | null = null
   /** Vertical scroll offset (px) for the achievements list. */
   private achievementsScroll = 0
   private achievementsDragId: number | null = null
   private achievementsDragLastY = 0
+  private achievementsDidDrag = false
+  /** Icon id under pointer when a grid drag/tap began. */
+  private achievementsPendingTapId: string | null = null
+  /** Mid-match unlock banners. */
+  private achievementToasts: AchievementToast[] = []
   /** Hit regions from the previous title-menu draw pass (screen space). */
   private menuHitAreas: MainMenuHitAreas | null = null
   /** Hit regions from the previous shop draw pass (screen space). */
@@ -588,6 +597,31 @@ export class Game implements BotGameApi {
     })
   }
 
+  /** Queue UI toasts for any achievements unlocked since the last flush. */
+  private flushAchievementUnlocks(): void {
+    const unlocked = this.achievements.drainUnlocks()
+    if (unlocked.length === 0) return
+    for (const def of unlocked) {
+      this.achievementToasts.push({
+        id: def.id,
+        name: def.name,
+        icon: def.icon,
+        life: 3.4,
+        duration: 3.4,
+      })
+    }
+    // Cap stacked banners so the playfield stays readable.
+    if (this.achievementToasts.length > 3) {
+      this.achievementToasts = this.achievementToasts.slice(-3)
+    }
+    this.audio.playPowerup()
+  }
+
+  private updateAchievementToasts(dt: number): void {
+    for (const toast of this.achievementToasts) toast.life -= dt
+    this.achievementToasts = this.achievementToasts.filter((t) => t.life > 0)
+  }
+
   private moveSlingshotToPointer(pointerX: number, pointerY: number): void {
     if (this.freeMoveActive) {
       const minScreenY = 56
@@ -660,23 +694,29 @@ export class Game implements BotGameApi {
           this.achievementsDragId != null &&
           releases.includes(this.achievementsDragId)
         ) {
+          if (!this.achievementsDidDrag && this.achievementsPendingTapId != null) {
+            const tappedId = this.achievementsPendingTapId
+            this.achievementsSelectedId =
+              this.achievementsSelectedId === tappedId ? null : tappedId
+          }
           this.achievementsDragId = null
+          this.achievementsPendingTapId = null
+          this.achievementsDidDrag = false
         }
-        if (areas) {
-          if (this.achievementsDragId != null) {
-            const ptr = this.input.getPointer(this.achievementsDragId)
-            if (!ptr) {
-              this.achievementsDragId = null
-            } else {
-              const dy = ptr.y - this.achievementsDragLastY
-              if (areas.maxScroll > 0) {
-                this.achievementsScroll = Math.max(
-                  0,
-                  Math.min(areas.maxScroll, this.achievementsScroll - dy),
-                )
-              }
-              this.achievementsDragLastY = ptr.y
+        if (areas && this.achievementsDragId != null) {
+          const ptr = this.input.getPointer(this.achievementsDragId)
+          if (!ptr) {
+            this.achievementsDragId = null
+          } else {
+            const dy = ptr.y - this.achievementsDragLastY
+            if (Math.abs(ptr.y - ptr.startY) > 8) this.achievementsDidDrag = true
+            if (areas.maxScroll > 0) {
+              this.achievementsScroll = Math.max(
+                0,
+                Math.min(areas.maxScroll, this.achievementsScroll - dy),
+              )
             }
+            this.achievementsDragLastY = ptr.y
           }
         }
 
@@ -689,7 +729,10 @@ export class Game implements BotGameApi {
               this.menuScreen = "title"
               this.achievementsHitAreas = null
               this.achievementsScroll = 0
+              this.achievementsSelectedId = null
               this.achievementsDragId = null
+              this.achievementsPendingTapId = null
+              this.achievementsDidDrag = false
               return
             }
             for (let i = 0; i < hitAreas.categories.length; i++) {
@@ -699,13 +742,25 @@ export class Game implements BotGameApi {
               if (hitRect(p.x, p.y, rect)) {
                 this.achievementsCategory = cat
                 this.achievementsScroll = 0
+                this.achievementsSelectedId = null
                 this.achievementsDragId = null
+                this.achievementsPendingTapId = null
+                this.achievementsDidDrag = false
                 return
               }
             }
             if (hitRect(p.x, p.y, hitAreas.list)) {
               this.achievementsDragId = p.id
               this.achievementsDragLastY = p.y
+              this.achievementsDidDrag = false
+              let tappedId: string | null = null
+              for (const cell of hitAreas.cells) {
+                if (hitRect(p.x, p.y, cell.rect)) {
+                  tappedId = cell.id
+                  break
+                }
+              }
+              this.achievementsPendingTapId = tappedId
               return
             }
           }
@@ -805,6 +860,7 @@ export class Game implements BotGameApi {
                 addCoins: (n) => {
                   this.score.addCoins(n)
                   this.achievements.onCoinsCollected(n)
+                  this.achievements.drainUnlocks()
                 },
               })
               if (result) this.lastDailyClaim = result
@@ -819,6 +875,7 @@ export class Game implements BotGameApi {
               const reward = this.dailyMissions.claim(slot.def.id, (n) => {
                 this.score.addCoins(n)
                 this.achievements.onCoinsCollected(n)
+                this.achievements.drainUnlocks()
               })
               if (reward != null) {
                 this.lastMissionClaimMessage = `+${reward} coins · ${slot.def.difficulty}`
@@ -856,6 +913,7 @@ export class Game implements BotGameApi {
                 addCoins: (n) => {
                   this.score.addCoins(n)
                   this.achievements.onCoinsCollected(n)
+                  this.achievements.drainUnlocks()
                 },
               })
               if (result) this.lastGachaPull = result
@@ -886,7 +944,10 @@ export class Game implements BotGameApi {
             this.menuScreen = "achievements"
             this.menuHitAreas = null
             this.achievementsScroll = 0
+            this.achievementsSelectedId = null
             this.achievementsDragId = null
+            this.achievementsPendingTapId = null
+            this.achievementsDidDrag = false
             return
           }
           if (hitRect(p.x, p.y, areas.play)) {
@@ -959,6 +1020,7 @@ export class Game implements BotGameApi {
       for (const popup of this.scorePopups) popup.life -= dt
       this.scorePopups = this.scorePopups.filter((p) => p.life > 0)
     }
+    this.updateAchievementToasts(dt)
 
     // Bind any press to aiming / moving
     for (const p of presses) {
@@ -1114,6 +1176,7 @@ export class Game implements BotGameApi {
         this.dailyMissions.onScore(this.score.current)
         this.achievements.onHeight(this.score.climbHeight)
         this.achievements.onScore(this.score.current)
+        this.flushAchievementUnlocks()
       }
 
       // Climb drama: peak height gained since this flight started.
@@ -1135,6 +1198,7 @@ export class Game implements BotGameApi {
         if (!this.menuDemo) {
           this.dailyMissions.onCatch()
           this.achievements.onCatch()
+          this.flushAchievementUnlocks()
         }
         // Catch even without a held finger; only enter aim if already holding.
         if (pointer) {
@@ -1161,6 +1225,7 @@ export class Game implements BotGameApi {
             catchRadius: SLINGSHOT_CATCH_RADIUS,
             runScore: this.score.current,
           })
+          this.flushAchievementUnlocks()
           this.score.commitHighScore()
         }
         this.audio.playGameOver()
@@ -1535,6 +1600,17 @@ export class Game implements BotGameApi {
       )
     }
     this.renderer.drawScorePopups(cam, this.scorePopups)
+    if (!this.menuDemo && this.achievementToasts.length > 0) {
+      this.renderer.drawAchievementToasts(
+        cam,
+        this.achievementToasts.map((t) => ({
+          name: t.name,
+          icon: t.icon as AchievementIconKind,
+          life: t.life,
+          duration: t.duration,
+        })),
+      )
+    }
 
     if (trajOrigin && trajVel) {
       this.renderer.drawTrajectory(cam, trajOrigin, trajVel)
@@ -1625,6 +1701,7 @@ export class Game implements BotGameApi {
           this.achievements.unlockedCount,
           this.achievements.totalCount,
           this.achievementsScroll,
+          this.achievementsSelectedId,
         )
       } else {
         this.shopHitAreas = null

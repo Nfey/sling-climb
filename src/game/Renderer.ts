@@ -46,6 +46,8 @@ import {
   type AchievementCategory,
   type AchievementView,
 } from "./achievements"
+import { drawAchievementIcon } from "./achievementIcons"
+import type { AchievementIconKind } from "./achievementIcons"
 import { GACHA_PULL_COST, type GachaPullResult } from "./gacha"
 import {
   drawBallStyle,
@@ -1053,7 +1055,7 @@ export class Renderer {
   }
 
   /**
-   * Achievements browser: category tabs + unlocked/locked rows with how-to text.
+   * Achievements browser: category tabs + icon grid; tap a cell for details.
    */
   drawAchievements(
     camera: Camera,
@@ -1064,6 +1066,7 @@ export class Renderer {
     unlockedCount: number,
     totalCount: number,
     scrollY = 0,
+    selectedId: string | null = null,
   ): AchievementsHitAreas {
     const ctx = this.ctx
     const { width, height } = camera
@@ -1118,7 +1121,11 @@ export class Renderer {
       ctx.fillStyle = selected ? COLORS.accent : theme.inkDim
       ctx.font = "700 10px 'DM Sans', sans-serif"
       ctx.textAlign = "center"
-      ctx.fillText(ACHIEVEMENT_CATEGORY_LABELS[cat], rect.x + rect.w / 2, rect.y + tabH / 2 + 1)
+      ctx.fillText(
+        ACHIEVEMENT_CATEGORY_LABELS[cat],
+        rect.x + rect.w / 2,
+        rect.y + tabH / 2 + 1,
+      )
     }
 
     const backW = 140
@@ -1130,8 +1137,14 @@ export class Renderer {
       h: backH,
     }
 
-    const listTop = tabY + tabH + 14
-    const listBottom = back.y - 12
+    const selected = selectedId
+      ? items.find((item) => item.def.id === selectedId) ?? null
+      : null
+    const detailH = selected ? 78 : 36
+    const detailBottom = back.y - 10
+    const detailTop = detailBottom - detailH
+    const listTop = tabY + tabH + 12
+    const listBottom = detailTop - 10
     const listH = Math.max(0, listBottom - listTop)
     const list: ScreenRect = {
       x: sidePad,
@@ -1140,57 +1153,88 @@ export class Renderer {
       h: listH,
     }
 
-    const rowGap = 8
-    const rowW = list.w
-    const rowH = 62
-    const contentH = items.length * rowH + Math.max(0, items.length - 1) * rowGap
+    const cols = 4
+    const gap = 10
+    const cellW = (list.w - gap * (cols - 1)) / cols
+    const cellH = cellW
+    const rows = Math.ceil(items.length / cols)
+    const contentH = rows * cellH + Math.max(0, rows - 1) * gap
     const maxScroll = Math.max(0, contentH - listH)
     const scroll = Math.max(0, Math.min(maxScroll, scrollY))
+
+    const cells: { id: string; rect: ScreenRect }[] = []
 
     ctx.save()
     ctx.beginPath()
     ctx.rect(list.x, list.y, list.w, list.h)
     ctx.clip()
 
-    let y = listTop - scroll
-    for (const item of items) {
-      const row: ScreenRect = {
-        x: sidePad,
-        y,
-        w: rowW,
-        h: rowH,
-      }
-      // Skip draw when fully outside the clip (still advance y).
-      if (row.y + rowH >= listTop && row.y <= listBottom) {
-        ctx.fillStyle = item.unlocked
-          ? "rgba(34, 197, 94, 0.16)"
-          : "rgba(255, 255, 255, 0.82)"
-        ctx.beginPath()
-        roundRect(ctx, row.x, row.y, row.w, row.h, 12)
-        ctx.fill()
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]!
+      const col = i % cols
+      const row = Math.floor(i / cols)
+      const x = list.x + col * (cellW + gap)
+      const y = listTop - scroll + row * (cellH + gap)
+      const rect: ScreenRect = { x, y, w: cellW, h: cellH }
+      cells.push({ id: item.def.id, rect })
 
-        const textX = row.x + 12
-        ctx.textAlign = "left"
-        ctx.fillStyle = item.unlocked ? theme.ink : theme.inkDim
-        ctx.font = "800 15px 'Bricolage Grotesque', sans-serif"
-        ctx.fillText(item.def.name, textX, row.y + 18)
+      if (y + cellH < listTop || y > listBottom) continue
 
-        ctx.fillStyle = item.unlocked ? "#16a34a" : theme.inkDim
-        ctx.font = "600 11px 'DM Sans', sans-serif"
-        const detail = item.unlocked ? "Unlocked!" : item.def.howTo
-        wrapMenuText(ctx, detail, textX, row.y + 36, row.w - 24, 14, 2)
-
-        if (item.unlocked) {
-          ctx.fillStyle = "#16a34a"
-          ctx.font = "800 16px 'Bricolage Grotesque', sans-serif"
-          ctx.textAlign = "right"
-          ctx.fillText("✓", row.x + row.w - 12, row.y + 20)
-        }
+      const isSelected = selectedId === item.def.id
+      ctx.fillStyle = item.unlocked
+        ? "rgba(255, 255, 255, 0.9)"
+        : "rgba(255, 255, 255, 0.55)"
+      ctx.beginPath()
+      roundRect(ctx, x, y, cellW, cellH, 14)
+      ctx.fill()
+      if (isSelected) {
+        ctx.strokeStyle = COLORS.accent
+        ctx.lineWidth = 2.5
+        ctx.stroke()
+      } else if (item.unlocked) {
+        ctx.strokeStyle = "rgba(34, 197, 94, 0.45)"
+        ctx.lineWidth = 1.5
+        ctx.stroke()
       }
 
-      y += rowH + rowGap
+      drawAchievementIcon(
+        ctx,
+        item.def.icon,
+        x + cellW / 2,
+        y + cellH / 2,
+        Math.min(cellW, cellH) * 0.72,
+        item.unlocked,
+      )
     }
     ctx.restore()
+
+    // Detail card under the grid
+    ctx.fillStyle = selected
+      ? selected.unlocked
+        ? "rgba(34, 197, 94, 0.16)"
+        : "rgba(255, 255, 255, 0.88)"
+      : "rgba(255, 255, 255, 0.55)"
+    ctx.beginPath()
+    roundRect(ctx, sidePad, detailTop, width - sidePad * 2, detailH, 12)
+    ctx.fill()
+
+    ctx.textAlign = "center"
+    if (selected) {
+      ctx.fillStyle = theme.ink
+      ctx.font = "800 16px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText(selected.def.name, cx, detailTop + 22)
+      ctx.fillStyle = selected.unlocked ? "#16a34a" : theme.inkDim
+      ctx.font = "600 12px 'DM Sans', sans-serif"
+      ctx.textAlign = "left"
+      const detail = selected.unlocked
+        ? `Unlocked! · ${selected.def.howTo}`
+        : selected.def.howTo
+      wrapMenuText(ctx, detail, sidePad + 14, detailTop + 44, width - sidePad * 2 - 28, 15, 2)
+    } else {
+      ctx.fillStyle = theme.inkDim
+      ctx.font = "600 12px 'DM Sans', sans-serif"
+      ctx.fillText("Tap an icon for details", cx, detailTop + detailH / 2 + 1)
+    }
 
     ctx.fillStyle = COLORS.accent
     ctx.beginPath()
@@ -1203,7 +1247,57 @@ export class Renderer {
     ctx.fillText("Back", cx, back.y + backH / 2 + 1)
 
     ctx.textBaseline = "alphabetic"
-    return { back, categories, list, maxScroll }
+    return { back, categories, list, maxScroll, cells }
+  }
+
+  /**
+   * Mid-match achievement unlock banners stacked near the top of the playfield.
+   */
+  drawAchievementToasts(
+    camera: Camera,
+    toasts: readonly {
+      name: string
+      icon: AchievementIconKind
+      life: number
+      duration: number
+    }[],
+  ): void {
+    if (toasts.length === 0) return
+    const ctx = this.ctx
+    const top = 52 + safeAreaInsetTop()
+    const width = Math.min(320, camera.width - 24)
+    const x = (camera.width - width) / 2
+
+    for (let i = 0; i < toasts.length; i++) {
+      const toast = toasts[i]!
+      const t = Math.max(0, Math.min(1, toast.life / toast.duration))
+      const appear = Math.min(1, (1 - t) * toast.duration * 4)
+      const fade = t < 0.2 ? t / 0.2 : 1
+      const alpha = Math.min(appear, fade)
+      const y = top + i * 66
+      ctx.save()
+      ctx.globalAlpha = alpha
+      ctx.fillStyle = "rgba(17, 17, 17, 0.82)"
+      ctx.beginPath()
+      roundRect(ctx, x, y, width, 56, 14)
+      ctx.fill()
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.12)"
+      ctx.beginPath()
+      roundRect(ctx, x + 8, y + 8, 40, 40, 10)
+      ctx.fill()
+      drawAchievementIcon(ctx, toast.icon, x + 28, y + 28, 34, true)
+
+      ctx.textAlign = "left"
+      ctx.textBaseline = "middle"
+      ctx.fillStyle = "#fbbf24"
+      ctx.font = "700 11px 'DM Sans', sans-serif"
+      ctx.fillText("ACHIEVEMENT", x + 60, y + 18)
+      ctx.fillStyle = "#ffffff"
+      ctx.font = "800 16px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText(toast.name, x + 60, y + 38)
+      ctx.restore()
+    }
   }
 
   /**
