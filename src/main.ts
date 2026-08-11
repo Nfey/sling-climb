@@ -28,14 +28,3 @@ if (config.mode === "bot") {
 }
 
 game.start()
-
-// Debug helpers
-;(window as any).game = game
-;(window as any).weakLaunch = () => {
-  const state = game.snapshot().state
-  console.log('Current state:', state)
-  if (state === 'ready' || state === 'aiming') {
-    game.beginAimPull({ x: -10, y: 20 })
-    setTimeout(() => game.releaseAim(), 50)
-  }
-}
