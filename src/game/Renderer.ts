@@ -1270,25 +1270,16 @@ export class Renderer {
         ctx.font = "800 13px 'Bricolage Grotesque', sans-serif"
         ctx.textAlign = "center"
         ctx.fillText("Claim", claimRect.x + bw / 2, claimRect.y + bh / 2 + 1)
+
+        ctx.fillStyle = theme.inkDim
+        ctx.font = "500 10px 'DM Sans', sans-serif"
+        ctx.textAlign = "left"
+        ctx.fillText("Complete!", badgeX, row.y + rowH - 12)
       } else {
         ctx.fillStyle = theme.inkDim
         ctx.font = "600 11px 'DM Sans', sans-serif"
         ctx.textAlign = "right"
         ctx.fillText(progText, row.x + row.w - 10, row.y + rowH - 14)
-      }
-
-      // Progress under label when incomplete / unclaimed complete
-      if (!slot.claimed) {
-        ctx.fillStyle = theme.inkDim
-        ctx.font = "500 10px 'DM Sans', sans-serif"
-        ctx.textAlign = "left"
-        if (slot.complete) {
-          ctx.fillText("Complete!", badgeX, row.y + rowH - 12)
-        } else if (label.length > maxChars) {
-          // already used lower lines for wrap — skip duplicate prog on left
-        } else {
-          ctx.fillText(progText, badgeX, row.y + rowH - 12)
-        }
       }
 
       missionClaims.push(claimRect)
