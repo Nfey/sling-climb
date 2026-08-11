@@ -64,6 +64,10 @@ export interface AchievementsHitAreas {
   back: ScreenRect
   /** Category tab buttons in display order. */
   categories: ScreenRect[]
+  /** Scrollable list bounds (for drag-scroll hit testing). */
+  list: ScreenRect
+  /** Max scroll offset in px (0 when content fits). */
+  maxScroll: number
 }
 
 /** Interactive regions on the daily login screen. */

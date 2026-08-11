@@ -1063,6 +1063,7 @@ export class Renderer {
     items: readonly AchievementView[],
     unlockedCount: number,
     totalCount: number,
+    scrollY = 0,
   ): AchievementsHitAreas {
     const ctx = this.ctx
     const { width, height } = camera
@@ -1129,47 +1130,67 @@ export class Renderer {
       h: backH,
     }
 
-    let y = tabY + tabH + 14
-    const rowGap = 8
-    const rowW = width - sidePad * 2
-    const rowH = 62
+    const listTop = tabY + tabH + 14
     const listBottom = back.y - 12
+    const listH = Math.max(0, listBottom - listTop)
+    const list: ScreenRect = {
+      x: sidePad,
+      y: listTop,
+      w: width - sidePad * 2,
+      h: listH,
+    }
 
+    const rowGap = 8
+    const rowW = list.w
+    const rowH = 62
+    const contentH = items.length * rowH + Math.max(0, items.length - 1) * rowGap
+    const maxScroll = Math.max(0, contentH - listH)
+    const scroll = Math.max(0, Math.min(maxScroll, scrollY))
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(list.x, list.y, list.w, list.h)
+    ctx.clip()
+
+    let y = listTop - scroll
     for (const item of items) {
-      if (y + rowH > listBottom) break
       const row: ScreenRect = {
         x: sidePad,
         y,
         w: rowW,
         h: rowH,
       }
-      ctx.fillStyle = item.unlocked
-        ? "rgba(34, 197, 94, 0.16)"
-        : "rgba(255, 255, 255, 0.82)"
-      ctx.beginPath()
-      roundRect(ctx, row.x, row.y, row.w, row.h, 12)
-      ctx.fill()
+      // Skip draw when fully outside the clip (still advance y).
+      if (row.y + rowH >= listTop && row.y <= listBottom) {
+        ctx.fillStyle = item.unlocked
+          ? "rgba(34, 197, 94, 0.16)"
+          : "rgba(255, 255, 255, 0.82)"
+        ctx.beginPath()
+        roundRect(ctx, row.x, row.y, row.w, row.h, 12)
+        ctx.fill()
 
-      const textX = row.x + 12
-      ctx.textAlign = "left"
-      ctx.fillStyle = item.unlocked ? theme.ink : theme.inkDim
-      ctx.font = "800 15px 'Bricolage Grotesque', sans-serif"
-      ctx.fillText(item.def.name, textX, row.y + 18)
+        const textX = row.x + 12
+        ctx.textAlign = "left"
+        ctx.fillStyle = item.unlocked ? theme.ink : theme.inkDim
+        ctx.font = "800 15px 'Bricolage Grotesque', sans-serif"
+        ctx.fillText(item.def.name, textX, row.y + 18)
 
-      ctx.fillStyle = item.unlocked ? "#16a34a" : theme.inkDim
-      ctx.font = "600 11px 'DM Sans', sans-serif"
-      const detail = item.unlocked ? "Unlocked!" : item.def.howTo
-      wrapMenuText(ctx, detail, textX, row.y + 36, row.w - 24, 14, 2)
+        ctx.fillStyle = item.unlocked ? "#16a34a" : theme.inkDim
+        ctx.font = "600 11px 'DM Sans', sans-serif"
+        const detail = item.unlocked ? "Unlocked!" : item.def.howTo
+        wrapMenuText(ctx, detail, textX, row.y + 36, row.w - 24, 14, 2)
 
-      if (item.unlocked) {
-        ctx.fillStyle = "#16a34a"
-        ctx.font = "800 16px 'Bricolage Grotesque', sans-serif"
-        ctx.textAlign = "right"
-        ctx.fillText("✓", row.x + row.w - 12, row.y + 20)
+        if (item.unlocked) {
+          ctx.fillStyle = "#16a34a"
+          ctx.font = "800 16px 'Bricolage Grotesque', sans-serif"
+          ctx.textAlign = "right"
+          ctx.fillText("✓", row.x + row.w - 12, row.y + 20)
+        }
       }
 
       y += rowH + rowGap
     }
+    ctx.restore()
 
     ctx.fillStyle = COLORS.accent
     ctx.beginPath()
@@ -1182,7 +1203,7 @@ export class Renderer {
     ctx.fillText("Back", cx, back.y + backH / 2 + 1)
 
     ctx.textBaseline = "alphabetic"
-    return { back, categories }
+    return { back, categories, list, maxScroll }
   }
 
   /**

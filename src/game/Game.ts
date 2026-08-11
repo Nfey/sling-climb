@@ -118,6 +118,10 @@ export class Game implements BotGameApi {
   private menuScreen: MenuScreen = "title"
   /** Selected category tab on the achievements screen. */
   private achievementsCategory: AchievementCategory = "speed"
+  /** Vertical scroll offset (px) for the achievements list. */
+  private achievementsScroll = 0
+  private achievementsDragId: number | null = null
+  private achievementsDragLastY = 0
   /** Hit regions from the previous title-menu draw pass (screen space). */
   private menuHitAreas: MainMenuHitAreas | null = null
   /** Hit regions from the previous shop draw pass (screen space). */
@@ -646,14 +650,76 @@ export class Game implements BotGameApi {
       this.controller.update(dt, this)
     }
 
-    // Attract-mode menu: title / shop / daily / gacha overlays.
+    // Attract-mode menu: title / shop / daily / gacha / achievements overlays.
     if (this.menuDemo) {
-      const menuPresses = this.input.consumePresses()
-      this.input.consumeReleases()
-      if (menuPresses.length > 0) {
-        const p = menuPresses[0]!
+      // Achievements list drag-scroll runs every frame (not only on press).
+      if (this.menuScreen === "achievements") {
+        const areas = this.achievementsHitAreas
+        const releases = this.input.consumeReleases()
+        if (
+          this.achievementsDragId != null &&
+          releases.includes(this.achievementsDragId)
+        ) {
+          this.achievementsDragId = null
+        }
+        if (areas) {
+          if (this.achievementsDragId != null) {
+            const ptr = this.input.getPointer(this.achievementsDragId)
+            if (!ptr) {
+              this.achievementsDragId = null
+            } else {
+              const dy = ptr.y - this.achievementsDragLastY
+              if (areas.maxScroll > 0) {
+                this.achievementsScroll = Math.max(
+                  0,
+                  Math.min(areas.maxScroll, this.achievementsScroll - dy),
+                )
+              }
+              this.achievementsDragLastY = ptr.y
+            }
+          }
+        }
 
-        if (this.menuScreen === "shop") {
+        const menuPresses = this.input.consumePresses()
+        if (menuPresses.length > 0) {
+          const p = menuPresses[0]!
+          const hitAreas = this.achievementsHitAreas
+          if (hitAreas) {
+            if (hitRect(p.x, p.y, hitAreas.back)) {
+              this.menuScreen = "title"
+              this.achievementsHitAreas = null
+              this.achievementsScroll = 0
+              this.achievementsDragId = null
+              return
+            }
+            for (let i = 0; i < hitAreas.categories.length; i++) {
+              const rect = hitAreas.categories[i]
+              const cat = ACHIEVEMENT_CATEGORIES[i]
+              if (!rect || !cat) continue
+              if (hitRect(p.x, p.y, rect)) {
+                this.achievementsCategory = cat
+                this.achievementsScroll = 0
+                this.achievementsDragId = null
+                return
+              }
+            }
+            if (hitRect(p.x, p.y, hitAreas.list)) {
+              this.achievementsDragId = p.id
+              this.achievementsDragLastY = p.y
+              return
+            }
+          }
+          // Stay on achievements for taps outside controls.
+          return
+        }
+        // No press — fall through so attract-mode physics keep running.
+      } else {
+        const menuPresses = this.input.consumePresses()
+        this.input.consumeReleases()
+        if (menuPresses.length > 0) {
+          const p = menuPresses[0]!
+
+          if (this.menuScreen === "shop") {
           const areas = this.shopHitAreas
           if (areas) {
             if (hitRect(p.x, p.y, areas.back)) {
@@ -799,27 +865,6 @@ export class Game implements BotGameApi {
           return
         }
 
-        if (this.menuScreen === "achievements") {
-          const areas = this.achievementsHitAreas
-          if (areas) {
-            if (hitRect(p.x, p.y, areas.back)) {
-              this.menuScreen = "title"
-              this.achievementsHitAreas = null
-              return
-            }
-            for (let i = 0; i < areas.categories.length; i++) {
-              const rect = areas.categories[i]
-              const cat = ACHIEVEMENT_CATEGORIES[i]
-              if (!rect || !cat) continue
-              if (hitRect(p.x, p.y, rect)) {
-                this.achievementsCategory = cat
-                return
-              }
-            }
-          }
-          return
-        }
-
         const areas = this.menuHitAreas
         if (areas) {
           if (hitRect(p.x, p.y, areas.shop)) {
@@ -840,6 +885,8 @@ export class Game implements BotGameApi {
           if (hitRect(p.x, p.y, areas.achievements)) {
             this.menuScreen = "achievements"
             this.menuHitAreas = null
+            this.achievementsScroll = 0
+            this.achievementsDragId = null
             return
           }
           if (hitRect(p.x, p.y, areas.play)) {
@@ -850,6 +897,7 @@ export class Game implements BotGameApi {
 
         this.beginFromMenu()
       }
+      } // end non-achievements menu screens
     }
 
     const ignoreHuman = this.botActive
@@ -1576,6 +1624,7 @@ export class Game implements BotGameApi {
           this.achievements.list(this.achievementsCategory),
           this.achievements.unlockedCount,
           this.achievements.totalCount,
+          this.achievementsScroll,
         )
       } else {
         this.shopHitAreas = null
