@@ -41,16 +41,17 @@ import type {
   SlingshotStyle,
   TrailStyle,
 } from "./cosmetics"
-import { RARITY_COLOR, RARITY_LABEL } from "./rarity"
-import { RARITY_GLOW } from "./rarity"
+import { RARITY_COLOR, RARITY_LABEL, RARITY_GLOW } from "./rarity"
 import { drawHatStyle } from "./hats"
 import { drawTrailStyle, previewTrailPoints } from "./trails"
 import { DAILY_REWARDS, type DailyClaimResult, type PendingBoosts } from "./dailyLogin"
 import { GACHA_PULL_COST, type GachaPool, type GachaPullResult } from "./gacha"
 import {
-  REVEAL_CHARGE_SEC,
-  REVEAL_OPEN_SEC,
+  STRIP_SLOT_GAP,
+  STRIP_SLOT_HEIGHT,
+  STRIP_SLOT_WIDTH,
   type GachaRevealState,
+  type StripSlot,
 } from "./gachaReveal"
 import {
   drawBallStyle,
@@ -1247,10 +1248,7 @@ export class Renderer {
     const { width, height } = camera
     const cx = width / 2
     const theme = getBackgroundTheme(backgroundStyle)
-    const revealing =
-      reveal.phase === "charging" ||
-      reveal.phase === "sealed" ||
-      reveal.phase === "opening"
+    const revealing = reveal.phase === "spinning" || reveal.phase === "landed"
 
     ctx.fillStyle = theme.menuOverlay
     ctx.fillRect(0, 0, width, height)
@@ -1292,17 +1290,7 @@ export class Renderer {
       ctx.font = "700 16px 'DM Sans', sans-serif"
       ctx.fillText(equippedName, cx, previewY + 58)
 
-      if (lastPull && lastPull.pool === pool && reveal.phase === "shown") {
-        const col = RARITY_COLOR[lastPull.rarity]
-        ctx.fillStyle = col
-        ctx.font = "800 14px 'Bricolage Grotesque', sans-serif"
-        const tag = lastPull.isNew ? "NEW" : `Dupe +${lastPull.duplicateRefund}¢`
-        ctx.fillText(
-          `${RARITY_LABEL[lastPull.rarity]} · ${lastPull.item.name} · ${tag}`,
-          cx,
-          previewY + 80,
-        )
-      } else if (lastPull && lastPull.pool === pool && reveal.phase === "idle") {
+      if (lastPull && lastPull.pool === pool) {
         const col = RARITY_COLOR[lastPull.rarity]
         ctx.fillStyle = col
         ctx.font = "800 14px 'Bricolage Grotesque', sans-serif"
@@ -1885,174 +1873,153 @@ function drawGachaRevealOverlay(
   time: number,
 ): void {
   const result = reveal.result
-  if (!result) return
+  if (!result || reveal.strip.length === 0) return
+
+  const cx = width / 2
+  const stripTop = height * 0.34
+  const slotW = STRIP_SLOT_WIDTH
+  const slotH = STRIP_SLOT_HEIGHT
+  const gap = STRIP_SLOT_GAP
+  const cell = slotW + gap
   const rarity = result.rarity
   const color = RARITY_COLOR[rarity]
   const glow = RARITY_GLOW[rarity]
-  const cx = width / 2
-  const cy = height * 0.42
+  const landed = reveal.phase === "landed"
 
-  ctx.fillStyle = "rgba(15, 23, 42, 0.55)"
+  ctx.fillStyle = "rgba(15, 23, 42, 0.62)"
   ctx.fillRect(0, 0, width, height)
 
   ctx.textAlign = "center"
   ctx.textBaseline = "middle"
+  ctx.fillStyle = "#fff"
+  ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+  ctx.fillText(landed ? "Unlocked!" : "Opening…", cx, stripTop - 36)
 
-  if (reveal.phase === "charging") {
-    const t = Math.min(1, reveal.elapsed / REVEAL_CHARGE_SEC)
-    const shake = (1 - t) * 5 * Math.sin(reveal.elapsed * 40)
-    const scale = 0.75 + t * 0.35
-    drawSealedOrb(ctx, cx + shake, cy, 54 * scale, time)
-    ctx.fillStyle = "rgba(255,255,255,0.9)"
-    ctx.font = "600 14px 'DM Sans', sans-serif"
-    ctx.fillText("Summoning…", cx, cy + 90)
-    return
+  // Dim panel behind the strip (CS case tray).
+  const trayH = slotH + 28
+  const trayY = stripTop - 14
+  ctx.fillStyle = "rgba(15, 23, 42, 0.92)"
+  ctx.fillRect(0, trayY, width, trayH)
+  ctx.strokeStyle = "rgba(255,255,255,0.08)"
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(0, trayY)
+  ctx.lineTo(width, trayY)
+  ctx.moveTo(0, trayY + trayH)
+  ctx.lineTo(width, trayY + trayH)
+  ctx.stroke()
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(0, trayY, width, trayH)
+  ctx.clip()
+
+  for (let i = 0; i < reveal.strip.length; i++) {
+    const slot = reveal.strip[i]!
+    const x = i * cell - reveal.scroll
+    if (x + slotW < -20 || x > width + 20) continue
+    const isWon = landed && i === reveal.wonIndex
+    drawStripSlot(ctx, x, stripTop, slotW, slotH, slot, ballStyle, time, isWon)
   }
+  ctx.restore()
 
-  if (reveal.phase === "sealed") {
-    const pulse = 1 + Math.sin(time * 5) * 0.04
-    drawSealedOrb(ctx, cx, cy, 58 * pulse, time)
-    ctx.fillStyle = "#fff"
-    ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText("Tap to reveal", cx, cy + 100)
-    ctx.fillStyle = "rgba(255,255,255,0.7)"
-    ctx.font = "500 13px 'DM Sans', sans-serif"
-    ctx.fillText("What will it be?", cx, cy + 124)
-    return
-  }
+  // Center marker (CS-style pointer).
+  ctx.fillStyle = "#f8fafc"
+  ctx.beginPath()
+  ctx.moveTo(cx, trayY - 2)
+  ctx.lineTo(cx - 8, trayY - 14)
+  ctx.lineTo(cx + 8, trayY - 14)
+  ctx.closePath()
+  ctx.fill()
+  ctx.beginPath()
+  ctx.moveTo(cx, trayY + trayH + 2)
+  ctx.lineTo(cx - 8, trayY + trayH + 14)
+  ctx.lineTo(cx + 8, trayY + trayH + 14)
+  ctx.closePath()
+  ctx.fill()
+  ctx.strokeStyle = "rgba(248, 250, 252, 0.95)"
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(cx, trayY)
+  ctx.lineTo(cx, trayY + trayH)
+  ctx.stroke()
 
-  if (reveal.phase === "opening") {
-    const t = Math.min(1, reveal.elapsed / REVEAL_OPEN_SEC)
-    // Rarity flashes in with the burst — not before.
-    const rarityReveal = Math.min(1, t / 0.28)
+  if (landed) {
+    // Rarity glow blooms only after landing.
+    const pulse = 0.75 + Math.sin(time * 6) * 0.15
     ctx.save()
-    ctx.globalAlpha = rarityReveal
-    ctx.fillStyle = color
-    ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText(RARITY_LABEL[rarity].toUpperCase(), cx, cy - 110)
-    // Expanding rarity glow behind the orb / item.
-    const glowR = 40 + t * 110
-    const glowAlpha = (1 - t * 0.65) * rarityReveal
-    const glowGrd = ctx.createRadialGradient(cx, cy, 8, cx, cy, glowR)
-    glowGrd.addColorStop(0, color)
-    glowGrd.addColorStop(0.35, glow)
-    glowGrd.addColorStop(1, "rgba(0,0,0,0)")
-    ctx.globalAlpha = glowAlpha
-    ctx.fillStyle = glowGrd
+    ctx.globalAlpha = pulse
+    const g = ctx.createRadialGradient(cx, stripTop + slotH / 2, 10, cx, stripTop + slotH / 2, 120)
+    g.addColorStop(0, color)
+    g.addColorStop(0.4, glow)
+    g.addColorStop(1, "rgba(0,0,0,0)")
+    ctx.fillStyle = g
     ctx.beginPath()
-    ctx.arc(cx, cy, glowR, 0, Math.PI * 2)
+    ctx.arc(cx, stripTop + slotH / 2, 120, 0, Math.PI * 2)
     ctx.fill()
     ctx.restore()
 
-    ctx.save()
-    ctx.globalAlpha = (1 - t * 0.35) * rarityReveal
-    for (let i = 0; i < 14; i++) {
-      const a = (i / 14) * Math.PI * 2 + time
-      const dist = 24 + t * 85
-      ctx.fillStyle = color
-      ctx.beginPath()
-      ctx.arc(
-        cx + Math.cos(a) * dist,
-        cy + Math.sin(a) * dist,
-        3 + (1 - t) * 5,
-        0,
-        Math.PI * 2,
-      )
-      ctx.fill()
-    }
-    ctx.restore()
-
-    const showItem = t > 0.35
-    if (showItem) {
-      const fade = Math.min(1, (t - 0.35) / 0.4)
-      ctx.globalAlpha = fade
-      drawRevealedItem(ctx, cx, cy, result, ballStyle, time)
-      ctx.globalAlpha = 1
-    } else {
-      // Brief neutral orb that cracks as rarity glow takes over.
-      ctx.globalAlpha = 1 - t / 0.35
-      drawSealedOrb(ctx, cx, cy, 58 * (1 - t * 0.35), time)
-      ctx.globalAlpha = 1
-    }
-    return
+    ctx.fillStyle = color
+    ctx.font = "800 16px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText(RARITY_LABEL[rarity].toUpperCase(), cx, trayY + trayH + 36)
+    const tag = result.isNew ? "NEW" : `Dupe +${result.duplicateRefund}¢`
+    ctx.fillStyle = "#fff"
+    ctx.font = "700 18px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText(`${result.item.name} · ${tag}`, cx, trayY + trayH + 60)
+    ctx.fillStyle = "rgba(255,255,255,0.7)"
+    ctx.font = "500 13px 'DM Sans', sans-serif"
+    ctx.fillText("Tap to continue", cx, trayY + trayH + 86)
   }
 }
 
-/** Neutral sealed capsule — rarity is hidden until the burst. */
-function drawSealedOrb(
+function drawStripSlot(
   ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  radius: number,
-  time: number,
-): void {
-  ctx.save()
-  const grd = ctx.createRadialGradient(
-    cx - radius * 0.3,
-    cy - radius * 0.35,
-    4,
-    cx,
-    cy,
-    radius,
-  )
-  grd.addColorStop(0, "#f8fafc")
-  grd.addColorStop(0.4, "#94a3b8")
-  grd.addColorStop(1, "#1e293b")
-  // Soft neutral halo (same every pull).
-  ctx.fillStyle = "rgba(148, 163, 184, 0.28)"
-  ctx.beginPath()
-  ctx.arc(cx, cy, radius * 1.35, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.fillStyle = grd
-  ctx.beginPath()
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.strokeStyle = "#cbd5e1"
-  ctx.lineWidth = 3
-  ctx.stroke()
-
-  ctx.strokeStyle = "rgba(255,255,255,0.85)"
-  ctx.lineWidth = 2
-  ctx.beginPath()
-  ctx.arc(cx, cy, radius * 0.45, 0, Math.PI * 2)
-  ctx.stroke()
-  const spin = time * 2.2
-  for (let i = 0; i < 4; i++) {
-    const a = spin + (i * Math.PI) / 2
-    ctx.beginPath()
-    ctx.moveTo(cx, cy)
-    ctx.lineTo(cx + Math.cos(a) * radius * 0.42, cy + Math.sin(a) * radius * 0.42)
-    ctx.stroke()
-  }
-  ctx.restore()
-}
-
-function drawRevealedItem(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  result: GachaPullResult,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  slot: StripSlot,
   ballStyle: BallStyle,
   time: number,
+  highlight: boolean,
 ): void {
+  const rarityColor = RARITY_COLOR[slot.rarity]
+  ctx.fillStyle = highlight ? "rgba(255,255,255,0.98)" : "rgba(30, 41, 59, 0.95)"
+  ctx.beginPath()
+  roundRect(ctx, x, y, w, h, 8)
+  ctx.fill()
+  if (highlight) {
+    ctx.strokeStyle = rarityColor
+    ctx.lineWidth = 2.5
+    ctx.stroke()
+  } else {
+    ctx.strokeStyle = "rgba(255,255,255,0.08)"
+    ctx.lineWidth = 1
+    ctx.stroke()
+  }
+
+  // Icon
   ctx.save()
-  ctx.translate(cx, cy)
-  if (result.pool === "hat" && result.hat) {
-    drawBallStyle(ctx, ballStyle, 40, time)
-    drawHatStyle(ctx, result.hat.style, 40, time)
-  } else if (result.pool === "trail" && result.trail) {
-    const local = previewTrailPoints(0, 10, 60)
-    drawTrailStyle(ctx, result.trail.style, local, time)
-    drawBallStyle(ctx, ballStyle, 32, time)
+  ctx.beginPath()
+  roundRect(ctx, x + 4, y + 4, w - 8, h - 18, 6)
+  ctx.clip()
+  ctx.translate(x + w / 2, y + h / 2 - 6)
+  if (slot.pool === "hat" && slot.hatStyle) {
+    drawBallStyle(ctx, ballStyle, 22, time)
+    drawHatStyle(ctx, slot.hatStyle, 22, time)
+  } else if (slot.pool === "trail" && slot.trailStyle) {
+    const local = previewTrailPoints(0, 4, 28)
+    drawTrailStyle(ctx, slot.trailStyle, local, time)
+    drawBallStyle(ctx, ballStyle, 16, time)
   }
   ctx.restore()
 
-  ctx.fillStyle = RARITY_COLOR[result.rarity]
-  ctx.font = "800 16px 'Bricolage Grotesque', sans-serif"
-  ctx.textAlign = "center"
-  ctx.textBaseline = "middle"
-  const tag = result.isNew ? "NEW" : `Dupe +${result.duplicateRefund}¢`
-  ctx.fillText(`${result.item.name} · ${tag}`, cx, cy + 78)
+  // Rarity underline at the bottom of the slot (CS-style).
+  const barH = 6
+  ctx.fillStyle = rarityColor
+  ctx.beginPath()
+  roundRect(ctx, x + 3, y + h - barH - 3, w - 6, barH, 3)
+  ctx.fill()
 }
 
 /** Coin-price buy chip under a locked picker icon. */

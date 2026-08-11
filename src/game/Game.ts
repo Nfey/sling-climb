@@ -730,7 +730,7 @@ export class Game implements BotGameApi {
 
           if (revealBlocksInput(this.gachaReveal)) {
             if (
-              this.gachaReveal.phase === "sealed" &&
+              this.gachaReveal.phase === "landed" &&
               areas?.reveal &&
               hitRect(p.x, p.y, areas.reveal)
             ) {
@@ -777,7 +777,11 @@ export class Game implements BotGameApi {
               if (result) {
                 if (pool === "hat") this.lastHatPull = result
                 else this.lastTrailPull = result
-                this.gachaReveal = beginReveal(pool, result)
+                this.gachaReveal = beginReveal(
+                  pool,
+                  result,
+                  this.camera.width / 2,
+                )
               }
               return
             }
