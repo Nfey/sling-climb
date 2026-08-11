@@ -17,6 +17,14 @@ import {
   isBackgroundVariantUnlocked,
 } from "./backgrounds"
 import type { BackgroundStyle } from "./backgrounds"
+import {
+  EQUIPPED_HAT_KEY,
+  HAT_UNLOCKS_KEY,
+  HAT_VARIANTS,
+  findHatVariant,
+  type HatStyle,
+  type HatVariant,
+} from "./hats"
 
 export {
   BACKGROUND_VARIANTS,
@@ -27,6 +35,16 @@ export {
   isBackgroundVariantUnlocked,
 } from "./backgrounds"
 export type { BackgroundStyle, BackgroundVariant } from "./backgrounds"
+export {
+  EQUIPPED_HAT_KEY,
+  HAT_UNLOCKS_KEY,
+  HAT_VARIANTS,
+  RARITY_COLOR,
+  RARITY_LABEL,
+  drawHatStyle,
+  findHatVariant,
+} from "./hats"
+export type { HatRarity, HatStyle, HatVariant } from "./hats"
 
 export type BallStyle =
   | "classic"
@@ -165,9 +183,12 @@ export function isBallVariantUnlocked(
 export class CosmeticsStore {
   private slingshotUnlocked = new Set<string>()
   private backgroundUnlocked = new Set<string>()
+  private hatUnlocked = new Set<string>()
   equippedSlingshotId = DEFAULT_COSMETIC_ID
   equippedBallId = DEFAULT_COSMETIC_ID
   equippedBackgroundId = DEFAULT_COSMETIC_ID
+  /** `default` means no hat. */
+  equippedHatId = DEFAULT_COSMETIC_ID
   private persist: boolean
 
   constructor(persist = true) {
@@ -177,6 +198,29 @@ export class CosmeticsStore {
 
   isSlingshotOwned(id: string): boolean {
     return this.slingshotUnlocked.has(id)
+  }
+
+  isHatOwned(id: string): boolean {
+    return this.hatUnlocked.has(id)
+  }
+
+  get ownedHatIds(): ReadonlySet<string> {
+    return this.hatUnlocked
+  }
+
+  get ownedHatCount(): number {
+    return this.hatUnlocked.size
+  }
+
+  grantHat(id: string): boolean {
+    if (!findHatVariant(id) || this.hatUnlocked.has(id)) return false
+    this.hatUnlocked.add(id)
+    this.equippedHatId = id
+    if (this.persist) {
+      this.saveHatUnlocks()
+      this.saveEquipped()
+    }
+    return true
   }
 
   isBallUnlocked(id: string, bestHeight: number, highScore: number): boolean {
@@ -216,6 +260,28 @@ export class CosmeticsStore {
         : DEFAULT_COSMETIC_ID
     this.equippedBackgroundId = next
     this.saveEquipped()
+  }
+
+  /** Cycle None + owned hats only (for equip UI). */
+  cycleHatMenu(delta: number): void {
+    const allIds = [
+      DEFAULT_COSMETIC_ID,
+      ...HAT_VARIANTS.filter((v) => this.hatUnlocked.has(v.id)).map((v) => v.id),
+    ]
+    const current = allIds.indexOf(this.equippedHatId)
+    const next =
+      current >= 0
+        ? allIds[(current + delta + allIds.length) % allIds.length]!
+        : DEFAULT_COSMETIC_ID
+    this.equippedHatId = next
+    this.saveEquipped()
+  }
+
+  equipHat(id: string): void {
+    if (id === DEFAULT_COSMETIC_ID || this.isHatOwned(id)) {
+      this.equippedHatId = id
+      this.saveEquipped()
+    }
   }
 
   isBackgroundUnlocked(id: string, bestHeight: number, highScore: number): boolean {
@@ -288,6 +354,28 @@ export class CosmeticsStore {
       return "classic"
     }
     return findBackgroundVariant(this.equippedBackgroundId)?.style ?? "classic"
+  }
+
+  /** Active hat for gameplay (owned only). */
+  getEquippedHatStyle(): HatStyle {
+    if (this.equippedHatId === DEFAULT_COSMETIC_ID) return "none"
+    if (!this.isHatOwned(this.equippedHatId)) return "none"
+    return findHatVariant(this.equippedHatId)?.style ?? "none"
+  }
+
+  getSelectedHatStyle(): HatStyle {
+    if (this.equippedHatId === DEFAULT_COSMETIC_ID) return "none"
+    return findHatVariant(this.equippedHatId)?.style ?? "none"
+  }
+
+  getSelectedHatVariant(): HatVariant | null {
+    if (this.equippedHatId === DEFAULT_COSMETIC_ID) return null
+    return findHatVariant(this.equippedHatId) ?? null
+  }
+
+  getSelectedHatName(): string {
+    if (this.equippedHatId === DEFAULT_COSMETIC_ID) return "None"
+    return findHatVariant(this.equippedHatId)?.name ?? "None"
   }
 
   getSelectedBackgroundStyle(): BackgroundStyle {
@@ -388,6 +476,7 @@ export class CosmeticsStore {
     }
     this.equippedBackgroundId =
       this.loadString(EQUIPPED_BACKGROUND_KEY) ?? DEFAULT_COSMETIC_ID
+    this.equippedHatId = this.loadString(EQUIPPED_HAT_KEY) ?? DEFAULT_COSMETIC_ID
 
     try {
       const raw = localStorage.getItem(BACKGROUND_UNLOCKS_KEY)
@@ -403,6 +492,29 @@ export class CosmeticsStore {
       }
     } catch {
       // ignore
+    }
+
+    try {
+      const raw = localStorage.getItem(HAT_UNLOCKS_KEY)
+      if (raw) {
+        const ids = JSON.parse(raw) as string[]
+        if (Array.isArray(ids)) {
+          for (const id of ids) {
+            if (HAT_VARIANTS.some((v) => v.id === id)) {
+              this.hatUnlocked.add(id)
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    if (
+      this.equippedHatId !== DEFAULT_COSMETIC_ID &&
+      !this.hatUnlocked.has(this.equippedHatId)
+    ) {
+      this.equippedHatId = DEFAULT_COSMETIC_ID
     }
   }
 
@@ -428,12 +540,21 @@ export class CosmeticsStore {
     }
   }
 
+  private saveHatUnlocks(): void {
+    try {
+      localStorage.setItem(HAT_UNLOCKS_KEY, JSON.stringify([...this.hatUnlocked]))
+    } catch {
+      // ignore
+    }
+  }
+
   private saveEquipped(): void {
     if (!this.persist) return
     try {
       localStorage.setItem(EQUIPPED_SLINGSHOT_KEY, this.equippedSlingshotId)
       localStorage.setItem(EQUIPPED_BALL_KEY, this.equippedBallId)
       localStorage.setItem(EQUIPPED_BACKGROUND_KEY, this.equippedBackgroundId)
+      localStorage.setItem(EQUIPPED_HAT_KEY, this.equippedHatId)
     } catch {
       // ignore
     }

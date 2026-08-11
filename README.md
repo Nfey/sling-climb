@@ -20,7 +20,7 @@ Add to Home Screen for a fullscreen feel.
 - **Catch:** if the ball hits the slingshot while your finger is down, it is caught. Keep holding and drag a little to aim again — no need to lift between move and aim. Only lift to launch.
 - **Miss:** if the ball falls below the line under the slingshot, game over. Run **score** is climb distance (with combo) plus platform and hazard bonuses; **height** is peak climb in world units. Both are tracked separately in the HUD, with bests saved in `localStorage`. A blue “BEST” height line marks your previous max climb and turns green once you pass it.
 
-The main menu runs a silent **perfect-seek** bot in the background for atmosphere only — its score does not count toward your high score. Tap Play (or anywhere) to start a fresh player run. Tap **Shop** to browse and buy slingshot, background, and ball customizations.
+The main menu runs a silent **perfect-seek** bot in the background for atmosphere only — its score does not count toward your high score. Tap Play (or anywhere) to start a fresh player run. Tap **Shop** to browse and buy slingshot, background, and ball customizations. Tap **Daily** for the 7-day login calendar (coins, soft run boosts, hats) and **Hats** for the coin gacha / equip screen.
 
 The band under the slingshot line is reserved for future powerups/upgrades.
 

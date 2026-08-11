@@ -57,10 +57,14 @@ import {
   CosmeticsStore,
   DEFAULT_COSMETIC_ID,
 } from "./cosmetics"
+import { DailyLoginStore, type DailyClaimResult } from "./dailyLogin"
+import { GachaStore, type GachaPullResult } from "./gacha"
 import type {
   BulletData,
   BotAimTarget,
   CoinData,
+  DailyHitAreas,
+  GachaHitAreas,
   GameSnapshot,
   GameState,
   MainMenuHitAreas,
@@ -82,6 +86,8 @@ export class Game implements BotGameApi {
   private slingshot = new Slingshot()
   private score: Score
   private cosmetics: CosmeticsStore
+  private dailyLogin: DailyLoginStore
+  private gacha: GachaStore
   private platforms = new PlatformManager()
   private audio = new GameAudio()
   private input: Input
@@ -102,6 +108,13 @@ export class Game implements BotGameApi {
   private menuHitAreas: MainMenuHitAreas | null = null
   /** Hit regions from the previous shop draw pass (screen space). */
   private shopHitAreas: ShopHitAreas | null = null
+  private dailyHitAreas: DailyHitAreas | null = null
+  private gachaHitAreas: GachaHitAreas | null = null
+  private lastDailyClaim: DailyClaimResult | null = null
+  private lastGachaPull: GachaPullResult | null = null
+  /** Active coin multiplier from a claimed daily boost (1 = none). */
+  private runCoinMult = 1
+  private runCoinMultRemaining = 0
 
   private state: GameState = "menu"
   private started = false
@@ -139,6 +152,8 @@ export class Game implements BotGameApi {
     this.config = defaultConfig(config)
     this.score = new Score(this.config.persistScores !== false)
     this.cosmetics = new CosmeticsStore(this.config.persistScores !== false)
+    this.dailyLogin = new DailyLoginStore(this.config.persistScores !== false)
+    this.gacha = new GachaStore(this.config.persistScores !== false)
     // Unlock audio inside the real gesture handlers (pointer/key), not rAF.
     this.input = new Input(
       canvas,
@@ -354,6 +369,8 @@ export class Game implements BotGameApi {
     this.scorePopups = []
     this.portalCatchupRemaining = 0
     this.flightStartY = 0
+    this.runCoinMult = 1
+    this.runCoinMultRemaining = 0
   }
 
   private endPlayableSession(): void {
@@ -369,6 +386,8 @@ export class Game implements BotGameApi {
     this.menuDemo = true
     this.menuScreen = "title"
     this.shopHitAreas = null
+    this.dailyHitAreas = null
+    this.gachaHitAreas = null
     this.audio.setMasterVolume(MENU_DEMO_MASTER_VOLUME)
     if (!this.menuDemoBot) {
       this.menuDemoBot = new BotController("perfect-seek")
@@ -383,10 +402,25 @@ export class Game implements BotGameApi {
     this.menuDemo = false
     this.menuScreen = "title"
     this.shopHitAreas = null
+    this.dailyHitAreas = null
+    this.gachaHitAreas = null
     this.controller = null
     this.audio.setMasterVolume(DEFAULT_MASTER_VOLUME)
     this.audio.unlock()
     this.resetRun(false)
+    this.applyPendingDailyBoosts()
+  }
+
+  /** Apply claimed login boosts once when a real player run starts. */
+  private applyPendingDailyBoosts(): void {
+    const boosts = this.dailyLogin.consumeForRun()
+    if (boosts.powSeconds > 0) {
+      this.powRemaining = Math.max(this.powRemaining, boosts.powSeconds)
+    }
+    if (boosts.coinMult > 1 && boosts.coinMultSeconds > 0) {
+      this.runCoinMult = boosts.coinMult
+      this.runCoinMultRemaining = boosts.coinMultSeconds
+    }
   }
 
   private syncAudioCombo(): void {
@@ -541,7 +575,7 @@ export class Game implements BotGameApi {
       this.controller.update(dt, this)
     }
 
-    // Attract-mode menu: title (Play / Shop) or cosmetics shop.
+    // Attract-mode menu: title / shop / daily / gacha overlays.
     if (this.menuDemo) {
       const menuPresses = this.input.consumePresses()
       this.input.consumeReleases()
@@ -616,10 +650,80 @@ export class Game implements BotGameApi {
           return
         }
 
+        if (this.menuScreen === "daily") {
+          const areas = this.dailyHitAreas
+          if (areas) {
+            if (hitRect(p.x, p.y, areas.back)) {
+              this.menuScreen = "title"
+              this.dailyHitAreas = null
+              return
+            }
+            if (areas.claim && hitRect(p.x, p.y, areas.claim)) {
+              const result = this.dailyLogin.claim({
+                ownedHatIds: this.cosmetics.ownedHatIds,
+                grantHat: (id) => {
+                  this.cosmetics.grantHat(id)
+                },
+                addCoins: (n) => {
+                  this.score.addCoins(n)
+                },
+              })
+              if (result) this.lastDailyClaim = result
+              return
+            }
+          }
+          return
+        }
+
+        if (this.menuScreen === "gacha") {
+          const areas = this.gachaHitAreas
+          if (areas) {
+            if (hitRect(p.x, p.y, areas.back)) {
+              this.menuScreen = "title"
+              this.gachaHitAreas = null
+              return
+            }
+            if (hitRect(p.x, p.y, areas.hatPrev)) {
+              this.cosmetics.cycleHatMenu(-1)
+              return
+            }
+            if (hitRect(p.x, p.y, areas.hatNext)) {
+              this.cosmetics.cycleHatMenu(1)
+              return
+            }
+            if (hitRect(p.x, p.y, areas.pull)) {
+              const result = this.gacha.pull({
+                lifetimeCoins: this.score.lifetimeCoins,
+                ownedHatIds: this.cosmetics.ownedHatIds,
+                spendCoins: (amount) => this.score.spendCoins(amount),
+                grantHat: (id) => {
+                  this.cosmetics.grantHat(id)
+                },
+                addCoins: (n) => {
+                  this.score.addCoins(n)
+                },
+              })
+              if (result) this.lastGachaPull = result
+              return
+            }
+          }
+          return
+        }
+
         const areas = this.menuHitAreas
         if (areas) {
           if (hitRect(p.x, p.y, areas.shop)) {
             this.menuScreen = "shop"
+            this.menuHitAreas = null
+            return
+          }
+          if (hitRect(p.x, p.y, areas.daily)) {
+            this.menuScreen = "daily"
+            this.menuHitAreas = null
+            return
+          }
+          if (hitRect(p.x, p.y, areas.gacha)) {
+            this.menuScreen = "gacha"
             this.menuHitAreas = null
             return
           }
@@ -678,6 +782,10 @@ export class Game implements BotGameApi {
 
     if (this.powRemaining > 0) {
       this.powRemaining = Math.max(0, this.powRemaining - dt)
+    }
+    if (this.runCoinMultRemaining > 0) {
+      this.runCoinMultRemaining = Math.max(0, this.runCoinMultRemaining - dt)
+      if (this.runCoinMultRemaining <= 0) this.runCoinMult = 1
     }
 
     if (this.catchBurst > 0) {
@@ -790,7 +898,11 @@ export class Game implements BotGameApi {
       if (hit.wallHit) this.audio.playWallBounce()
       if (hit.turretHit) this.audio.playBumper()
       if (hit.coinsCollected > 0) {
-        const added = this.score.addCoins(hit.coinsCollected)
+        const count =
+          this.runCoinMult > 1
+            ? hit.coinsCollected * this.runCoinMult
+            : hit.coinsCollected
+        const added = this.score.addCoins(count)
         const at = hit.coinAt ?? { x: this.ball.x, y: this.ball.y }
         this.spawnScorePopup(at.x, at.y + 12, added, COLORS.coin)
         this.audio.playCoin()
@@ -1248,7 +1360,8 @@ export class Game implements BotGameApi {
     for (const b of this.bonusBalls) {
       this.renderer.drawBall(cam, b)
     }
-    this.renderer.drawBall(cam, this.ball, ballStyle)
+    const hatStyle = this.cosmetics.getEquippedHatStyle()
+    this.renderer.drawBall(cam, this.ball, ballStyle, hatStyle)
 
     if (this.menuDemo || this.state === "menu") {
       if (this.menuScreen === "shop") {
@@ -1262,6 +1375,8 @@ export class Game implements BotGameApi {
           highScore,
         )
         this.menuHitAreas = null
+        this.dailyHitAreas = null
+        this.gachaHitAreas = null
         this.shopHitAreas = this.renderer.drawShop(
           cam,
           this.score.lifetimeCoins,
@@ -1278,8 +1393,40 @@ export class Game implements BotGameApi {
             : null,
           ballLocked ? this.cosmetics.getSelectedBallUnlockHint() : null,
         )
+      } else if (this.menuScreen === "daily") {
+        this.menuHitAreas = null
+        this.shopHitAreas = null
+        this.gachaHitAreas = null
+        this.dailyHitAreas = this.renderer.drawDaily(
+          cam,
+          this.score.lifetimeCoins,
+          this.cosmetics.getSelectedBackgroundStyle(),
+          this.dailyLogin.streak,
+          this.dailyLogin.nextDay,
+          this.dailyLogin.claimedToday,
+          this.dailyLogin.claimedDaysInCycle(),
+          this.dailyLogin.pending,
+          this.lastDailyClaim,
+        )
+      } else if (this.menuScreen === "gacha") {
+        this.menuHitAreas = null
+        this.shopHitAreas = null
+        this.dailyHitAreas = null
+        this.gachaHitAreas = this.renderer.drawGacha(
+          cam,
+          this.score.lifetimeCoins,
+          this.cosmetics.getSelectedBackgroundStyle(),
+          this.cosmetics.getSelectedBallStyle(),
+          this.cosmetics.getSelectedHatStyle(),
+          this.cosmetics.getSelectedHatName(),
+          this.cosmetics.ownedHatCount,
+          this.gacha.pullsUntilPity(),
+          this.lastGachaPull,
+        )
       } else {
         this.shopHitAreas = null
+        this.dailyHitAreas = null
+        this.gachaHitAreas = null
         this.menuHitAreas = this.renderer.drawMainMenu(
           cam,
           highScore,
@@ -1287,6 +1434,7 @@ export class Game implements BotGameApi {
           this.score.lifetimeCoins,
           this.anim,
           this.cosmetics.getSelectedBackgroundStyle(),
+          this.dailyLogin.canClaim,
         )
       }
       return
@@ -1349,6 +1497,9 @@ export class Game implements BotGameApi {
     if (this.catchBurst > 0) return "Caught!"
     if (this.powActive && (this.state === "aiming" || this.state === "ready")) {
       return `POW · 2x launch · ${Math.ceil(this.powRemaining)}s`
+    }
+    if (this.runCoinMult > 1 && this.runCoinMultRemaining > 0) {
+      return `${this.runCoinMult}× coins · ${Math.ceil(this.runCoinMultRemaining)}s`
     }
     if (this.freeMoveActive && this.state === "flying") {
       const secs = Math.ceil(this.freeMoveRemaining)
