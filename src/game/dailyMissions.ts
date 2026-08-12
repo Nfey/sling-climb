@@ -245,12 +245,12 @@ export const MISSION_POOL: readonly MissionDef[] = [
     label: "Travel through 5 portals in one fling",
   },
   {
-    id: "hard-coins-5",
+    id: "hard-coins-4",
     kind: "coinsRun",
     difficulty: "hard",
-    target: 5,
+    target: 4,
     reward: 15,
-    label: "Collect 5 coins in 1 run",
+    label: "Collect 4 coins in 1 run",
   },
   {
     id: "hard-combo-12",
