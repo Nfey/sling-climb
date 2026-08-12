@@ -219,14 +219,6 @@ export const MISSION_POOL: readonly MissionDef[] = [
     reward: 10,
     label: "Bounce 6 platforms in one fling",
   },
-  {
-    id: "med-coins-fling-2",
-    kind: "coinsFling",
-    difficulty: "medium",
-    target: 2,
-    reward: 10,
-    label: "Collect 2 coins in one fling",
-  },
   // Hard
   {
     id: "hard-same-bumper-5",
@@ -283,6 +275,14 @@ export const MISSION_POOL: readonly MissionDef[] = [
     target: 8,
     reward: 15,
     label: "Hit 8 bumpers in one fling",
+  },
+  {
+    id: "hard-coins-fling-2",
+    kind: "coinsFling",
+    difficulty: "hard",
+    target: 2,
+    reward: 15,
+    label: "Collect 2 coins in one fling",
   },
 ]
 
