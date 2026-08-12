@@ -107,12 +107,12 @@ export const MISSION_POOL: readonly MissionDef[] = [
     label: "Travel through 3 portals in one fling",
   },
   {
-    id: "easy-coins-3",
+    id: "easy-coins-2",
     kind: "coinsRun",
     difficulty: "easy",
-    target: 3,
+    target: 2,
     reward: 5,
-    label: "Collect 3 coins in 1 run",
+    label: "Collect 2 coins in 1 run",
   },
   {
     id: "easy-platforms-5",
@@ -172,12 +172,12 @@ export const MISSION_POOL: readonly MissionDef[] = [
     label: "Travel through 4 portals in one fling",
   },
   {
-    id: "med-coins-4",
+    id: "med-coins-3",
     kind: "coinsRun",
     difficulty: "medium",
-    target: 4,
+    target: 3,
     reward: 10,
-    label: "Collect 4 coins in 1 run",
+    label: "Collect 3 coins in 1 run",
   },
   {
     id: "med-arrows-2",
@@ -219,14 +219,6 @@ export const MISSION_POOL: readonly MissionDef[] = [
     reward: 10,
     label: "Bounce 6 platforms in one fling",
   },
-  {
-    id: "med-coins-fling-2",
-    kind: "coinsFling",
-    difficulty: "medium",
-    target: 2,
-    reward: 10,
-    label: "Collect 2 coins in one fling",
-  },
   // Hard
   {
     id: "hard-same-bumper-5",
@@ -245,12 +237,12 @@ export const MISSION_POOL: readonly MissionDef[] = [
     label: "Travel through 5 portals in one fling",
   },
   {
-    id: "hard-coins-5",
+    id: "hard-coins-4",
     kind: "coinsRun",
     difficulty: "hard",
-    target: 5,
+    target: 4,
     reward: 15,
-    label: "Collect 5 coins in 1 run",
+    label: "Collect 4 coins in 1 run",
   },
   {
     id: "hard-combo-12",
@@ -283,6 +275,14 @@ export const MISSION_POOL: readonly MissionDef[] = [
     target: 8,
     reward: 15,
     label: "Hit 8 bumpers in one fling",
+  },
+  {
+    id: "hard-coins-fling-2",
+    kind: "coinsFling",
+    difficulty: "hard",
+    target: 2,
+    reward: 15,
+    label: "Collect 2 coins in one fling",
   },
 ]
 
