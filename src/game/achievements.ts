@@ -82,24 +82,24 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
 
   // Height — climb gained in a single fling (not the whole run)
   {
-    id: "height-fling-400",
+    id: "height-fling-2000",
     category: "height",
     name: "First Steps",
-    howTo: "Climb 400 height in one fling",
+    howTo: "Climb 2,000 height in one fling",
     icon: "height1",
   },
   {
-    id: "height-fling-1000",
+    id: "height-fling-3000",
     category: "height",
     name: "Getting Air",
-    howTo: "Climb 1,000 height in one fling",
+    howTo: "Climb 3,000 height in one fling",
     icon: "height2",
   },
   {
-    id: "height-fling-2500",
+    id: "height-fling-4000",
     category: "height",
     name: "Skybound",
-    howTo: "Climb 2,500 height in one fling",
+    howTo: "Climb 4,000 height in one fling",
     icon: "height3",
   },
   {
@@ -112,24 +112,24 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
 
   // Score — points gained in a single fling (not the whole run)
   {
-    id: "score-fling-300",
+    id: "score-fling-2000",
     category: "score",
     name: "Point Scout",
-    howTo: "Score 300 points in one fling",
+    howTo: "Score 2,000 points in one fling",
     icon: "score1",
   },
   {
-    id: "score-fling-800",
+    id: "score-fling-3000",
     category: "score",
     name: "Score Chaser",
-    howTo: "Score 800 points in one fling",
+    howTo: "Score 3,000 points in one fling",
     icon: "score2",
   },
   {
-    id: "score-fling-2000",
+    id: "score-fling-4000",
     category: "score",
     name: "High Roller",
-    howTo: "Score 2,000 points in one fling",
+    howTo: "Score 4,000 points in one fling",
     icon: "score3",
   },
   {
@@ -140,33 +140,33 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     icon: "score4",
   },
 
-  // Obstacles — hits in a single fling
+  // Obstacles — bumper / portal / arrow hits in a single fling (platforms excluded)
   {
     id: "obstacles-3",
     category: "obstacles",
     name: "Tap Tap",
-    howTo: "Hit 3 obstacles in one fling",
+    howTo: "Hit 3 bumpers, portals, or arrows in one fling",
     icon: "hits1",
   },
   {
-    id: "obstacles-6",
+    id: "obstacles-5",
     category: "obstacles",
     name: "Obstacle Course",
-    howTo: "Hit 6 obstacles in one fling",
+    howTo: "Hit 5 bumpers, portals, or arrows in one fling",
     icon: "hits2",
+  },
+  {
+    id: "obstacles-7",
+    category: "obstacles",
+    name: "Chaos Cascade",
+    howTo: "Hit 7 bumpers, portals, or arrows in one fling",
+    icon: "hits3",
   },
   {
     id: "obstacles-10",
     category: "obstacles",
-    name: "Chaos Cascade",
-    howTo: "Hit 10 obstacles in one fling",
-    icon: "hits3",
-  },
-  {
-    id: "obstacles-15",
-    category: "obstacles",
     name: "Demolition Derby",
-    howTo: "Hit 15 obstacles in one fling",
+    howTo: "Hit 10 bumpers, portals, or arrows in one fling",
     icon: "hits4",
   },
 
@@ -360,7 +360,12 @@ export class AchievementsStore {
     this.resetFling()
   }
 
-  onObstacleHit(kind: "platform" | "bumper" | "portal" | "arrow", arrowDown = false): void {
+  /** Contact that isn't an obstacle achievement (e.g. platforms). */
+  markFlingContact(): void {
+    this.flingHadHit = true
+  }
+
+  onObstacleHit(kind: "bumper" | "portal" | "arrow", arrowDown = false): void {
     if (!this.flingHadHit && kind === "arrow") {
       this.flingFirstHitWasArrow = true
     }
@@ -422,25 +427,25 @@ export class AchievementsStore {
 
   private unlockFlingHeight(climb: number): void {
     const h = Math.floor(climb)
-    if (h >= 400) this.unlock("height-fling-400")
-    if (h >= 1000) this.unlock("height-fling-1000")
-    if (h >= 2500) this.unlock("height-fling-2500")
+    if (h >= 2000) this.unlock("height-fling-2000")
+    if (h >= 3000) this.unlock("height-fling-3000")
+    if (h >= 4000) this.unlock("height-fling-4000")
     if (h >= 5000) this.unlock("height-fling-5000")
   }
 
   private unlockFlingScore(points: number): void {
     const s = Math.floor(points)
-    if (s >= 300) this.unlock("score-fling-300")
-    if (s >= 800) this.unlock("score-fling-800")
     if (s >= 2000) this.unlock("score-fling-2000")
+    if (s >= 3000) this.unlock("score-fling-3000")
+    if (s >= 4000) this.unlock("score-fling-4000")
     if (s >= 5000) this.unlock("score-fling-5000")
   }
 
   private unlockObstacleThresholds(count: number): void {
     if (count >= 3) this.unlock("obstacles-3")
-    if (count >= 6) this.unlock("obstacles-6")
+    if (count >= 5) this.unlock("obstacles-5")
+    if (count >= 7) this.unlock("obstacles-7")
     if (count >= 10) this.unlock("obstacles-10")
-    if (count >= 15) this.unlock("obstacles-15")
   }
 
   private unlock(id: string): void {

@@ -516,7 +516,9 @@ export class Game implements BotGameApi {
     }
     if (hit.platformHit) {
       this.dailyMissions.onPlatform()
-      this.achievements.onObstacleHit("platform")
+      // Platforms are not obstacle-achievement hits, but still count as contact
+      // for fail achievements like Total Whiff.
+      this.achievements.markFlingContact()
     }
     if (hit.arrowHit) {
       this.dailyMissions.onArrow()
