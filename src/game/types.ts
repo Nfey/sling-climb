@@ -48,7 +48,13 @@ export interface ScreenRect {
 }
 
 /** Which overlay is shown while the attract-mode menu is active. */
-export type MenuScreen = "title" | "shop" | "daily" | "hatGacha" | "trailGacha"
+export type MenuScreen =
+  | "title"
+  | "shop"
+  | "daily"
+  | "hatGacha"
+  | "trailGacha"
+  | "achievements"
 
 /** Interactive regions on the title menu. */
 export interface MainMenuHitAreas {
@@ -57,6 +63,28 @@ export interface MainMenuHitAreas {
   daily: ScreenRect
   hats: ScreenRect
   trails: ScreenRect
+  achievements: ScreenRect
+}
+
+/** Interactive regions on the achievements screen. */
+export interface AchievementsHitAreas {
+  back: ScreenRect
+  /** Scrollable grid bounds (for drag-scroll hit testing). */
+  list: ScreenRect
+  /** Max scroll offset in px (0 when content fits). */
+  maxScroll: number
+  /** Icon cells for tap-to-inspect. */
+  cells: { id: string; rect: ScreenRect }[]
+}
+
+/** Floating mid-match achievement unlock toast. */
+export interface AchievementToast {
+  id: string
+  name: string
+  icon: string
+  /** Seconds remaining. */
+  life: number
+  duration: number
 }
 
 /** Interactive regions on the daily login screen. */

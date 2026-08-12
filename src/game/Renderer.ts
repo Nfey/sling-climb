@@ -16,6 +16,7 @@ import { turretMuzzleAngle } from "./turret"
 import type { Ball } from "./Ball"
 import type { Camera } from "./Camera"
 import type {
+  AchievementsHitAreas,
   ArrowPadData,
   BulletData,
   BumperData,
@@ -54,6 +55,11 @@ import {
   type StripSlot,
 } from "./gachaReveal"
 import type { DailyMissionSlot } from "./dailyMissions"
+import {
+  type AchievementView,
+} from "./achievements"
+import { drawAchievementIcon } from "./achievementIcons"
+import type { AchievementIconKind } from "./achievementIcons"
 import {
   drawBallStyle,
   drawSlingshotBands,
@@ -915,7 +921,7 @@ export class Renderer {
   }
 
   /**
-   * Title screen with top-right coins, bests, Play/Shop, and Daily/Hats.
+   * Title screen with top-right coins, bests, Play/Shop, and Daily/Hats/Achievements.
    * Returns interactive regions for hit-testing.
    */
   drawMainMenu(
@@ -931,7 +937,7 @@ export class Renderer {
     const { width } = camera
     const cx = width / 2
     const theme = getBackgroundTheme(backgroundStyle)
-    let y = camera.slingshotScreenY - 188
+    let y = camera.slingshotScreenY - 208
 
     ctx.fillStyle = theme.menuOverlay
     ctx.fillRect(0, 0, width, camera.killScreenY)
@@ -1056,14 +1062,234 @@ export class Renderer {
     drawSecondaryMenuButton(ctx, hats, "Hats", false)
     drawSecondaryMenuButton(ctx, trails, "Trails", false)
 
+    y += 48
+    const achW = Math.min(232, width - 48)
+    const achH = 40
+    const achievements: ScreenRect = {
+      x: cx - achW / 2,
+      y: y - achH / 2,
+      w: achW,
+      h: achH,
+    }
+    drawSecondaryMenuButton(ctx, achievements, "Achievements", false)
+
     y += 42
     ctx.fillStyle = theme.inkDim
     ctx.font = "500 13px 'DM Sans', sans-serif"
     ctx.fillText("or tap anywhere to start", cx, y)
 
     ctx.textBaseline = "alphabetic"
-    return { play, shop, daily, hats, trails }
+    return { play, shop, daily, hats, trails, achievements }
   }
+
+
+  /**
+   * Achievements browser: scrollable icon grid; tap a cell for details.
+   */
+  drawAchievements(
+    camera: Camera,
+    lifetimeCoins: number,
+    backgroundStyle: BackgroundStyle,
+    items: readonly AchievementView[],
+    unlockedCount: number,
+    totalCount: number,
+    scrollY = 0,
+    selectedId: string | null = null,
+  ): AchievementsHitAreas {
+    const ctx = this.ctx
+    const { width, height } = camera
+    const cx = width / 2
+    const theme = getBackgroundTheme(backgroundStyle)
+
+    ctx.fillStyle = theme.menuOverlay
+    ctx.fillRect(0, 0, width, height)
+
+    drawLifetimeCoins(ctx, width, lifetimeCoins)
+
+    const topPad = 28 + safeAreaInsetTop()
+    const sidePad = 12
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    ctx.fillStyle = theme.ink
+    ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
+    ctx.fillText("Achievements", cx, topPad + 6)
+
+    ctx.fillStyle = theme.inkDim
+    ctx.font = "600 12px 'DM Sans', sans-serif"
+    ctx.fillText(`${unlockedCount} / ${totalCount} unlocked`, cx, topPad + 28)
+
+    const backW = 140
+    const backH = 44
+    const back: ScreenRect = {
+      x: cx - backW / 2,
+      y: height - backH - 16,
+      w: backW,
+      h: backH,
+    }
+
+    const selected = selectedId
+      ? items.find((item) => item.def.id === selectedId) ?? null
+      : null
+    const detailH = selected ? 78 : 36
+    const detailBottom = back.y - 10
+    const detailTop = detailBottom - detailH
+    const listTop = topPad + 48
+    const listBottom = detailTop - 10
+    const listH = Math.max(0, listBottom - listTop)
+    const list: ScreenRect = {
+      x: sidePad,
+      y: listTop,
+      w: width - sidePad * 2,
+      h: listH,
+    }
+
+    const cols = 4
+    const gap = 10
+    const cellW = (list.w - gap * (cols - 1)) / cols
+    const cellH = cellW
+    const rows = Math.ceil(items.length / cols)
+    const contentH = rows * cellH + Math.max(0, rows - 1) * gap
+    const maxScroll = Math.max(0, contentH - listH)
+    const scroll = Math.max(0, Math.min(maxScroll, scrollY))
+
+    const cells: { id: string; rect: ScreenRect }[] = []
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(list.x, list.y, list.w, list.h)
+    ctx.clip()
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]!
+      const col = i % cols
+      const row = Math.floor(i / cols)
+      const x = list.x + col * (cellW + gap)
+      const y = listTop - scroll + row * (cellH + gap)
+      const rect: ScreenRect = { x, y, w: cellW, h: cellH }
+      cells.push({ id: item.def.id, rect })
+
+      if (y + cellH < listTop || y > listBottom) continue
+
+      const isSelected = selectedId === item.def.id
+      ctx.fillStyle = item.unlocked
+        ? "rgba(255, 255, 255, 0.9)"
+        : "rgba(255, 255, 255, 0.55)"
+      ctx.beginPath()
+      roundRect(ctx, x, y, cellW, cellH, 14)
+      ctx.fill()
+      if (isSelected) {
+        ctx.strokeStyle = COLORS.accent
+        ctx.lineWidth = 2.5
+        ctx.stroke()
+      } else if (item.unlocked) {
+        ctx.strokeStyle = "rgba(34, 197, 94, 0.45)"
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+      }
+
+      drawAchievementIcon(
+        ctx,
+        item.def.icon,
+        x + cellW / 2,
+        y + cellH / 2,
+        Math.min(cellW, cellH) * 0.72,
+        item.unlocked,
+      )
+    }
+    ctx.restore()
+
+    // Detail card under the grid
+    ctx.fillStyle = selected
+      ? selected.unlocked
+        ? "rgba(34, 197, 94, 0.16)"
+        : "rgba(255, 255, 255, 0.88)"
+      : "rgba(255, 255, 255, 0.55)"
+    ctx.beginPath()
+    roundRect(ctx, sidePad, detailTop, width - sidePad * 2, detailH, 12)
+    ctx.fill()
+
+    ctx.textAlign = "center"
+    if (selected) {
+      ctx.fillStyle = theme.ink
+      ctx.font = "800 16px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText(selected.def.name, cx, detailTop + 22)
+      ctx.fillStyle = selected.unlocked ? "#16a34a" : theme.inkDim
+      ctx.font = "600 12px 'DM Sans', sans-serif"
+      ctx.textAlign = "left"
+      const detail = selected.unlocked
+        ? `Unlocked! · ${selected.def.howTo}`
+        : selected.def.howTo
+      wrapMenuText(ctx, detail, sidePad + 14, detailTop + 44, width - sidePad * 2 - 28, 15, 2)
+    } else {
+      ctx.fillStyle = theme.inkDim
+      ctx.font = "600 12px 'DM Sans', sans-serif"
+      ctx.fillText("Tap an icon for details", cx, detailTop + detailH / 2 + 1)
+    }
+
+    ctx.fillStyle = COLORS.accent
+    ctx.beginPath()
+    roundRect(ctx, back.x, back.y, back.w, back.h, 12)
+    ctx.fill()
+    ctx.fillStyle = "#fff"
+    ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
+    ctx.textAlign = "center"
+    ctx.textBaseline = "middle"
+    ctx.fillText("Back", cx, back.y + backH / 2 + 1)
+
+    ctx.textBaseline = "alphabetic"
+    return { back, list, maxScroll, cells }
+  }
+
+  /**
+   * Mid-match achievement unlock banners stacked near the top of the playfield.
+   */
+  drawAchievementToasts(
+    camera: Camera,
+    toasts: readonly {
+      name: string
+      icon: AchievementIconKind
+      life: number
+      duration: number
+    }[],
+  ): void {
+    if (toasts.length === 0) return
+    const ctx = this.ctx
+    const top = 52 + safeAreaInsetTop()
+    const width = Math.min(320, camera.width - 24)
+    const x = (camera.width - width) / 2
+
+    for (let i = 0; i < toasts.length; i++) {
+      const toast = toasts[i]!
+      const t = Math.max(0, Math.min(1, toast.life / toast.duration))
+      const appear = Math.min(1, (1 - t) * toast.duration * 4)
+      const fade = t < 0.2 ? t / 0.2 : 1
+      const alpha = Math.min(appear, fade)
+      const y = top + i * 66
+      ctx.save()
+      ctx.globalAlpha = alpha
+      ctx.fillStyle = "rgba(17, 17, 17, 0.82)"
+      ctx.beginPath()
+      roundRect(ctx, x, y, width, 56, 14)
+      ctx.fill()
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.12)"
+      ctx.beginPath()
+      roundRect(ctx, x + 8, y + 8, 40, 40, 10)
+      ctx.fill()
+      drawAchievementIcon(ctx, toast.icon, x + 28, y + 28, 34, true)
+
+      ctx.textAlign = "left"
+      ctx.textBaseline = "middle"
+      ctx.fillStyle = "#fbbf24"
+      ctx.font = "700 11px 'DM Sans', sans-serif"
+      ctx.fillText("ACHIEVEMENT", x + 60, y + 18)
+      ctx.fillStyle = "#ffffff"
+      ctx.font = "800 16px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText(toast.name, x + 60, y + 38)
+      ctx.restore()
+    }
+  }
+
 
   /**
    * 7-day login calendar: streak, day cells, claim / pending boost status.
@@ -1937,6 +2163,46 @@ function hitRect(px: number, py: number, rect: ScreenRect): boolean {
 }
 
 export { hitRect }
+
+/** Draw up to `maxLines` of wrapped text; returns the y after the last line. */
+function wrapMenuText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines: number,
+): number {
+  const words = text.split(" ")
+  const lines: string[] = []
+  let line = ""
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word
+    if (ctx.measureText(next).width <= maxWidth) {
+      line = next
+    } else {
+      if (line) lines.push(line)
+      line = word
+      if (lines.length >= maxLines) break
+    }
+  }
+  if (line && lines.length < maxLines) lines.push(line)
+  if (lines.length === maxLines) {
+    const last = lines[maxLines - 1]!
+    if (words.join(" ").length > last.length) {
+      let trimmed = last
+      while (trimmed.length > 3 && ctx.measureText(`${trimmed}…`).width > maxWidth) {
+        trimmed = trimmed.slice(0, -1)
+      }
+      lines[maxLines - 1] = `${trimmed}…`
+    }
+  }
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i]!, x, y + i * lineHeight)
+  }
+  return y + Math.max(0, lines.length - 1) * lineHeight
+}
 
 /** Lifetime coin total in the top-right corner of menu overlays. */
 function drawLifetimeCoins(

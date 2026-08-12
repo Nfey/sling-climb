@@ -32,6 +32,7 @@ import {
   SCORE_POPUP_DURATION,
   SLINGSHOT_FORK_WIDTH,
   SLINGSHOT_KEYBOARD_SPEED,
+  SLINGSHOT_CATCH_RADIUS,
   TURRET_AIM_ARC,
   TURRET_AIM_SPEED,
   TURRET_BODY_RADIUS,
@@ -60,6 +61,10 @@ import {
 import { DailyLoginStore, type DailyClaimResult } from "./dailyLogin"
 import { DailyMissionsStore } from "./dailyMissions"
 import {
+  AchievementsStore,
+} from "./achievements"
+import type { AchievementIconKind } from "./achievementIcons"
+import {
   createHatGacha,
   createTrailGacha,
   type GachaPullResult,
@@ -77,6 +82,7 @@ import {
   type GachaRevealState,
 } from "./gachaReveal"
 import type {
+  AchievementsHitAreas,
   BulletData,
   BotAimTarget,
   CoinData,
@@ -90,6 +96,7 @@ import type {
   ScorePopup,
   TurretShotData,
   Vec2,
+  AchievementToast,
 } from "./types"
 
 export type FrameController = { update(dt: number, game: BotGameApi): void }
@@ -105,6 +112,7 @@ export class Game implements BotGameApi {
   private cosmetics: CosmeticsStore
   private dailyLogin: DailyLoginStore
   private dailyMissions: DailyMissionsStore
+  private achievements: AchievementsStore
   private hatGacha: GachaStore
   private trailGacha: GachaStore
   /** Toast after claiming a mission reward from the Daily screen. */
@@ -125,12 +133,21 @@ export class Game implements BotGameApi {
   private menuDemo = false
   /** Title overlay vs cosmetics shop while attract-mode menu is active. */
   private menuScreen: MenuScreen = "title"
+  /** Selected achievement id on the achievements grid (for detail card). */
+  private achievementsSelectedId: string | null = null
+  /** Vertical scroll offset (px) for the achievements list. */
+  private achievementsScroll = 0
+  private achievementsDragId: number | null = null
+  private achievementsDragLastY = 0
+  /** Mid-match unlock banners. */
+  private achievementToasts: AchievementToast[] = []
   /** Hit regions from the previous title-menu draw pass (screen space). */
   private menuHitAreas: MainMenuHitAreas | null = null
   /** Hit regions from the previous shop draw pass (screen space). */
   private shopHitAreas: ShopHitAreas | null = null
   private dailyHitAreas: DailyHitAreas | null = null
   private gachaHitAreas: GachaHitAreas | null = null
+  private achievementsHitAreas: AchievementsHitAreas | null = null
   private lastDailyClaim: DailyClaimResult | null = null
   private lastHatPull: GachaPullResult | null = null
   private lastTrailPull: GachaPullResult | null = null
@@ -179,6 +196,9 @@ export class Game implements BotGameApi {
     this.cosmetics = new CosmeticsStore(this.config.persistScores !== false)
     this.dailyLogin = new DailyLoginStore(this.config.persistScores !== false)
     this.dailyMissions = new DailyMissionsStore(this.config.persistScores !== false)
+    this.achievements = new AchievementsStore(this.config.persistScores !== false)
+    // Seed coin progress from bank so existing players aren't reset to zero.
+    this.achievements.seedCoinsFromBank(this.score.lifetimeCoins)
     this.hatGacha = createHatGacha(this.config.persistScores !== false)
     this.trailGacha = createTrailGacha(this.config.persistScores !== false)
     // Unlock audio inside the real gesture handlers (pointer/key), not rAF.
@@ -416,6 +436,7 @@ export class Game implements BotGameApi {
     this.shopHitAreas = null
     this.dailyHitAreas = null
     this.gachaHitAreas = null
+    this.achievementsHitAreas = null
     this.gachaReveal = idleReveal()
     this.audio.setMasterVolume(MENU_DEMO_MASTER_VOLUME)
     if (!this.menuDemoBot) {
@@ -433,12 +454,14 @@ export class Game implements BotGameApi {
     this.shopHitAreas = null
     this.dailyHitAreas = null
     this.gachaHitAreas = null
+    this.achievementsHitAreas = null
     this.gachaReveal = idleReveal()
     this.controller = null
     this.audio.setMasterVolume(DEFAULT_MASTER_VOLUME)
     this.audio.unlock()
     this.resetRun(false)
     this.dailyMissions.onRunStart()
+    this.achievements.onRunStart()
     this.applyPendingDailyBoosts()
   }
 
@@ -464,26 +487,55 @@ export class Game implements BotGameApi {
     this.audio.setClimb(0)
     this.audio.startFlight()
     this.audio.playLaunch(launchPower)
-    if (!this.menuDemo) this.dailyMissions.onFlingStart()
+    if (!this.menuDemo) {
+      this.dailyMissions.onFlingStart()
+      this.achievements.onFlingStart(this.ball.y, this.score.current)
+    }
   }
 
-  /** Forward in-run events to daily missions (real player runs only). */
+  /** Forward in-run events to daily missions and achievements (real player runs only). */
   private trackMissionsFromHit(hit: {
     bumperHit: boolean
     bumperKey: string | null
     portalDeltaY: number
     platformHit: boolean
     arrowHit: boolean
+    arrowDir: number | null
     coinsCollected: number
     bonusCollected: boolean
+    turretHit: boolean
   }): void {
     if (this.menuDemo) return
-    if (hit.bumperHit) this.dailyMissions.onBumperHit(hit.bumperKey)
-    if (hit.portalDeltaY !== 0) this.dailyMissions.onPortal()
-    if (hit.platformHit) this.dailyMissions.onPlatform()
-    if (hit.arrowHit) this.dailyMissions.onArrow()
-    if (hit.coinsCollected > 0) this.dailyMissions.onCoins(hit.coinsCollected)
+    if (hit.bumperHit) {
+      this.dailyMissions.onBumperHit(hit.bumperKey)
+      this.achievements.onObstacleHit("bumper")
+    }
+    if (hit.portalDeltaY !== 0) {
+      this.dailyMissions.onPortal()
+      this.achievements.onObstacleHit("portal")
+    }
+    if (hit.platformHit) {
+      this.dailyMissions.onPlatform()
+      // Platforms are not obstacle-achievement hits, but still count as contact
+      // for fail achievements like Total Whiff.
+      this.achievements.markFlingContact()
+    }
+    if (hit.arrowHit) {
+      this.dailyMissions.onArrow()
+      const arrowDown =
+        hit.arrowDir === 3 || hit.arrowDir === 4 || hit.arrowDir === 5
+      this.achievements.onObstacleHit("arrow", arrowDown)
+    }
+    if (hit.coinsCollected > 0) {
+      this.dailyMissions.onCoins(hit.coinsCollected)
+      this.achievements.onCoinsCollected(
+        this.runCoinMult > 1
+          ? hit.coinsCollected * this.runCoinMult
+          : hit.coinsCollected,
+      )
+    }
     if (hit.bonusCollected) this.dailyMissions.onBonus()
+    if (hit.turretHit) this.achievements.onTurretHit()
     this.dailyMissions.onCombo(this.score.combo)
   }
 
@@ -582,6 +634,46 @@ export class Game implements BotGameApi {
     })
   }
 
+  /** Queue UI toasts for any achievements unlocked since the last flush. */
+  private flushAchievementUnlocks(): void {
+    const unlocked = this.achievements.drainUnlocks()
+    if (unlocked.length === 0) return
+    for (const def of unlocked) {
+      this.achievementToasts.push({
+        id: def.id,
+        name: def.name,
+        icon: def.icon,
+        life: 3.4,
+        duration: 3.4,
+      })
+    }
+    // Cap stacked banners so the playfield stays readable.
+    if (this.achievementToasts.length > 3) {
+      this.achievementToasts = this.achievementToasts.slice(-3)
+    }
+    this.audio.playPowerup()
+  }
+
+  private updateAchievementToasts(dt: number): void {
+    if (this.achievementToasts.length === 0) return
+    for (const toast of this.achievementToasts) toast.life -= dt
+    this.achievementToasts = this.achievementToasts.filter((t) => t.life > 0)
+  }
+
+  /** Draw unlock banners above HUD / game-over / menu overlays. */
+  private drawAchievementToastBanners(cam: Camera): void {
+    if (this.achievementToasts.length === 0) return
+    this.renderer.drawAchievementToasts(
+      cam,
+      this.achievementToasts.map((t) => ({
+        name: t.name,
+        icon: t.icon as AchievementIconKind,
+        life: t.life,
+        duration: t.duration,
+      })),
+    )
+  }
+
   private moveSlingshotToPointer(pointerX: number, pointerY: number): void {
     if (this.freeMoveActive) {
       const minScreenY = 56
@@ -623,6 +715,10 @@ export class Game implements BotGameApi {
   }
 
   private update(dt: number): void {
+    // Keep toast timers alive across game-over / menu so unlocks don't freeze
+    // and then reappear on the next point.
+    this.updateAchievementToasts(dt)
+
     if (
       this.menuDemo &&
       (this.menuScreen === "hatGacha" || this.menuScreen === "trailGacha")
@@ -651,14 +747,80 @@ export class Game implements BotGameApi {
       this.controller.update(dt, this)
     }
 
-    // Attract-mode menu: title / shop / daily / gacha overlays.
+    // Attract-mode menu: title / shop / daily / gacha / achievements overlays.
     if (this.menuDemo) {
-      const menuPresses = this.input.consumePresses()
-      this.input.consumeReleases()
-      if (menuPresses.length > 0) {
-        const p = menuPresses[0]!
+      // Achievements list drag-scroll runs every frame (not only on press).
+      if (this.menuScreen === "achievements") {
+        const areas = this.achievementsHitAreas
+        const releases = this.input.consumeReleases()
+        const menuPresses = this.input.consumePresses()
 
-        if (this.menuScreen === "shop") {
+        if (menuPresses.length > 0) {
+          const p = menuPresses[0]!
+          const hitAreas = this.achievementsHitAreas
+          if (hitAreas) {
+            if (hitRect(p.x, p.y, hitAreas.back)) {
+              this.menuScreen = "title"
+              this.achievementsHitAreas = null
+              this.achievementsScroll = 0
+              this.achievementsSelectedId = null
+              this.achievementsDragId = null
+              return
+            }
+            if (hitRect(p.x, p.y, hitAreas.list)) {
+              let tappedId: string | null = null
+              for (const cell of hitAreas.cells) {
+                if (hitRect(p.x, p.y, cell.rect)) {
+                  tappedId = cell.id
+                  break
+                }
+              }
+              // Select on press so quick taps always update the detail card.
+              if (tappedId) {
+                this.achievementsSelectedId =
+                  this.achievementsSelectedId === tappedId ? null : tappedId
+              }
+              if (releases.includes(p.id)) {
+                this.achievementsDragId = null
+              } else {
+                this.achievementsDragId = p.id
+                this.achievementsDragLastY = p.y
+              }
+              return
+            }
+          }
+          // Stay on achievements for taps outside controls.
+          return
+        }
+
+        if (
+          this.achievementsDragId != null &&
+          releases.includes(this.achievementsDragId)
+        ) {
+          this.achievementsDragId = null
+        } else if (areas && this.achievementsDragId != null) {
+          const ptr = this.input.getPointer(this.achievementsDragId)
+          if (!ptr) {
+            this.achievementsDragId = null
+          } else {
+            const dy = ptr.y - this.achievementsDragLastY
+            if (areas.maxScroll > 0) {
+              this.achievementsScroll = Math.max(
+                0,
+                Math.min(areas.maxScroll, this.achievementsScroll - dy),
+              )
+            }
+            this.achievementsDragLastY = ptr.y
+          }
+        }
+        // No press — fall through so attract-mode physics keep running.
+      } else {
+        const menuPresses = this.input.consumePresses()
+        this.input.consumeReleases()
+        if (menuPresses.length > 0) {
+          const p = menuPresses[0]!
+
+          if (this.menuScreen === "shop") {
           const areas = this.shopHitAreas
           if (areas) {
             if (hitRect(p.x, p.y, areas.back)) {
@@ -743,6 +905,8 @@ export class Game implements BotGameApi {
                 },
                 addCoins: (n) => {
                   this.score.addCoins(n)
+                  this.achievements.onCoinsCollected(n)
+                  this.achievements.drainUnlocks()
                 },
               })
               if (result) this.lastDailyClaim = result
@@ -756,6 +920,8 @@ export class Game implements BotGameApi {
               if (!hitRect(p.x, p.y, rect)) continue
               const reward = this.dailyMissions.claim(slot.def.id, (n) => {
                 this.score.addCoins(n)
+                this.achievements.onCoinsCollected(n)
+                this.achievements.drainUnlocks()
               })
               if (reward != null) {
                 this.lastMissionClaimMessage = `+${reward} coins · ${slot.def.difficulty}`
@@ -814,6 +980,8 @@ export class Game implements BotGameApi {
                 },
                 addCoins: (n) => {
                   this.score.addCoins(n)
+                  this.achievements.onCoinsCollected(n)
+                  this.achievements.drainUnlocks()
                 },
               })
               if (result) {
@@ -855,6 +1023,14 @@ export class Game implements BotGameApi {
             this.gachaReveal = idleReveal()
             return
           }
+          if (hitRect(p.x, p.y, areas.achievements)) {
+            this.menuScreen = "achievements"
+            this.menuHitAreas = null
+            this.achievementsScroll = 0
+            this.achievementsSelectedId = null
+            this.achievementsDragId = null
+            return
+          }
           if (hitRect(p.x, p.y, areas.play)) {
             this.beginFromMenu()
             return
@@ -863,6 +1039,7 @@ export class Game implements BotGameApi {
 
         this.beginFromMenu()
       }
+      } // end non-achievements menu screens
     }
 
     const ignoreHuman = this.botActive
@@ -1076,8 +1253,10 @@ export class Game implements BotGameApi {
       this.score.observe(this.ball.y)
       this.recordTrailPoint()
       if (!this.menuDemo) {
+        this.achievements.onFlightFrame(this.ball.y, this.score.current)
         this.dailyMissions.onHeight(this.score.climbHeight)
         this.dailyMissions.onScore(this.score.current)
+        this.flushAchievementUnlocks()
       }
 
       // Climb drama: peak height gained since this flight started.
@@ -1088,6 +1267,8 @@ export class Game implements BotGameApi {
       this.advanceWorld(dt)
 
       if (this.ball.vy <= 0 && this.slingshot.canCatch(this.ball.x, this.ball.y)) {
+        const catchVx = this.ball.vx
+        const catchVy = this.ball.vy
         this.ball.catchAt(this.slingshot.x, this.slingshot.y)
         this.slingshot.frozen = true
         this.started = true
@@ -1097,7 +1278,11 @@ export class Game implements BotGameApi {
         this.trailPoints = []
         this.score.resetCombo()
         this.endFlightCatch()
-        if (!this.menuDemo) this.dailyMissions.onCatch()
+        if (!this.menuDemo) {
+          this.dailyMissions.onCatch()
+          this.achievements.onCatch(catchVx, catchVy, this.score.current)
+          this.flushAchievementUnlocks()
+        }
         // Catch even without a held finger; only enter aim if already holding.
         if (pointer) {
           this.state = "aiming"
@@ -1115,6 +1300,15 @@ export class Game implements BotGameApi {
       ) {
         // Menu attract demo is visual-only — never touch player records.
         if (!this.menuDemo) {
+          this.achievements.onGameOver({
+            ballX: this.ball.x,
+            ballY: this.ball.y,
+            slingX: this.slingshot.x,
+            slingY: this.slingshot.y,
+            catchRadius: SLINGSHOT_CATCH_RADIUS,
+            runScore: this.score.current,
+          })
+          this.flushAchievementUnlocks()
           this.score.commitHighScore()
         }
         this.audio.playGameOver()
@@ -1518,6 +1712,7 @@ export class Game implements BotGameApi {
         this.menuHitAreas = null
         this.dailyHitAreas = null
         this.gachaHitAreas = null
+        this.achievementsHitAreas = null
         this.shopHitAreas = this.renderer.drawShop(
           cam,
           this.score.lifetimeCoins,
@@ -1538,6 +1733,7 @@ export class Game implements BotGameApi {
         this.menuHitAreas = null
         this.shopHitAreas = null
         this.gachaHitAreas = null
+        this.achievementsHitAreas = null
         this.dailyHitAreas = this.renderer.drawDaily(
           cam,
           this.score.lifetimeCoins,
@@ -1558,6 +1754,7 @@ export class Game implements BotGameApi {
         this.menuHitAreas = null
         this.shopHitAreas = null
         this.dailyHitAreas = null
+        this.achievementsHitAreas = null
         const pool = this.menuScreen === "hatGacha" ? "hat" : "trail"
         this.gachaHitAreas = this.renderer.drawCosmeticGacha(
           cam,
@@ -1580,10 +1777,26 @@ export class Game implements BotGameApi {
           pool === "hat" ? this.lastHatPull : this.lastTrailPull,
           this.gachaReveal,
         )
+      } else if (this.menuScreen === "achievements") {
+        this.menuHitAreas = null
+        this.shopHitAreas = null
+        this.dailyHitAreas = null
+        this.gachaHitAreas = null
+        this.achievementsHitAreas = this.renderer.drawAchievements(
+          cam,
+          this.score.lifetimeCoins,
+          this.cosmetics.getSelectedBackgroundStyle(),
+          this.achievements.list(),
+          this.achievements.unlockedCount,
+          this.achievements.totalCount,
+          this.achievementsScroll,
+          this.achievementsSelectedId,
+        )
       } else {
         this.shopHitAreas = null
         this.dailyHitAreas = null
         this.gachaHitAreas = null
+        this.achievementsHitAreas = null
         this.menuHitAreas = this.renderer.drawMainMenu(
           cam,
           highScore,
@@ -1594,6 +1807,8 @@ export class Game implements BotGameApi {
           this.dailyLogin.canClaim || this.dailyMissions.hasClaimable,
         )
       }
+      // Finish any unlock banners that started on the last death.
+      this.drawAchievementToastBanners(cam)
       return
     }
 
@@ -1628,6 +1843,9 @@ export class Game implements BotGameApi {
         hideReplay ? null : "Tap to continue",
       )
     }
+
+    // Above game-over overlay so unlocks stay readable after a miss.
+    this.drawAchievementToastBanners(cam)
   }
 
   /** True on desktop-sized viewports where keyboard/mouse hints apply. */
