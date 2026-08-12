@@ -89,24 +89,24 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     icon: "height1",
   },
   {
-    id: "height-fling-800",
+    id: "height-fling-1000",
     category: "height",
     name: "Getting Air",
-    howTo: "Climb 800 height in one fling",
+    howTo: "Climb 1,000 height in one fling",
     icon: "height2",
   },
   {
-    id: "height-fling-1200",
+    id: "height-fling-2500",
     category: "height",
     name: "Skybound",
-    howTo: "Climb 1,200 height in one fling",
+    howTo: "Climb 2,500 height in one fling",
     icon: "height3",
   },
   {
-    id: "height-fling-2000",
+    id: "height-fling-5000",
     category: "height",
     name: "Stratosphere",
-    howTo: "Climb 2,000 height in one fling",
+    howTo: "Climb 5,000 height in one fling",
     icon: "height4",
   },
 
@@ -119,24 +119,24 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
     icon: "score1",
   },
   {
-    id: "score-fling-600",
+    id: "score-fling-800",
     category: "score",
     name: "Score Chaser",
-    howTo: "Score 600 points in one fling",
+    howTo: "Score 800 points in one fling",
     icon: "score2",
-  },
-  {
-    id: "score-fling-1200",
-    category: "score",
-    name: "High Roller",
-    howTo: "Score 1,200 points in one fling",
-    icon: "score3",
   },
   {
     id: "score-fling-2000",
     category: "score",
-    name: "Point Legend",
+    name: "High Roller",
     howTo: "Score 2,000 points in one fling",
+    icon: "score3",
+  },
+  {
+    id: "score-fling-5000",
+    category: "score",
+    name: "Point Legend",
+    howTo: "Score 5,000 points in one fling",
     icon: "score4",
   },
 
@@ -423,17 +423,17 @@ export class AchievementsStore {
   private unlockFlingHeight(climb: number): void {
     const h = Math.floor(climb)
     if (h >= 400) this.unlock("height-fling-400")
-    if (h >= 800) this.unlock("height-fling-800")
-    if (h >= 1200) this.unlock("height-fling-1200")
-    if (h >= 2000) this.unlock("height-fling-2000")
+    if (h >= 1000) this.unlock("height-fling-1000")
+    if (h >= 2500) this.unlock("height-fling-2500")
+    if (h >= 5000) this.unlock("height-fling-5000")
   }
 
   private unlockFlingScore(points: number): void {
     const s = Math.floor(points)
     if (s >= 300) this.unlock("score-fling-300")
-    if (s >= 600) this.unlock("score-fling-600")
-    if (s >= 1200) this.unlock("score-fling-1200")
+    if (s >= 800) this.unlock("score-fling-800")
     if (s >= 2000) this.unlock("score-fling-2000")
+    if (s >= 5000) this.unlock("score-fling-5000")
   }
 
   private unlockObstacleThresholds(count: number): void {
