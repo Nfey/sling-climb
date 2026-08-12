@@ -489,7 +489,7 @@ export class Game implements BotGameApi {
     this.audio.playLaunch(launchPower)
     if (!this.menuDemo) {
       this.dailyMissions.onFlingStart()
-      this.achievements.onFlingStart(this.ball.y)
+      this.achievements.onFlingStart(this.ball.y, this.score.current)
     }
   }
 
@@ -1233,11 +1233,9 @@ export class Game implements BotGameApi {
       this.score.observe(this.ball.y)
       this.recordTrailPoint()
       if (!this.menuDemo) {
-        this.achievements.onFlightFrame(this.ball.vx, this.ball.vy, this.ball.y)
+        this.achievements.onFlightFrame(this.ball.y, this.score.current)
         this.dailyMissions.onHeight(this.score.climbHeight)
         this.dailyMissions.onScore(this.score.current)
-        this.achievements.onHeight(this.score.climbHeight)
-        this.achievements.onScore(this.score.current)
         this.flushAchievementUnlocks()
       }
 
@@ -1249,6 +1247,8 @@ export class Game implements BotGameApi {
       this.advanceWorld(dt)
 
       if (this.ball.vy <= 0 && this.slingshot.canCatch(this.ball.x, this.ball.y)) {
+        const catchVx = this.ball.vx
+        const catchVy = this.ball.vy
         this.ball.catchAt(this.slingshot.x, this.slingshot.y)
         this.slingshot.frozen = true
         this.started = true
@@ -1260,7 +1260,7 @@ export class Game implements BotGameApi {
         this.endFlightCatch()
         if (!this.menuDemo) {
           this.dailyMissions.onCatch()
-          this.achievements.onCatch()
+          this.achievements.onCatch(catchVx, catchVy, this.score.current)
           this.flushAchievementUnlocks()
         }
         // Catch even without a held finger; only enter aim if already holding.

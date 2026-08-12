@@ -48,93 +48,95 @@ export const ACHIEVEMENT_CATEGORIES: readonly AchievementCategory[] = [
 ]
 
 export const ACHIEVEMENTS: readonly AchievementDef[] = [
-  // Speed — catch after the ball reached a high speed this fling
+  // Speed — catch while the ball is still moving this fast
+  // Max normal launch ≈ 1,208; max POW launch ≈ 2,415.
   {
-    id: "speed-400",
+    id: "speed-catch-900",
     category: "speed",
     name: "Speedy Recovery",
-    howTo: "Catch the ball after it hits 400 speed in one fling",
+    howTo: "Catch the ball while it's going 900+ speed",
     icon: "speed1",
   },
   {
-    id: "speed-700",
+    id: "speed-catch-1200",
     category: "speed",
     name: "Need for Speed",
-    howTo: "Catch the ball after it hits 700 speed in one fling",
+    howTo: "Catch the ball while it's going 1,200+ speed (near a full-power launch)",
     icon: "speed2",
   },
   {
-    id: "speed-1000",
+    id: "speed-catch-1800",
     category: "speed",
     name: "Sonic Boom",
-    howTo: "Catch the ball after it hits 1,000 speed in one fling",
+    howTo: "Catch the ball while it's going 1,800+ speed",
     icon: "speed3",
   },
   {
-    id: "speed-1400",
+    id: "speed-catch-2300",
     category: "speed",
     name: "Warp Catch",
-    howTo: "Catch the ball after it hits 1,400 speed in one fling",
+    howTo:
+      "Catch the ball while it's going 2,300+ speed — near the fastest a POW launch can send it",
     icon: "speed4",
   },
 
-  // Height — climb distance in a single run
+  // Height — climb gained in a single fling (not the whole run)
   {
-    id: "height-500",
+    id: "height-fling-400",
     category: "height",
     name: "First Steps",
-    howTo: "Climb 500 height in one run",
+    howTo: "Climb 400 height in one fling",
     icon: "height1",
   },
   {
-    id: "height-1500",
+    id: "height-fling-1000",
     category: "height",
     name: "Getting Air",
-    howTo: "Climb 1,500 height in one run",
+    howTo: "Climb 1,000 height in one fling",
     icon: "height2",
   },
   {
-    id: "height-3500",
+    id: "height-fling-2500",
     category: "height",
     name: "Skybound",
-    howTo: "Climb 3,500 height in one run",
+    howTo: "Climb 2,500 height in one fling",
     icon: "height3",
   },
   {
-    id: "height-7000",
+    id: "height-fling-5000",
     category: "height",
     name: "Stratosphere",
-    howTo: "Climb 7,000 height in one run",
+    howTo: "Climb 5,000 height in one fling",
     icon: "height4",
   },
 
-  // Score — points in a single run
+  // Score — points gained in a single fling (not the whole run)
   {
-    id: "score-500",
+    id: "score-fling-300",
     category: "score",
     name: "Point Scout",
-    howTo: "Score 500 points in one run",
+    howTo: "Score 300 points in one fling",
     icon: "score1",
   },
   {
-    id: "score-2000",
+    id: "score-fling-800",
     category: "score",
     name: "Score Chaser",
-    howTo: "Score 2,000 points in one run",
+    howTo: "Score 800 points in one fling",
     icon: "score2",
   },
   {
-    id: "score-5000",
+    id: "score-fling-2000",
     category: "score",
     name: "High Roller",
-    howTo: "Score 5,000 points in one run",
+    howTo: "Score 2,000 points in one fling",
     icon: "score3",
   },
   {
-    id: "score-10000",
+    id: "score-fling-5000",
     category: "score",
     name: "Point Legend",
-    howTo: "Score 10,000 points in one run",
+    howTo: "Score 5,000 points in one fling",
     icon: "score4",
   },
 
@@ -270,8 +272,6 @@ export class AchievementsStore {
   private persist: boolean
   private unlocked = new Set<string>()
 
-  /** Peak |v| during the current fling. */
-  private flingMaxSpeed = 0
   /** Platforms + bumpers + portals + arrows this fling. */
   private flingObstacles = 0
   private flingHadHit = false
@@ -280,6 +280,8 @@ export class AchievementsStore {
   private flingHitTurret = false
   private flingPeakClimb = 0
   private flingStartY = 0
+  /** Run score at the start of the current fling. */
+  private flingStartScore = 0
   private runFlings = 0
 
   /** Lifetime coins collected (not the spendable bank). */
@@ -333,22 +335,28 @@ export class AchievementsStore {
     this.resetFling()
   }
 
-  onFlingStart(startY: number): void {
+  onFlingStart(startY: number, startScore: number): void {
     this.runFlings += 1
     this.resetFling()
     this.flingStartY = startY
+    this.flingStartScore = startScore
   }
 
-  /** Call each flying frame with current ball velocity and height. */
-  onFlightFrame(vx: number, vy: number, ballY: number): void {
-    const speed = Math.hypot(vx, vy)
-    if (speed > this.flingMaxSpeed) this.flingMaxSpeed = speed
+  /**
+   * Call each flying frame. Height/score unlocks are per-fling and can toast mid-air.
+   */
+  onFlightFrame(ballY: number, currentScore: number): void {
     const climb = Math.max(0, ballY - this.flingStartY)
     if (climb > this.flingPeakClimb) this.flingPeakClimb = climb
+    this.unlockFlingHeight(this.flingPeakClimb)
+    this.unlockFlingScore(currentScore - this.flingStartScore)
   }
 
-  onCatch(): void {
-    this.unlockSpeedThresholds(this.flingMaxSpeed)
+  /** Catch-moment speed gates the speed achievements. */
+  onCatch(vx: number, vy: number, currentScore: number): void {
+    this.unlockCatchSpeed(Math.hypot(vx, vy))
+    this.unlockFlingHeight(this.flingPeakClimb)
+    this.unlockFlingScore(currentScore - this.flingStartScore)
     this.resetFling()
   }
 
@@ -364,22 +372,6 @@ export class AchievementsStore {
 
   onTurretHit(): void {
     this.flingHitTurret = true
-  }
-
-  onHeight(climb: number): void {
-    const h = Math.floor(climb)
-    if (h >= 500) this.unlock("height-500")
-    if (h >= 1500) this.unlock("height-1500")
-    if (h >= 3500) this.unlock("height-3500")
-    if (h >= 7000) this.unlock("height-7000")
-  }
-
-  onScore(score: number): void {
-    const s = Math.floor(score)
-    if (s >= 500) this.unlock("score-500")
-    if (s >= 2000) this.unlock("score-2000")
-    if (s >= 5000) this.unlock("score-5000")
-    if (s >= 10000) this.unlock("score-10000")
   }
 
   onCoinsCollected(count: number): void {
@@ -420,11 +412,28 @@ export class AchievementsStore {
     if (this.runFlings <= 1 && ctx.runScore < 100) this.unlock("fail-cold-open")
   }
 
-  private unlockSpeedThresholds(speed: number): void {
-    if (speed >= 400) this.unlock("speed-400")
-    if (speed >= 700) this.unlock("speed-700")
-    if (speed >= 1000) this.unlock("speed-1000")
-    if (speed >= 1400) this.unlock("speed-1400")
+  private unlockCatchSpeed(speed: number): void {
+    // Max normal launch ≈ 1,208; max POW launch ≈ 2,415.
+    if (speed >= 900) this.unlock("speed-catch-900")
+    if (speed >= 1200) this.unlock("speed-catch-1200")
+    if (speed >= 1800) this.unlock("speed-catch-1800")
+    if (speed >= 2300) this.unlock("speed-catch-2300")
+  }
+
+  private unlockFlingHeight(climb: number): void {
+    const h = Math.floor(climb)
+    if (h >= 400) this.unlock("height-fling-400")
+    if (h >= 1000) this.unlock("height-fling-1000")
+    if (h >= 2500) this.unlock("height-fling-2500")
+    if (h >= 5000) this.unlock("height-fling-5000")
+  }
+
+  private unlockFlingScore(points: number): void {
+    const s = Math.floor(points)
+    if (s >= 300) this.unlock("score-fling-300")
+    if (s >= 800) this.unlock("score-fling-800")
+    if (s >= 2000) this.unlock("score-fling-2000")
+    if (s >= 5000) this.unlock("score-fling-5000")
   }
 
   private unlockObstacleThresholds(count: number): void {
@@ -442,7 +451,6 @@ export class AchievementsStore {
   }
 
   private resetFling(): void {
-    this.flingMaxSpeed = 0
     this.flingObstacles = 0
     this.flingHadHit = false
     this.flingFirstHitWasArrow = false
@@ -450,6 +458,7 @@ export class AchievementsStore {
     this.flingHitTurret = false
     this.flingPeakClimb = 0
     this.flingStartY = 0
+    this.flingStartScore = 0
   }
 
   private load(): void {
