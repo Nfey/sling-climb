@@ -655,8 +655,23 @@ export class Game implements BotGameApi {
   }
 
   private updateAchievementToasts(dt: number): void {
+    if (this.achievementToasts.length === 0) return
     for (const toast of this.achievementToasts) toast.life -= dt
     this.achievementToasts = this.achievementToasts.filter((t) => t.life > 0)
+  }
+
+  /** Draw unlock banners above HUD / game-over / menu overlays. */
+  private drawAchievementToastBanners(cam: Camera): void {
+    if (this.achievementToasts.length === 0) return
+    this.renderer.drawAchievementToasts(
+      cam,
+      this.achievementToasts.map((t) => ({
+        name: t.name,
+        icon: t.icon as AchievementIconKind,
+        life: t.life,
+        duration: t.duration,
+      })),
+    )
   }
 
   private moveSlingshotToPointer(pointerX: number, pointerY: number): void {
@@ -700,6 +715,10 @@ export class Game implements BotGameApi {
   }
 
   private update(dt: number): void {
+    // Keep toast timers alive across game-over / menu so unlocks don't freeze
+    // and then reappear on the next point.
+    this.updateAchievementToasts(dt)
+
     if (
       this.menuDemo &&
       (this.menuScreen === "hatGacha" || this.menuScreen === "trailGacha")
@@ -1082,7 +1101,6 @@ export class Game implements BotGameApi {
       for (const popup of this.scorePopups) popup.life -= dt
       this.scorePopups = this.scorePopups.filter((p) => p.life > 0)
     }
-    this.updateAchievementToasts(dt)
 
     // Bind any press to aiming / moving
     for (const p of presses) {
@@ -1665,17 +1683,6 @@ export class Game implements BotGameApi {
       )
     }
     this.renderer.drawScorePopups(cam, this.scorePopups)
-    if (!this.menuDemo && this.achievementToasts.length > 0) {
-      this.renderer.drawAchievementToasts(
-        cam,
-        this.achievementToasts.map((t) => ({
-          name: t.name,
-          icon: t.icon as AchievementIconKind,
-          life: t.life,
-          duration: t.duration,
-        })),
-      )
-    }
 
     if (trajOrigin && trajVel) {
       this.renderer.drawTrajectory(cam, trajOrigin, trajVel)
@@ -1800,6 +1807,8 @@ export class Game implements BotGameApi {
           this.dailyLogin.canClaim || this.dailyMissions.hasClaimable,
         )
       }
+      // Finish any unlock banners that started on the last death.
+      this.drawAchievementToastBanners(cam)
       return
     }
 
@@ -1834,6 +1843,9 @@ export class Game implements BotGameApi {
         hideReplay ? null : "Tap to continue",
       )
     }
+
+    // Above game-over overlay so unlocks stay readable after a miss.
+    this.drawAchievementToastBanners(cam)
   }
 
   /** True on desktop-sized viewports where keyboard/mouse hints apply. */
