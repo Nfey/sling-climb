@@ -82,31 +82,31 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
 
   // Height — climb gained in a single fling (not the whole run)
   {
-    id: "height-fling-2000",
+    id: "height-fling-1000",
     category: "height",
     name: "First Steps",
-    howTo: "Climb 2,000 height in one fling",
+    howTo: "Climb 1,000 height in one fling",
     icon: "height1",
+  },
+  {
+    id: "height-fling-2000",
+    category: "height",
+    name: "Getting Air",
+    howTo: "Climb 2,000 height in one fling",
+    icon: "height2",
   },
   {
     id: "height-fling-3000",
     category: "height",
-    name: "Getting Air",
+    name: "Skybound",
     howTo: "Climb 3,000 height in one fling",
-    icon: "height2",
+    icon: "height3",
   },
   {
     id: "height-fling-4000",
     category: "height",
-    name: "Skybound",
-    howTo: "Climb 4,000 height in one fling",
-    icon: "height3",
-  },
-  {
-    id: "height-fling-5000",
-    category: "height",
     name: "Stratosphere",
-    howTo: "Climb 5,000 height in one fling",
+    howTo: "Climb 4,000 height in one fling",
     icon: "height4",
   },
 
@@ -427,10 +427,10 @@ export class AchievementsStore {
 
   private unlockFlingHeight(climb: number): void {
     const h = Math.floor(climb)
+    if (h >= 1000) this.unlock("height-fling-1000")
     if (h >= 2000) this.unlock("height-fling-2000")
     if (h >= 3000) this.unlock("height-fling-3000")
     if (h >= 4000) this.unlock("height-fling-4000")
-    if (h >= 5000) this.unlock("height-fling-5000")
   }
 
   private unlockFlingScore(points: number): void {
