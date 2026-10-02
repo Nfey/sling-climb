@@ -1,0 +1,9 @@
+{
+  "name": "Sling Bounce",
+  "short_name": "Sling Bounce",
+  "description": "Sling Bounce is a slingshot climbing game. Pull back to launch, catch the ball, and climb higher.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff"
+}

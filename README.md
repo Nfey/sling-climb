@@ -1,6 +1,6 @@
-# Sling Climb
+# Sling Bounce™
 
-Mobile web prototype of a slingshot climbing game (Doodle Jump meets slingshot aiming).
+Sling Bounce is a mobile web prototype of a slingshot climbing game (Doodle Jump meets slingshot aiming).
 
 ## Play (iPhone)
 
