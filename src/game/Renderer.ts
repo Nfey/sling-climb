@@ -10,7 +10,6 @@ import {
   TURRET_BARREL_LENGTH,
   TURRET_BARREL_WIDTH,
   TURRET_BODY_RADIUS,
-  skyZoneColor,
 } from "./constants"
 import { turretMuzzleAngle } from "./turret"
 import type { Ball } from "./Ball"
@@ -69,27 +68,80 @@ import {
 } from "./cosmeticArt"
 import { drawBackgroundPreview, drawBackgroundStyle } from "./backgroundArt"
 import { getBackgroundTheme } from "./backgrounds"
+import { logoForTheme } from "./art/brand"
+import {
+  drawArrowPadsArt,
+  drawBallArt,
+  drawBestArt,
+  drawBumpersArt,
+  drawCatchFlashArt,
+  drawCoinsArt,
+  drawKillLineArt,
+  drawMilestonesArt,
+  drawPlatformsArt,
+  drawPortalsArt,
+  drawSlingshotArt,
+  drawTurretShotsArt,
+  drawTurretsArt,
+  drawUpgradeArt,
+} from "./art/drawArt"
+import { skyColorForClimb } from "./art/palette"
+import { spritesReady } from "./art/sprites"
+import { SPRITE_ART_DEFAULT } from "./config"
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D
   private time = 0
+  private runStartHeight = 0
   private currentBackgroundStyle: BackgroundStyle = "classic"
+  /** Art is the default. `?art=0` keeps the code-drawn look. */
+  private spriteArt: boolean
+  /** NEW-BEST flash / rope glow, seconds remaining. */
+  private bestFlash = 0
+  private bestGlow = 0
+  private sawBestPassed = false
+  /** Classic slingshot body was drawn from art this frame (catch flash matches it). */
+  private slingUsesArt = false
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, spriteArt = SPRITE_ART_DEFAULT) {
     const ctx = canvas.getContext("2d")
     if (!ctx) throw new Error("Canvas 2D not available")
     this.ctx = ctx
+    this.spriteArt = spriteArt
+  }
+
+  private useArt(): boolean {
+    return this.spriteArt && spritesReady()
   }
 
   begin(camera: Camera, dt: number, startHeight: number, backgroundStyle: BackgroundStyle = "classic"): void {
     this.currentBackgroundStyle = backgroundStyle
     this.time += dt
+    this.runStartHeight = startHeight
+    this.bestFlash = Math.max(0, this.bestFlash - dt)
+    this.bestGlow = Math.max(0, this.bestGlow - dt)
+    this.slingUsesArt = false
     const ctx = this.ctx
     const dpr = camera.dpr
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, camera.width, camera.height)
+    const viewClimb = camera.screenToWorld(0, 0).y - startHeight
+    this.drawBackdrop(camera, viewClimb)
     this.drawBackground(camera, startHeight, backgroundStyle)
+    this.drawWallStrips(camera, viewClimb)
   }
+
+  /**
+   * Stage 2: Canyon Floor far / mid / haze layers and the blend strip at
+   * climb 2000 (parallax 0.15× / 0.4×). No-op until those layers ship.
+   */
+  private drawBackdrop(_camera: Camera, _climb: number): void {}
+
+  /**
+   * Stage 2: per-zone 30×240 wall strips in a 20 CSS gutter outside the play
+   * area, inner edge on the bounce line. No-op in stage 1 (`PLAY_LEFT` is 0).
+   */
+  private drawWallStrips(_camera: Camera, _climb: number): void {}
 
   private drawBackground(camera: Camera, startHeight: number, backgroundStyle: BackgroundStyle): void {
     const ctx = this.ctx
@@ -116,6 +168,8 @@ export class Renderer {
     } else {
       drawBackgroundStyle(ctx, camera, backgroundStyle, this.time, height)
     }
+
+    if (this.useArt() && drawKillLineArt(ctx, camera, startHeight)) return
 
     ctx.strokeStyle = theme.dividerLine
     ctx.lineWidth = 1
@@ -149,7 +203,7 @@ export class Renderer {
       const y1 = Math.min(bgHeight, syBottom)
       if (y1 <= y0) continue
 
-      ctx.fillStyle = skyZoneColor(climb)
+      ctx.fillStyle = skyColorForClimb(climb)
       ctx.fillRect(0, y0, width, y1 - y0)
     }
   }
@@ -210,9 +264,29 @@ export class Renderer {
     passed: boolean,
   ): void {
     if (worldY <= 0) return
+    if (passed && !this.sawBestPassed) {
+      this.bestFlash = 0.25
+      this.bestGlow = 0.6
+    }
+    this.sawBestPassed = passed
     const ctx = this.ctx
     const sy = camera.worldToScreen({ x: 0, y: worldY }).y
     if (sy < -20 || sy > camera.killScreenY + 10) return
+    if (
+      this.useArt() &&
+      drawBestArt(
+        ctx,
+        camera,
+        sy,
+        passed,
+        worldY,
+        this.runStartHeight,
+        this.bestFlash,
+        this.bestGlow,
+      )
+    ) {
+      return
+    }
 
     const color = passed ? COLORS.maxHeightLinePassed : COLORS.maxHeightLine
 
@@ -243,6 +317,9 @@ export class Renderer {
     milestones: { worldY: number; label: string; passed: boolean; colorIndex: number }[],
   ): void {
     const ctx = this.ctx
+    if (this.useArt() && drawMilestonesArt(ctx, camera, milestones, this.runStartHeight)) {
+      return
+    }
     ctx.save()
     ctx.lineWidth = 2
     ctx.setLineDash([8, 5])
@@ -269,8 +346,18 @@ export class Renderer {
     ctx.restore()
   }
 
-  drawPlatforms(camera: Camera, platforms: PlatformData[]): void {
+  drawPlatforms(
+    camera: Camera,
+    platforms: PlatformData[],
+    contacts: readonly { x: number; y: number; radius: number; squash: number }[] = [],
+  ): void {
     const ctx = this.ctx
+    if (
+      this.useArt() &&
+      drawPlatformsArt(ctx, camera, platforms, contacts, this.time, this.runStartHeight)
+    ) {
+      return
+    }
     const killY = camera.killScreenY
     for (const p of platforms) {
       if (p.active === false) continue
@@ -306,6 +393,7 @@ export class Renderer {
 
   drawBumpers(camera: Camera, bumpers: BumperData[], anim: number): void {
     const ctx = this.ctx
+    if (this.useArt() && drawBumpersArt(ctx, camera, bumpers, this.runStartHeight)) return
     const killY = camera.killScreenY
     const pulse = 0.85 + Math.sin(anim * 7) * 0.15
     for (const b of bumpers) {
@@ -347,6 +435,7 @@ export class Renderer {
 
   drawArrowPads(camera: Camera, pads: ArrowPadData[], anim: number): void {
     const ctx = this.ctx
+    if (this.useArt() && drawArrowPadsArt(ctx, camera, pads, this.runStartHeight)) return
     const killY = camera.killScreenY
     const pulse = 0.9 + Math.sin(anim * 6) * 0.1
     for (const pad of pads) {
@@ -405,6 +494,12 @@ export class Renderer {
 
   drawPortals(camera: Camera, portals: PortalData[], anim: number): void {
     const ctx = this.ctx
+    if (
+      this.useArt() &&
+      drawPortalsArt(ctx, camera, portals, anim, this.runStartHeight)
+    ) {
+      return
+    }
     const pulse = 0.55 + Math.sin(anim * 5) * 0.2
     for (const p of portals) {
       const top = camera.worldToScreen({ x: 0, y: p.y + p.height })
@@ -455,6 +550,12 @@ export class Renderer {
 
   drawWallTurrets(camera: Camera, turrets: WallTurretData[], anim: number): void {
     const ctx = this.ctx
+    if (
+      this.useArt() &&
+      drawTurretsArt(ctx, camera, turrets, anim, this.runStartHeight, turretMuzzleAngle)
+    ) {
+      return
+    }
     for (const t of turrets) {
       const centerX =
         t.side === "left" ? TURRET_BODY_RADIUS : camera.width - TURRET_BODY_RADIUS
@@ -507,6 +608,12 @@ export class Renderer {
 
   drawTurretShots(camera: Camera, shots: TurretShotData[]): void {
     const ctx = this.ctx
+    if (
+      this.useArt() &&
+      drawTurretShotsArt(ctx, camera, shots, this.time, this.runStartHeight)
+    ) {
+      return
+    }
     for (const shot of shots) {
       const s = camera.worldToScreen({ x: shot.x, y: shot.y })
       if (s.y < -20 || s.y > camera.height + 20) continue
@@ -571,10 +678,25 @@ export class Renderer {
       rest: { x: rest.x, y: rest.y },
     }
 
-    if (pow) {
-      drawSlingshotFork(ctx, geom, "crimson", this.time, 10, 8)
-    } else {
-      drawSlingshotFork(ctx, geom, slingStyle, this.time, 10, 8)
+    const classicBody = !freeMove && (pow || cosmeticStyle === "classic")
+    this.slingUsesArt =
+      classicBody &&
+      this.useArt() &&
+      drawSlingshotArt(
+        ctx,
+        camera,
+        sling,
+        pouchScreen.x,
+        pouchScreen.y,
+        pow,
+        this.runStartHeight,
+      )
+    if (!this.slingUsesArt) {
+      if (pow) {
+        drawSlingshotFork(ctx, geom, "crimson", this.time, 10, 8)
+      } else {
+        drawSlingshotFork(ctx, geom, slingStyle, this.time, 10, 8)
+      }
     }
 
     if (!pow) {
@@ -628,6 +750,9 @@ export class Renderer {
     const alpha = Math.max(0, t)
 
     ctx.save()
+    if (this.slingUsesArt) {
+      drawCatchFlashArt(ctx, camera, sling, alpha)
+    }
     // Bright core flash
     ctx.globalAlpha = 0.35 * alpha
     ctx.fillStyle = COLORS.accent
@@ -724,6 +849,22 @@ export class Renderer {
   ): void {
     const ctx = this.ctx
     const s = camera.worldToScreen({ x: ball.x, y: ball.y })
+    if (
+      this.useArt() &&
+      drawBallArt(
+        ctx,
+        ball,
+        s.x,
+        s.y,
+        ballStyle === "classic",
+        hatStyle === "none",
+        this.runStartHeight,
+        this.time,
+        (hatCtx) => drawHatStyle(hatCtx, hatStyle, ball.radius, this.time),
+      )
+    ) {
+      return
+    }
     const squash = ball.squash
     const scaleX = 1 + squash * 0.25
     const scaleY = 1 - squash * 0.2
@@ -819,9 +960,13 @@ export class Renderer {
 
   drawUpgradePickups(camera: Camera, pickups: UpgradePickupData[], anim: number): void {
     const ctx = this.ctx
+    const drewPow =
+      this.useArt() &&
+      drawUpgradeArt(ctx, camera, pickups, anim, this.runStartHeight)
+    const visible = drewPow ? pickups.filter((u) => u.kind !== "pow") : pickups
     const killY = camera.killScreenY
     const bob = Math.sin(anim * 4) * 3
-    for (const u of pickups) {
+    for (const u of visible) {
       const s = camera.worldToScreen({ x: u.x, y: u.y })
       s.y += bob
       if (s.y - u.radius >= killY || s.y + u.radius < -20) continue
@@ -867,6 +1012,7 @@ export class Renderer {
 
   drawCoins(camera: Camera, coins: CoinData[], anim: number): void {
     const ctx = this.ctx
+    if (this.useArt() && drawCoinsArt(ctx, camera, coins, anim, this.runStartHeight)) return
     const killY = camera.killScreenY
     const bob = Math.sin(anim * 5) * 2.5
     for (const c of coins) {
@@ -947,10 +1093,17 @@ export class Renderer {
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
 
-    ctx.fillStyle = theme.ink
-    ctx.font = "800 44px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText("Sling Bounce™", cx, y)
-    y += 36
+    const logo = this.useArt() ? logoForTheme(camera.dpr, theme.ink) : null
+    if (logo) {
+      const placed = placeTitleLogo(camera, logo)
+      ctx.drawImage(logo, placed.x, placed.y, placed.w, placed.h)
+      y = placed.y + placed.h + 16
+    } else {
+      ctx.fillStyle = theme.ink
+      ctx.font = "800 44px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText("Sling Bounce™", cx, y)
+      y += 36
+    }
 
     ctx.fillStyle = theme.inkDim
     ctx.font = "500 15px 'DM Sans', sans-serif"
@@ -2046,6 +2199,26 @@ function safeAreaInsetTop(): number {
     .trim()
   const px = Number.parseFloat(raw)
   return Number.isFinite(px) ? px : 0
+}
+
+/**
+ * Stacked-subtitle lockup. The PNG is square and already padded (clear space
+ * around the wordmark). Width stays in the 240–280 CSS range so the subtitle
+ * stays readable; short screens shrink it only down to that floor.
+ */
+function placeTitleLogo(
+  camera: Camera,
+  _logo: CanvasImageSource,
+): { x: number; y: number; w: number; h: number } {
+  const top = Math.max(46, safeAreaInsetTop() + 40)
+  const maxW = Math.min(280, camera.width - 40)
+  const minW = Math.min(maxW, 258)
+  let w = Math.min(272, maxW)
+  if (w < minW) w = minW
+  const menuTail = 268
+  const limit = camera.height - 16 - menuTail
+  if (top + w > limit) w = Math.max(minW, limit - top)
+  return { x: (camera.width - w) / 2, y: top, w, h: w }
 }
 
 /** Compact altitude label for HUD and left-side marks (climb px above start). */

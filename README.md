@@ -57,23 +57,41 @@ npm run dev -- --host
 
 Use the **Record** / **Stop & save** control (top-right) to download a `.webm` (Chrome/Edge recommended). You can also screen-record the tab for TikTok/Reels MP4s. The bot auto-restarts on game over and does not write high scores.
 
+### Art and debug params
+
+Sunbaked Canyon sprites are on by default. `?art=0` keeps the previous code-drawn look (also used while images are still decoding).
+
+```bash
+# Code-drawn fallback
+http://localhost:5173/?art=0
+
+# Debug session (never writes localStorage). Skips the title menu.
+# best = previous best climb, so the BEST line and 2×… milestone lines show.
+# climb = world altitude of the slingshot (run origin stays 0).
+http://localhost:5173/?debug=1&best=220
+http://localhost:5173/?debug=1&climb=400
+```
+
+With `?debug=1&climb=`, one turret is placed in view if the generator didn't spawn one, and the first platforms above the slingshot are shown as normal, bonus, crumbling, and moving. Collision sizes are unchanged.
+
+Screenshots (390×844, deviceScaleFactor 2): `node scripts/screenshots.mjs` against a preview server. See the script header.
+
 ## Deploy (Cloudflare Worker)
 
 Static build is served by a Cloudflare Worker (`wrangler.jsonc` → `assets.directory = ./dist`).
 
-### Option A — GitHub Actions (configured in this repo)
+**Option B (Cloudflare Workers Builds) is the active deploy path.** Production deploys run from the Cloudflare Git integration on every `main` commit. Pushes to other branches get a preview alias at `https://<branch-slug>-sling-climb.nfey.workers.dev` (this art branch: `https://art-sling-bounce-v1-sling-climb.nfey.workers.dev`).
 
-1. Create a Cloudflare API token with **Edit Cloudflare Workers**  
-   https://dash.cloudflare.com/profile/api-tokens
-2. In the GitHub repo → **Settings → Secrets and variables → Actions**, add:
-   - `CLOUDFLARE_API_TOKEN`
-   - `CLOUDFLARE_ACCOUNT_ID` (from the Workers dashboard URL / account overview)
-3. Push to `main` (or run the **Deploy to Cloudflare Workers** workflow).
+### Option A — GitHub Actions — not configured
 
-### Option B — Cloudflare Workers Builds (dashboard)
+The repo has no `CLOUDFLARE_API_TOKEN` or `CLOUDFLARE_ACCOUNT_ID` Actions secrets. `.github/workflows/deploy.yml` is a **build-only CI check** (`CI (build)`: `npm ci` and `npm run build` on `main` pushes and pull requests). It does not deploy.
 
-1. [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) → **Create** → **Import a repository**
-2. Select `Nfey/sling-climb`, production branch `main`
+Do not add a Wrangler deploy step or a second preview workflow here. Workers Builds already deploys `main` and previews branches; wiring both would double-deploy production.
+
+### Option B — Cloudflare Workers Builds (active)
+
+1. [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages) → the existing `sling-climb` Worker
+2. Production branch `main`
 3. Build command: `npm run build`
 4. Deploy command: `npx wrangler deploy`
 
@@ -85,6 +103,10 @@ Worker name must stay `sling-climb` to match `wrangler.jsonc`.
 npx wrangler login
 npm run deploy
 ```
+
+## Credits
+
+The Sling Bounce wordmark uses [Lilita One](https://fonts.google.com/specimen/Lilita+One) by Juan Montoreano, licensed under the SIL Open Font License 1.1. The stacked-subtitle lockup is converted to outlines; no font file is shipped. The licence text is at `src/assets/brand/sling-bounce/licences/LilitaOne-OFL.txt`.
 
 ## Later: App Store & Google Play
 
