@@ -1,0 +1,3908 @@
+{
+ "_doc": "Sling Bounce sprites (steps 3, 3.1, 4). PLACE BY ANCHOR, NEVER BY CANVAS: put anchor_px3 (/1.5 for @2x) on the engine coordinate; canvases include padding, the 4px ink outline and the rim margin, so a canvas corner is never an engine position. collision_px3 = the engine collider in this file's pixels; body_px3 = measured opaque box [x0,y0,x1,y1]. Coordinates in px of the file's own scale family: *_px3 values are @3x; divide by 1.5 for @2x. Pivot = visual centre unless listed. Night-rim layers: same name under <category>/night-rim/, canvas +12px@3x (+8px@2x), drawn first at offset (-6,-6)@3x / (-4,-4)@2x; used in Orbit + Deep Space.",
+ "home_turf": {
+  "zone": "Canyon Floor",
+  "height": [
+   0,
+   2000
+  ],
+  "blend_into": "Mesa Tops at 2000",
+  "default_theme": "sunbaked-canyon",
+  "theme_table": "not shipped in this folder (art-side reference only; zone sky/wall colours live in engine code)",
+  "theme_platform_dir": "platforms/theme-<slug>/ (same filenames)"
+ },
+ "stone_variants": {
+  "day": "crumbling_* (#525B6A, stripe #7A8496) Canyon Floor..Stratosphere",
+  "night": "crumbling-night_* (#C3C9D3, stripe #E1E5EB) Orbit + Deep Space; switch at the night-rim altitude"
+ },
+ "platform_3slice": {
+  "slice_h_px3": 66,
+  "collision_top_px3": 12,
+  "left_px3": 36,
+  "mid_px3": 48,
+  "right_px3": 36,
+  "draw": "left at (x-4, y-4) CSS; mid tiles from x+8 to x+w-8 (crop last tile); right at (x+w-8, y-4); y = collision top"
+ },
+ "sprites": {
+  "platforms/normal_left": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": false,
+   "covers": "platform x 0..8 CSS (collision left edge at px3 x=12)",
+   "night_rim": {
+    "file": "platforms/night-rim/normal_left",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 12,
+    "y0": 12,
+    "x1": 36,
+    "y1": 54,
+    "open": "right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    6,
+    6,
+    36,
+    60
+   ],
+   "anchor_px3": [
+    12,
+    12
+   ]
+  },
+  "platforms/normal_mid": {
+   "css": [
+    16,
+    22
+   ],
+   "px3": [
+    48,
+    66
+   ],
+   "px2": [
+    32,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": false,
+   "covers": "tileable 16 CSS; crop the last tile",
+   "night_rim": {
+    "file": "platforms/night-rim/normal_mid",
+    "px3": [
+     60,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 48,
+    "y1": 54,
+    "open": "left+right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    6,
+    48,
+    60
+   ],
+   "anchor_px3": [
+    0,
+    12
+   ]
+  },
+  "platforms/normal_right": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": false,
+   "covers": "platform x w-8..w CSS (collision right edge at px3 x=24)",
+   "night_rim": {
+    "file": "platforms/night-rim/normal_right",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 24,
+    "y1": 54,
+    "open": "left",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    6,
+    30,
+    60
+   ],
+   "anchor_px3": [
+    24,
+    12
+   ]
+  },
+  "platforms/normal_left_squash": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": true,
+   "covers": "platform x 0..8 CSS (collision left edge at px3 x=12)",
+   "night_rim": {
+    "file": "platforms/night-rim/normal_left_squash",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 12,
+    "y0": 12,
+    "x1": 36,
+    "y1": 54,
+    "open": "right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    6,
+    12,
+    36,
+    60
+   ],
+   "anchor_px3": [
+    12,
+    12
+   ]
+  },
+  "platforms/normal_mid_squash": {
+   "css": [
+    16,
+    22
+   ],
+   "px3": [
+    48,
+    66
+   ],
+   "px2": [
+    32,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": true,
+   "covers": "tileable 16 CSS; crop the last tile",
+   "night_rim": {
+    "file": "platforms/night-rim/normal_mid_squash",
+    "px3": [
+     60,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 48,
+    "y1": 54,
+    "open": "left+right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    12,
+    48,
+    60
+   ],
+   "anchor_px3": [
+    0,
+    12
+   ]
+  },
+  "platforms/normal_right_squash": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": true,
+   "covers": "platform x w-8..w CSS (collision right edge at px3 x=24)",
+   "night_rim": {
+    "file": "platforms/night-rim/normal_right_squash",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 24,
+    "y1": 54,
+    "open": "left",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    12,
+    30,
+    60
+   ],
+   "anchor_px3": [
+    24,
+    12
+   ]
+  },
+  "platforms/bonus_left": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": false,
+   "covers": "platform x 0..8 CSS (collision left edge at px3 x=12)",
+   "night_rim": {
+    "file": "platforms/night-rim/bonus_left",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 12,
+    "y0": 12,
+    "x1": 36,
+    "y1": 54,
+    "open": "right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    6,
+    6,
+    36,
+    60
+   ],
+   "anchor_px3": [
+    12,
+    12
+   ]
+  },
+  "platforms/bonus_mid": {
+   "css": [
+    16,
+    22
+   ],
+   "px3": [
+    48,
+    66
+   ],
+   "px2": [
+    32,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": false,
+   "covers": "tileable 16 CSS; crop the last tile",
+   "night_rim": {
+    "file": "platforms/night-rim/bonus_mid",
+    "px3": [
+     60,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 48,
+    "y1": 54,
+    "open": "left+right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    6,
+    48,
+    60
+   ],
+   "anchor_px3": [
+    0,
+    12
+   ]
+  },
+  "platforms/bonus_right": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": false,
+   "covers": "platform x w-8..w CSS (collision right edge at px3 x=24)",
+   "night_rim": {
+    "file": "platforms/night-rim/bonus_right",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 24,
+    "y1": 54,
+    "open": "left",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    6,
+    30,
+    60
+   ],
+   "anchor_px3": [
+    24,
+    12
+   ]
+  },
+  "platforms/bonus_left_squash": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": true,
+   "covers": "platform x 0..8 CSS (collision left edge at px3 x=12)",
+   "night_rim": {
+    "file": "platforms/night-rim/bonus_left_squash",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 12,
+    "y0": 12,
+    "x1": 36,
+    "y1": 54,
+    "open": "right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    6,
+    12,
+    36,
+    60
+   ],
+   "anchor_px3": [
+    12,
+    12
+   ]
+  },
+  "platforms/bonus_mid_squash": {
+   "css": [
+    16,
+    22
+   ],
+   "px3": [
+    48,
+    66
+   ],
+   "px2": [
+    32,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": true,
+   "covers": "tileable 16 CSS; crop the last tile",
+   "night_rim": {
+    "file": "platforms/night-rim/bonus_mid_squash",
+    "px3": [
+     60,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 48,
+    "y1": 54,
+    "open": "left+right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    12,
+    48,
+    60
+   ],
+   "anchor_px3": [
+    0,
+    12
+   ]
+  },
+  "platforms/bonus_right_squash": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": true,
+   "covers": "platform x w-8..w CSS (collision right edge at px3 x=24)",
+   "night_rim": {
+    "file": "platforms/night-rim/bonus_right_squash",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 24,
+    "y1": 54,
+    "open": "left",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    12,
+    30,
+    60
+   ],
+   "anchor_px3": [
+    24,
+    12
+   ]
+  },
+  "platforms/moving_left": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": false,
+   "covers": "platform x 0..8 CSS (collision left edge at px3 x=12)",
+   "night_rim": {
+    "file": "platforms/night-rim/moving_left",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 12,
+    "y0": 12,
+    "x1": 36,
+    "y1": 54,
+    "open": "right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    6,
+    6,
+    36,
+    60
+   ],
+   "anchor_px3": [
+    12,
+    12
+   ]
+  },
+  "platforms/moving_mid": {
+   "css": [
+    16,
+    22
+   ],
+   "px3": [
+    48,
+    66
+   ],
+   "px2": [
+    32,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": false,
+   "covers": "tileable 16 CSS; crop the last tile",
+   "night_rim": {
+    "file": "platforms/night-rim/moving_mid",
+    "px3": [
+     60,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 48,
+    "y1": 54,
+    "open": "left+right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    6,
+    48,
+    60
+   ],
+   "anchor_px3": [
+    0,
+    12
+   ]
+  },
+  "platforms/moving_right": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": false,
+   "covers": "platform x w-8..w CSS (collision right edge at px3 x=24)",
+   "night_rim": {
+    "file": "platforms/night-rim/moving_right",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 24,
+    "y1": 54,
+    "open": "left",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    6,
+    30,
+    60
+   ],
+   "anchor_px3": [
+    24,
+    12
+   ]
+  },
+  "platforms/moving_left_squash": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": true,
+   "covers": "platform x 0..8 CSS (collision left edge at px3 x=12)",
+   "night_rim": {
+    "file": "platforms/night-rim/moving_left_squash",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 12,
+    "y0": 12,
+    "x1": 36,
+    "y1": 54,
+    "open": "right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    6,
+    12,
+    36,
+    60
+   ],
+   "anchor_px3": [
+    12,
+    12
+   ]
+  },
+  "platforms/moving_mid_squash": {
+   "css": [
+    16,
+    22
+   ],
+   "px3": [
+    48,
+    66
+   ],
+   "px2": [
+    32,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": true,
+   "covers": "tileable 16 CSS; crop the last tile",
+   "night_rim": {
+    "file": "platforms/night-rim/moving_mid_squash",
+    "px3": [
+     60,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 48,
+    "y1": 54,
+    "open": "left+right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    12,
+    48,
+    60
+   ],
+   "anchor_px3": [
+    0,
+    12
+   ]
+  },
+  "platforms/moving_right_squash": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": true,
+   "covers": "platform x w-8..w CSS (collision right edge at px3 x=24)",
+   "night_rim": {
+    "file": "platforms/night-rim/moving_right_squash",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 24,
+    "y1": 54,
+    "open": "left",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    12,
+    30,
+    60
+   ],
+   "anchor_px3": [
+    24,
+    12
+   ]
+  },
+  "platforms/crumbling_left": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": false,
+   "covers": "platform x 0..8 CSS (collision left edge at px3 x=12)",
+   "night_rim": {
+    "file": "platforms/night-rim/crumbling_left",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 12,
+    "y0": 12,
+    "x1": 36,
+    "y1": 54,
+    "open": "right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    4,
+    4,
+    36,
+    62
+   ],
+   "anchor_px3": [
+    12,
+    12
+   ]
+  },
+  "platforms/crumbling_mid": {
+   "css": [
+    16,
+    22
+   ],
+   "px3": [
+    48,
+    66
+   ],
+   "px2": [
+    32,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": false,
+   "covers": "tileable 16 CSS; crop the last tile",
+   "night_rim": {
+    "file": "platforms/night-rim/crumbling_mid",
+    "px3": [
+     60,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 48,
+    "y1": 54,
+    "open": "left+right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    6,
+    48,
+    60
+   ],
+   "anchor_px3": [
+    0,
+    12
+   ]
+  },
+  "platforms/crumbling_right": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": false,
+   "covers": "platform x w-8..w CSS (collision right edge at px3 x=24)",
+   "night_rim": {
+    "file": "platforms/night-rim/crumbling_right",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 24,
+    "y1": 54,
+    "open": "left",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    5,
+    31,
+    62
+   ],
+   "anchor_px3": [
+    24,
+    12
+   ]
+  },
+  "platforms/crumbling_left_squash": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": true,
+   "covers": "platform x 0..8 CSS (collision left edge at px3 x=12)",
+   "night_rim": {
+    "file": "platforms/night-rim/crumbling_left_squash",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 12,
+    "y0": 12,
+    "x1": 36,
+    "y1": 54,
+    "open": "right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    4,
+    11,
+    36,
+    62
+   ],
+   "anchor_px3": [
+    12,
+    12
+   ]
+  },
+  "platforms/crumbling_mid_squash": {
+   "css": [
+    16,
+    22
+   ],
+   "px3": [
+    48,
+    66
+   ],
+   "px2": [
+    32,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": true,
+   "covers": "tileable 16 CSS; crop the last tile",
+   "night_rim": {
+    "file": "platforms/night-rim/crumbling_mid_squash",
+    "px3": [
+     60,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 48,
+    "y1": 54,
+    "open": "left+right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    12,
+    48,
+    60
+   ],
+   "anchor_px3": [
+    0,
+    12
+   ]
+  },
+  "platforms/crumbling_right_squash": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": true,
+   "covers": "platform x w-8..w CSS (collision right edge at px3 x=24)",
+   "night_rim": {
+    "file": "platforms/night-rim/crumbling_right_squash",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 24,
+    "y1": 54,
+    "open": "left",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    11,
+    31,
+    62
+   ],
+   "anchor_px3": [
+    24,
+    12
+   ]
+  },
+  "platforms/crumbling-night_left": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": false,
+   "covers": "platform x 0..8 CSS (collision left edge at px3 x=12)",
+   "night_rim": {
+    "file": "platforms/night-rim/crumbling-night_left",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 12,
+    "y0": 12,
+    "x1": 36,
+    "y1": 54,
+    "open": "right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    4,
+    4,
+    36,
+    62
+   ],
+   "anchor_px3": [
+    12,
+    12
+   ]
+  },
+  "platforms/crumbling-night_mid": {
+   "css": [
+    16,
+    22
+   ],
+   "px3": [
+    48,
+    66
+   ],
+   "px2": [
+    32,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": false,
+   "covers": "tileable 16 CSS; crop the last tile",
+   "night_rim": {
+    "file": "platforms/night-rim/crumbling-night_mid",
+    "px3": [
+     60,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 48,
+    "y1": 54,
+    "open": "left+right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    6,
+    48,
+    60
+   ],
+   "anchor_px3": [
+    0,
+    12
+   ]
+  },
+  "platforms/crumbling-night_right": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": false,
+   "covers": "platform x w-8..w CSS (collision right edge at px3 x=24)",
+   "night_rim": {
+    "file": "platforms/night-rim/crumbling-night_right",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 24,
+    "y1": 54,
+    "open": "left",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    5,
+    31,
+    62
+   ],
+   "anchor_px3": [
+    24,
+    12
+   ]
+  },
+  "platforms/crumbling-night_left_squash": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": true,
+   "covers": "platform x 0..8 CSS (collision left edge at px3 x=12)",
+   "night_rim": {
+    "file": "platforms/night-rim/crumbling-night_left_squash",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 12,
+    "y0": 12,
+    "x1": 36,
+    "y1": 54,
+    "open": "right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    4,
+    11,
+    36,
+    62
+   ],
+   "anchor_px3": [
+    12,
+    12
+   ]
+  },
+  "platforms/crumbling-night_mid_squash": {
+   "css": [
+    16,
+    22
+   ],
+   "px3": [
+    48,
+    66
+   ],
+   "px2": [
+    32,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": true,
+   "covers": "tileable 16 CSS; crop the last tile",
+   "night_rim": {
+    "file": "platforms/night-rim/crumbling-night_mid_squash",
+    "px3": [
+     60,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 48,
+    "y1": 54,
+    "open": "left+right",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    12,
+    48,
+    60
+   ],
+   "anchor_px3": [
+    0,
+    12
+   ]
+  },
+  "platforms/crumbling-night_right_squash": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "collision_top_px3": 12,
+   "collision_h_px3": 42,
+   "squash": true,
+   "covers": "platform x w-8..w CSS (collision right edge at px3 x=24)",
+   "night_rim": {
+    "file": "platforms/night-rim/crumbling-night_right_squash",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 24,
+    "y1": 54,
+    "open": "left",
+    "engine": "platform rect, h 14 (squash frames: collision unchanged, art squashes 85% keeping the bottom edge)"
+   },
+   "body_px3": [
+    0,
+    11,
+    31,
+    62
+   ],
+   "anchor_px3": [
+    24,
+    12
+   ]
+  },
+  "platforms/bonus_gem-large": {
+   "css": [
+    20,
+    20
+   ],
+   "px3": [
+    60,
+    60
+   ],
+   "px2": [
+    40,
+    40
+   ],
+   "rim": true,
+   "pivot_px3": [
+    30,
+    30
+   ],
+   "place": "draw BEFORE the platform; centres at x+w*(i+.5)/4, y_top-1; i=1,2 large, i=0,3 small",
+   "night_rim": {
+    "file": "platforms/night-rim/bonus_gem-large",
+    "px3": [
+     72,
+     72
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    6,
+    6,
+    54,
+    54
+   ],
+   "anchor_px3": [
+    30,
+    30
+   ]
+  },
+  "platforms/bonus_gem-small": {
+   "css": [
+    20,
+    20
+   ],
+   "px3": [
+    60,
+    60
+   ],
+   "px2": [
+    40,
+    40
+   ],
+   "rim": true,
+   "pivot_px3": [
+    30,
+    30
+   ],
+   "place": "draw BEFORE the platform; centres at x+w*(i+.5)/4, y_top-1; i=1,2 large, i=0,3 small",
+   "night_rim": {
+    "file": "platforms/night-rim/bonus_gem-small",
+    "px3": [
+     72,
+     72
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    9,
+    9,
+    51,
+    51
+   ],
+   "anchor_px3": [
+    30,
+    30
+   ]
+  },
+  "platforms/moving_chevron": {
+   "css": [
+    16,
+    18
+   ],
+   "px3": [
+    48,
+    54
+   ],
+   "px2": [
+    32,
+    36
+   ],
+   "rim": true,
+   "pivot_px3": [
+    22.5,
+    6
+   ],
+   "place": "points right; anchor (px3 22.5,6) at (x+w+9, y_top); mirror for the left at (x-9, y_top)",
+   "night_rim": {
+    "file": "platforms/night-rim/moving_chevron",
+    "px3": [
+     60,
+     66
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    8,
+    6,
+    40,
+    48
+   ],
+   "anchor_px3": [
+    22.5,
+    6
+   ]
+  },
+  "platforms/crumbling_crack": {
+   "css": [
+    12,
+    22
+   ],
+   "px3": [
+    36,
+    66
+   ],
+   "px2": [
+    24,
+    44
+   ],
+   "rim": true,
+   "pivot_px3": [
+    24,
+    12
+   ],
+   "place": "anchor (px3 24,12) at (x+w*0.36, y_top) and (x+w*0.70, y_top); same file for day + night stone",
+   "night_rim": {
+    "file": "platforms/night-rim/crumbling_crack",
+    "px3": [
+     48,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    8,
+    5,
+    31,
+    58
+   ],
+   "anchor_px3": [
+    24,
+    12
+   ]
+  },
+  "platforms/crumbling_break_4f_12fps": {
+   "css": [
+    640,
+    36
+   ],
+   "px3": [
+    1920,
+    108
+   ],
+   "px2": [
+    1280,
+    72
+   ],
+   "rim": true,
+   "frames": 4,
+   "fps": 12,
+   "frame_css": [
+    160,
+    36
+   ],
+   "frame_px3": [
+    480,
+    108
+   ],
+   "place": "frame collision rect: x 10..150 CSS, top 4 (px3 x=30,y=12); authored on a 140-wide platform; scale x by w/140 for other widths",
+   "night_rim": {
+    "file": "platforms/night-rim/crumbling_break_4f_12fps",
+    "px3": [
+     1968,
+     120
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "per_frame": true,
+    "x0": 30,
+    "y0": 12,
+    "x1": 450,
+    "y1": 54,
+    "engine": "platform rect on a 140-wide authoring platform"
+   },
+   "body_px3": [
+    8,
+    4,
+    473,
+    93
+   ],
+   "anchor_px3": [
+    30,
+    12
+   ]
+  },
+  "platforms/crumbling-night_break_4f_12fps": {
+   "css": [
+    640,
+    36
+   ],
+   "px3": [
+    1920,
+    108
+   ],
+   "px2": [
+    1280,
+    72
+   ],
+   "rim": true,
+   "frames": 4,
+   "fps": 12,
+   "frame_css": [
+    160,
+    36
+   ],
+   "frame_px3": [
+    480,
+    108
+   ],
+   "place": "frame collision rect: x 10..150 CSS, top 4 (px3 x=30,y=12); authored on a 140-wide platform; scale x by w/140 for other widths",
+   "night_rim": {
+    "file": "platforms/night-rim/crumbling-night_break_4f_12fps",
+    "px3": [
+     1968,
+     120
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "per_frame": true,
+    "x0": 30,
+    "y0": 12,
+    "x1": 450,
+    "y1": 54,
+    "engine": "platform rect on a 140-wide authoring platform"
+   },
+   "body_px3": [
+    8,
+    4,
+    473,
+    93
+   ],
+   "anchor_px3": [
+    30,
+    12
+   ]
+  },
+  "character/ball_classic": {
+   "css": [
+    36,
+    36
+   ],
+   "px3": [
+    108,
+    108
+   ],
+   "px2": [
+    72,
+    72
+   ],
+   "rim": true,
+   "pivot_px3": [
+    54,
+    54
+   ],
+   "note": "r14 fill + 4px ink outline centred on r14 = r16 visual (DD v3.1). Highlight is part of the skin; face is a separate overlay.",
+   "night_rim": {
+    "file": "character/night-rim/ball_classic",
+    "px3": [
+     120,
+     120
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "circle",
+    "centre_px3": [
+     54,
+     54
+    ],
+    "r_px3": 42,
+    "engine": "BALL_RADIUS 14"
+   },
+   "body_px3": [
+    6,
+    6,
+    102,
+    102
+   ],
+   "anchor_px3": [
+    54,
+    54
+   ]
+  },
+  "character/face_idle": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": false,
+   "pivot_px3": [
+    48,
+    48
+   ],
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    16,
+    28,
+    79,
+    81
+   ],
+   "anchor_px3": [
+    48,
+    48
+   ]
+  },
+  "character/face_blink1": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": false,
+   "pivot_px3": [
+    48,
+    48
+   ],
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    16,
+    38,
+    79,
+    81
+   ],
+   "anchor_px3": [
+    48,
+    48
+   ]
+  },
+  "character/face_blink2": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": false,
+   "pivot_px3": [
+    48,
+    48
+   ],
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    16,
+    45,
+    79,
+    81
+   ],
+   "anchor_px3": [
+    48,
+    48
+   ]
+  },
+  "character/face_determined": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": false,
+   "pivot_px3": [
+    48,
+    48
+   ],
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    16,
+    28,
+    79,
+    80
+   ],
+   "anchor_px3": [
+    48,
+    48
+   ]
+  },
+  "character/face_joy": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": false,
+   "pivot_px3": [
+    48,
+    48
+   ],
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    16,
+    37,
+    79,
+    78
+   ],
+   "anchor_px3": [
+    48,
+    48
+   ]
+  },
+  "character/face_ecstatic": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": false,
+   "pivot_px3": [
+    48,
+    48
+   ],
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    15,
+    27,
+    81,
+    82
+   ],
+   "anchor_px3": [
+    48,
+    48
+   ]
+  },
+  "character/face_scared": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": false,
+   "pivot_px3": [
+    48,
+    48
+   ],
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    16,
+    21,
+    89,
+    80
+   ],
+   "anchor_px3": [
+    48,
+    48
+   ]
+  },
+  "character/face_relieved": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": false,
+   "pivot_px3": [
+    48,
+    48
+   ],
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    16,
+    37,
+    79,
+    82
+   ],
+   "anchor_px3": [
+    48,
+    48
+   ]
+  },
+  "character/face_dizzy": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": false,
+   "pivot_px3": [
+    48,
+    48
+   ],
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    16,
+    33,
+    79,
+    74
+   ],
+   "anchor_px3": [
+    48,
+    48
+   ]
+  },
+  "character/face_idle-nopupil": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": false,
+   "pivot_px3": [
+    48,
+    48
+   ],
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    16,
+    28,
+    79,
+    81
+   ],
+   "anchor_px3": [
+    48,
+    48
+   ]
+  },
+  "character/face_9f": {
+   "css": [
+    288,
+    32
+   ],
+   "px3": [
+    864,
+    96
+   ],
+   "px2": [
+    576,
+    64
+   ],
+   "rim": false,
+   "frames": 9,
+   "order": [
+    "idle",
+    "blink1",
+    "blink2",
+    "determined",
+    "joy",
+    "ecstatic",
+    "scared",
+    "relieved",
+    "dizzy"
+   ],
+   "frame_px3": [
+    96,
+    96
+   ],
+   "pivot_px3": [
+    48,
+    48
+   ],
+   "eye_centres_r": [
+    [
+     -0.38,
+     -0.06
+    ],
+    [
+     0.38,
+     -0.06
+    ]
+   ],
+   "pupil_max_offset_r": [
+    0.1035,
+    0.1265
+   ],
+   "note": "draw after the ball skin, unrotated, centred on the ball; idle/scared/determined have baked pupils (joy = closed ^ ^ arcs, no pupils), use face_idle-nopupil + face_pupil for look-at",
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    15,
+    21,
+    89,
+    82
+   ],
+   "anchor_px3": [
+    48,
+    48
+   ]
+  },
+  "character/face_pupil": {
+   "css": [
+    8,
+    8
+   ],
+   "px3": [
+    24,
+    24
+   ],
+   "px2": [
+    16,
+    16
+   ],
+   "rim": false,
+   "pivot_px3": [
+    12,
+    12
+   ],
+   "place": "centre at ball+(\u00b10.38r, -0.06r) + look*(0.1035r, 0.1265r)",
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    6,
+    6,
+    18,
+    18
+   ],
+   "anchor_px3": [
+    12,
+    12
+   ]
+  },
+  "character/hat_headband": {
+   "css": [
+    48,
+    48
+   ],
+   "px3": [
+    144,
+    144
+   ],
+   "px2": [
+    96,
+    96
+   ],
+   "rim": true,
+   "pivot_px3": [
+    72,
+    72
+   ],
+   "place": "hat slot: centre on the ball centre, unrotated, scale radius/14 (same call site as drawHatStyle); replaced when another hat is equipped",
+   "note": "re-strokes the ball outline over the band ends so any ball skin keeps a continuous ink edge",
+   "night_rim": {
+    "file": "character/night-rim/hat_headband",
+    "px3": [
+     156,
+     156
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    28,
+    31,
+    136,
+    60
+   ],
+   "anchor_px3": [
+    72,
+    72
+   ]
+  },
+  "character/slingshot_classic": {
+   "css": [
+    64,
+    80
+   ],
+   "px3": [
+    192,
+    240
+   ],
+   "px2": [
+    128,
+    160
+   ],
+   "rim": true,
+   "anchors_px3": {
+    "band_tip_left": [
+     30,
+     36
+    ],
+    "band_tip_right": [
+     162,
+     36
+    ],
+    "rest_pouch": [
+     96,
+     60
+    ],
+    "base_pivot": [
+     96,
+     177
+    ]
+   },
+   "note": "matches cosmeticArt.iconSlingshotGeometry: tips = rest \u00b122, -8; base = rest +39 (fork 44x52) + ~13 CSS handle extension; bands + pouch stay procedural",
+   "night_rim": {
+    "file": "character/night-rim/slingshot_classic",
+    "px3": [
+     204,
+     252
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    8,
+    14,
+    184,
+    231
+   ],
+   "anchor_px3": [
+    96,
+    177
+   ]
+  },
+  "character/slingshot_classic_pow": {
+   "css": [
+    64,
+    80
+   ],
+   "px3": [
+    192,
+    240
+   ],
+   "px2": [
+    128,
+    160
+   ],
+   "rim": true,
+   "anchors_px3": {
+    "band_tip_left": [
+     30,
+     36
+    ],
+    "band_tip_right": [
+     162,
+     36
+    ],
+    "rest_pouch": [
+     96,
+     60
+    ],
+    "base_pivot": [
+     96,
+     177
+    ]
+   },
+   "note": "POW state: red-hot body, gold grips + hot cream core; replaces the procedural crimson look",
+   "night_rim": {
+    "file": "character/night-rim/slingshot_classic_pow",
+    "px3": [
+     204,
+     252
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    8,
+    14,
+    184,
+    231
+   ],
+   "anchor_px3": [
+    96,
+    177
+   ]
+  },
+  "character/slingshot_classic_catchflash": {
+   "css": [
+    64,
+    80
+   ],
+   "px3": [
+    192,
+    240
+   ],
+   "px2": [
+    128,
+    160
+   ],
+   "rim": false,
+   "anchors_px3": {
+    "band_tip_left": [
+     30,
+     36
+    ],
+    "band_tip_right": [
+     162,
+     36
+    ],
+    "rest_pouch": [
+     96,
+     60
+    ],
+    "base_pivot": [
+     96,
+     177
+    ]
+   },
+   "note": "white additive overlay = silhouette of slingshot_classic (generated from its alpha)",
+   "derived": "silhouette",
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    8,
+    14,
+    184,
+    231
+   ],
+   "anchor_px3": [
+    96,
+    177
+   ]
+  },
+  "character/pouch": {
+   "css": [
+    16,
+    12
+   ],
+   "px3": [
+    48,
+    36
+   ],
+   "px2": [
+    32,
+    24
+   ],
+   "rim": true,
+   "pivot_px3": [
+    24,
+    18
+   ],
+   "note": "bands attach to the pouch ends (px3 x=9 and 39, y=18)",
+   "night_rim": {
+    "file": "character/night-rim/pouch",
+    "px3": [
+     60,
+     48
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    5,
+    4,
+    43,
+    32
+   ],
+   "anchor_px3": [
+    24,
+    18
+   ]
+  },
+  "objects/coin_spin_8f_12fps": {
+   "css": [
+    304,
+    38
+   ],
+   "px3": [
+    912,
+    114
+   ],
+   "px2": [
+    608,
+    76
+   ],
+   "rim": true,
+   "frames": 8,
+   "fps": 12,
+   "frame_px3": [
+    114,
+    114
+   ],
+   "pivot_px3": [
+    57,
+    57
+   ],
+   "note": "r15 + 4px outline; star emblem (no currency symbol)",
+   "night_rim": {
+    "file": "objects/night-rim/coin_spin_8f_12fps",
+    "px3": [
+     1008,
+     126
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "circle",
+    "centre_px3": [
+     57,
+     57
+    ],
+    "r_px3": 45,
+    "engine": "coin r15"
+   },
+   "body_px3": [
+    6,
+    6,
+    108,
+    108
+   ],
+   "anchor_px3": [
+    57,
+    57
+   ]
+  },
+  "objects/coin_idle": {
+   "css": [
+    38,
+    38
+   ],
+   "px3": [
+    114,
+    114
+   ],
+   "px2": [
+    76,
+    76
+   ],
+   "rim": true,
+   "pivot_px3": [
+    57,
+    57
+   ],
+   "night_rim": {
+    "file": "objects/night-rim/coin_idle",
+    "px3": [
+     126,
+     126
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "circle",
+    "centre_px3": [
+     57,
+     57
+    ],
+    "r_px3": 45,
+    "engine": "coin r15"
+   },
+   "body_px3": [
+    6,
+    6,
+    108,
+    108
+   ],
+   "anchor_px3": [
+    57,
+    57
+   ]
+  },
+  "objects/bumper_idle": {
+   "css": [
+    64,
+    64
+   ],
+   "px3": [
+    192,
+    192
+   ],
+   "px2": [
+    128,
+    128
+   ],
+   "rim": true,
+   "pivot_px3": [
+    96,
+    96
+   ],
+   "note": "authored at r28 (outline centre at r28, petal tips); scale radius/28 for r18-28",
+   "night_rim": {
+    "file": "objects/night-rim/bumper_idle",
+    "px3": [
+     204,
+     204
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "circle",
+    "centre_px3": [
+     96,
+     96
+    ],
+    "r_px3": 84,
+    "engine": "bumper r28 (scale radius/28)"
+   },
+   "body_px3": [
+    7,
+    6,
+    185,
+    183
+   ],
+   "anchor_px3": [
+    96,
+    96
+   ]
+  },
+  "objects/bumper_hit": {
+   "css": [
+    64,
+    64
+   ],
+   "px3": [
+    192,
+    192
+   ],
+   "px2": [
+    128,
+    128
+   ],
+   "rim": true,
+   "pivot_px3": [
+    96,
+    96
+   ],
+   "night_rim": {
+    "file": "objects/night-rim/bumper_hit",
+    "px3": [
+     204,
+     204
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "circle",
+    "centre_px3": [
+     96,
+     96
+    ],
+    "r_px3": 84,
+    "engine": "bumper r28 (scale radius/28)"
+   },
+   "body_px3": [
+    7,
+    6,
+    185,
+    183
+   ],
+   "anchor_px3": [
+    96,
+    96
+   ]
+  },
+  "objects/bumper-r18_idle": {
+   "css": [
+    44,
+    44
+   ],
+   "px3": [
+    132,
+    132
+   ],
+   "px2": [
+    88,
+    88
+   ],
+   "rim": true,
+   "pivot_px3": [
+    66,
+    66
+   ],
+   "place": "step 3.1: use for radius < 23 (scale radius/18 -> outline 4.0-5.1px); bumper_* (r28) for radius >= 23 (scale radius/28 -> 3.3-4.0px)",
+   "night_rim": {
+    "file": "objects/night-rim/bumper-r18_idle",
+    "px3": [
+     144,
+     144
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "circle",
+    "centre_px3": [
+     66,
+     66
+    ],
+    "r_px3": 54,
+    "engine": "bumper r18 (scale radius/18)"
+   },
+   "body_px3": [
+    7,
+    6,
+    125,
+    124
+   ],
+   "anchor_px3": [
+    66,
+    66
+   ]
+  },
+  "objects/bumper-r18_hit": {
+   "css": [
+    44,
+    44
+   ],
+   "px3": [
+    132,
+    132
+   ],
+   "px2": [
+    88,
+    88
+   ],
+   "rim": true,
+   "pivot_px3": [
+    66,
+    66
+   ],
+   "place": "step 3.1: use for radius < 23 (scale radius/18 -> outline 4.0-5.1px); bumper_* (r28) for radius >= 23 (scale radius/28 -> 3.3-4.0px)",
+   "night_rim": {
+    "file": "objects/night-rim/bumper-r18_hit",
+    "px3": [
+     144,
+     144
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "circle",
+    "centre_px3": [
+     66,
+     66
+    ],
+    "r_px3": 54,
+    "engine": "bumper r18 (scale radius/18)"
+   },
+   "body_px3": [
+    7,
+    6,
+    125,
+    124
+   ],
+   "anchor_px3": [
+    66,
+    66
+   ]
+  },
+  "objects/arrow-pad_idle": {
+   "css": [
+    64,
+    64
+   ],
+   "px3": [
+    192,
+    192
+   ],
+   "px2": [
+    128,
+    128
+   ],
+   "rim": true,
+   "pivot_px3": [
+    96,
+    96
+   ],
+   "night_rim": {
+    "file": "objects/night-rim/arrow-pad_idle",
+    "px3": [
+     204,
+     204
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "circle",
+    "centre_px3": [
+     96,
+     96
+    ],
+    "r_px3": 78,
+    "engine": "arrow pad r26"
+   },
+   "body_px3": [
+    12,
+    12,
+    180,
+    180
+   ],
+   "anchor_px3": [
+    96,
+    96
+   ]
+  },
+  "objects/arrow-pad_hit": {
+   "css": [
+    64,
+    64
+   ],
+   "px3": [
+    192,
+    192
+   ],
+   "px2": [
+    128,
+    128
+   ],
+   "rim": true,
+   "pivot_px3": [
+    96,
+    96
+   ],
+   "night_rim": {
+    "file": "objects/night-rim/arrow-pad_hit",
+    "px3": [
+     204,
+     204
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "circle",
+    "centre_px3": [
+     96,
+     96
+    ],
+    "r_px3": 78,
+    "engine": "arrow pad r26"
+   },
+   "body_px3": [
+    6,
+    6,
+    186,
+    186
+   ],
+   "anchor_px3": [
+    96,
+    96
+   ]
+  },
+  "objects/arrow-pad_arrow": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": false,
+   "pivot_px3": [
+    48,
+    48
+   ],
+   "note": "points UP; code rotates to the pad's direction; drawn over arrow-pad_idle/hit (no ink outline: sits on the ink disc)",
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    14,
+    7,
+    82,
+    86
+   ],
+   "anchor_px3": [
+    48,
+    48
+   ]
+  },
+  "objects/portal-pillar": {
+   "css": [
+    20,
+    104
+   ],
+   "px3": [
+    60,
+    312
+   ],
+   "px2": [
+    40,
+    208
+   ],
+   "rim": true,
+   "flush": "left",
+   "pivot_px3": [
+    0,
+    156
+   ],
+   "note": "left wall; flush-left edge is the wall face (no padding on that edge by design); mirror for the right wall; 96 tall + outline; step 3.1: arch 15 CSS + Hi Cream edge",
+   "night_rim": {
+    "file": "objects/night-rim/portal-pillar",
+    "px3": [
+     72,
+     324
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "rect",
+    "x0": 0,
+    "y0": 12,
+    "x1": 30,
+    "y1": 300,
+    "engine": "portal 10x96 on the wall"
+   },
+   "body_px3": [
+    0,
+    6,
+    51,
+    306
+   ],
+   "anchor_px3": [
+    0,
+    156
+   ]
+  },
+  "objects/portal-swirl_6f_10fps": {
+   "css": [
+    192,
+    104
+   ],
+   "px3": [
+    576,
+    312
+   ],
+   "px2": [
+    384,
+    208
+   ],
+   "rim": false,
+   "frames": 6,
+   "fps": 10,
+   "frame_px3": [
+    96,
+    312
+   ],
+   "flush": "left",
+   "note": "overlay on portal-pillar, same top-left origin; seamless loop",
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    0,
+    50,
+    70,
+    261
+   ],
+   "anchor_px3": [
+    0,
+    0
+   ]
+  },
+  "objects/turret-body_idle": {
+   "css": [
+    48,
+    52
+   ],
+   "px3": [
+    144,
+    156
+   ],
+   "px2": [
+    96,
+    104
+   ],
+   "rim": true,
+   "flush": "left",
+   "pivot_px3": [
+    0,
+    78
+   ],
+   "place": "pivot = dome centre (flat side) at the engine turret position (x=TURRET_BODY_RADIUS on the left); mirror for the right",
+   "note": "half-circle r22 + 4px outline",
+   "night_rim": {
+    "file": "objects/night-rim/turret-body_idle",
+    "px3": [
+     156,
+     168
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "half-circle",
+    "centre_px3": [
+     0,
+     78
+    ],
+    "r_px3": 66,
+    "engine": "TURRET_BODY_RADIUS 22"
+   },
+   "body_px3": [
+    0,
+    6,
+    72,
+    150
+   ],
+   "anchor_px3": [
+    0,
+    78
+   ]
+  },
+  "objects/turret-barrel_idle": {
+   "css": [
+    38,
+    16
+   ],
+   "px3": [
+    114,
+    48
+   ],
+   "px2": [
+    76,
+    32
+   ],
+   "rim": true,
+   "pivot_px3": [
+    12,
+    24
+   ],
+   "place": "pivot (barrel left-centre) at dome centre + 22 CSS (r) along the aim angle = engine fillRect(r, -4, 30, 8); rotate about the pivot by the aim angle",
+   "note": "30x8 barrel",
+   "night_rim": {
+    "file": "objects/night-rim/turret-barrel_idle",
+    "px3": [
+     126,
+     60
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    6,
+    6,
+    108,
+    42
+   ],
+   "anchor_px3": [
+    12,
+    24
+   ]
+  },
+  "objects/turret-barrel_recoil": {
+   "css": [
+    38,
+    16
+   ],
+   "px3": [
+    114,
+    48
+   ],
+   "px2": [
+    76,
+    32
+   ],
+   "rim": true,
+   "pivot_px3": [
+    12,
+    24
+   ],
+   "place": "same pivot as idle",
+   "note": "fire frame: barrel 26 long (retracted 4 CSS), red muzzle band flared",
+   "night_rim": {
+    "file": "objects/night-rim/turret-barrel_recoil",
+    "px3": [
+     126,
+     60
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    6,
+    6,
+    96,
+    42
+   ],
+   "anchor_px3": [
+    12,
+    24
+   ]
+  },
+  "objects/turret-muzzle-flash": {
+   "css": [
+    22,
+    22
+   ],
+   "px3": [
+    66,
+    66
+   ],
+   "px2": [
+    44,
+    44
+   ],
+   "rim": true,
+   "pivot_px3": [
+    33,
+    33
+   ],
+   "place": "centre at dome centre + 52 CSS (r + barrel length) along the aim = engine muzzle tip",
+   "night_rim": {
+    "file": "objects/night-rim/turret-muzzle-flash",
+    "px3": [
+     78,
+     78
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    6,
+    6,
+    60,
+    58
+   ],
+   "anchor_px3": [
+    33,
+    33
+   ]
+  },
+  "objects/turret-shot_2f_8fps": {
+   "css": [
+    40,
+    20
+   ],
+   "px3": [
+    120,
+    60
+   ],
+   "px2": [
+    80,
+    40
+   ],
+   "rim": true,
+   "frames": 2,
+   "fps": 8,
+   "frame_px3": [
+    60,
+    60
+   ],
+   "pivot_px3": [
+    30,
+    30
+   ],
+   "note": "ink cannonball + red ring (v2-approved hazard look)",
+   "night_rim": {
+    "file": "objects/night-rim/turret-shot_2f_8fps",
+    "px3": [
+     144,
+     72
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "circle",
+    "centre_px3": [
+     30,
+     30
+    ],
+    "r_px3": 21,
+    "engine": "turret shot r7",
+    "per_frame": true
+   },
+   "body_px3": [
+    5,
+    5,
+    55,
+    55
+   ],
+   "anchor_px3": [
+    30,
+    30
+   ]
+  },
+  "objects/pow_idle": {
+   "css": [
+    52,
+    52
+   ],
+   "px3": [
+    156,
+    156
+   ],
+   "px2": [
+    104,
+    104
+   ],
+   "rim": true,
+   "pivot_px3": [
+    78,
+    78
+   ],
+   "night_rim": {
+    "file": "objects/night-rim/pow_idle",
+    "px3": [
+     168,
+     168
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "circle",
+    "centre_px3": [
+     78,
+     78
+    ],
+    "r_px3": 66,
+    "engine": "POW pickup r22",
+    "per_frame": false
+   },
+   "body_px3": [
+    6,
+    6,
+    150,
+    150
+   ],
+   "anchor_px3": [
+    78,
+    78
+   ]
+  },
+  "objects/pow_pulse_4f_8fps": {
+   "css": [
+    208,
+    52
+   ],
+   "px3": [
+    624,
+    156
+   ],
+   "px2": [
+    416,
+    104
+   ],
+   "rim": true,
+   "frames": 4,
+   "fps": 8,
+   "frame_px3": [
+    156,
+    156
+   ],
+   "pivot_px3": [
+    78,
+    78
+   ],
+   "night_rim": {
+    "file": "objects/night-rim/pow_pulse_4f_8fps",
+    "px3": [
+     672,
+     168
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "circle",
+    "centre_px3": [
+     78,
+     78
+    ],
+    "r_px3": 66,
+    "engine": "POW pickup r22",
+    "per_frame": true
+   },
+   "body_px3": [
+    6,
+    6,
+    150,
+    150
+   ],
+   "anchor_px3": [
+    78,
+    78
+   ]
+  },
+  "markers/kill-line_tile": {
+   "css": [
+    430,
+    16
+   ],
+   "px3": [
+    1290,
+    48
+   ],
+   "px2": [
+    860,
+    32
+   ],
+   "rim": true,
+   "tile": true,
+   "anchor_px3": [
+    0,
+    18
+   ],
+   "tile_period_css": 10,
+   "place": "tile horizontally: first tile's left edge at x=16, clip at camera.width-16 (engine line extent); anchor row px3 y=18 (CSS 6) = camera.killScreenY. Dashes repeat every 10 CSS so any crop is seamless.",
+   "note": "ink rope (2 CSS ink + 2 CSS cream dash + 2 CSS ink) + 16%-ink scalloped void lip below: a subtle hazard edge, not alarming",
+   "night_rim": {
+    "file": "markers/night-rim/kill-line_tile",
+    "px3": [
+     1302,
+     60
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "line",
+    "y_px3": 18,
+    "engine": "camera.killScreenY (slingshotScreenY + 28); not a collider: everything at/below it is hidden"
+   },
+   "body_px3": [
+    0,
+    9,
+    1290,
+    27
+   ]
+  },
+  "markers/best-rope_tile": {
+   "css": [
+    32,
+    10
+   ],
+   "px3": [
+    96,
+    30
+   ],
+   "px2": [
+    64,
+    20
+   ],
+   "rim": true,
+   "tile": true,
+   "anchor_px3": [
+    0,
+    15
+   ],
+   "place": "tile from x=12 to camera.width-12 (engine drawMaxHeightLine extent); anchor row px3 y=15 (CSS 5) = sy",
+   "note": "solid, core #2F6FED = engine colour; ink casing keeps it >=3:1 on every day sky",
+   "night_rim": {
+    "file": "markers/night-rim/best-rope_tile",
+    "px3": [
+     108,
+     42
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    0,
+    6,
+    96,
+    24
+   ]
+  },
+  "markers/best-rope-passed_tile": {
+   "css": [
+    32,
+    10
+   ],
+   "px3": [
+    96,
+    30
+   ],
+   "px2": [
+    64,
+    20
+   ],
+   "rim": true,
+   "tile": true,
+   "anchor_px3": [
+    0,
+    15
+   ],
+   "place": "tile from x=12 to camera.width-12 (engine drawMaxHeightLine extent); anchor row px3 y=15 (CSS 5) = sy",
+   "note": "solid, core #16A34A = engine colour; ink casing keeps it >=3:1 on every day sky",
+   "night_rim": {
+    "file": "markers/night-rim/best-rope-passed_tile",
+    "px3": [
+     108,
+     42
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    0,
+    6,
+    96,
+    24
+   ]
+  },
+  "markers/milestone-rope_tile_ink": {
+   "css": [
+    39,
+    10
+   ],
+   "px3": [
+    117,
+    30
+   ],
+   "px2": [
+    78,
+    20
+   ],
+   "rim": true,
+   "tile": true,
+   "anchor_px3": [
+    0,
+    15
+   ],
+   "tile_period_css": 13,
+   "place": "engine dash [8,5]: tile is 3 periods (39 CSS); tile from x=12 to camera.width-12; anchor row px3 y=15 = sy. Draw ink first, then core-white tinted MILESTONE_COLORS[i] (passed: milestoneLinePassed)",
+   "night_rim": {
+    "file": "markers/night-rim/milestone-rope_tile_ink",
+    "px3": [
+     129,
+     42
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    0,
+    6,
+    102,
+    24
+   ]
+  },
+  "markers/milestone-rope_tile_core-white": {
+   "css": [
+    39,
+    10
+   ],
+   "px3": [
+    117,
+    30
+   ],
+   "px2": [
+    78,
+    20
+   ],
+   "rim": false,
+   "tile": true,
+   "anchor_px3": [
+    0,
+    15
+   ],
+   "tile_period_css": 13,
+   "place": "engine dash [8,5]: tile is 3 periods (39 CSS); tile from x=12 to camera.width-12; anchor row px3 y=15 = sy. Draw ink first, then core-white tinted MILESTONE_COLORS[i] (passed: milestoneLinePassed)",
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    6,
+    12,
+    96,
+    18
+   ]
+  },
+  "markers/best-flag": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": true,
+   "anchor_px3": [
+    78,
+    81
+   ],
+   "pivot_px3": [
+    78,
+    81
+   ],
+   "place": "anchor = pole foot (px3 78,81) at (camera.width-40, sy): clear of the 30-CSS wall art. Engine label (DM Sans 700 11px, unchanged text) right-aligns at anchor.x-26, baseline sy-4",
+   "state": "previous best, not yet passed this run",
+   "night_rim": {
+    "file": "markers/night-rim/best-flag",
+    "px3": [
+     108,
+     108
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    6,
+    6,
+    88,
+    90
+   ]
+  },
+  "markers/best-flag-passed": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": true,
+   "anchor_px3": [
+    78,
+    81
+   ],
+   "pivot_px3": [
+    78,
+    81
+   ],
+   "place": "anchor = pole foot (px3 78,81) at (camera.width-40, sy): clear of the 30-CSS wall art. Engine label (DM Sans 700 11px, unchanged text) right-aligns at anchor.x-26, baseline sy-4",
+   "state": "passed this run (engine label adds the check mark)",
+   "night_rim": {
+    "file": "markers/night-rim/best-flag-passed",
+    "px3": [
+     108,
+     108
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    6,
+    6,
+    88,
+    90
+   ]
+  },
+  "markers/best-flag_flash": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": false,
+   "anchor_px3": [
+    78,
+    81
+   ],
+   "pivot_px3": [
+    78,
+    81
+   ],
+   "place": "anchor = pole foot (px3 78,81) at (camera.width-40, sy): clear of the 30-CSS wall art. Engine label (DM Sans 700 11px, unchanged text) right-aligns at anchor.x-26, baseline sy-4",
+   "derived": "silhouette",
+   "derived_from": "best-flag",
+   "use": "NEW-BEST / near-miss moment: white additive over the flag, 0.25 s",
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    6,
+    6,
+    88,
+    90
+   ]
+  },
+  "markers/milestone-flag_ink": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": true,
+   "anchor_px3": [
+    78,
+    81
+   ],
+   "pivot_px3": [
+    78,
+    81
+   ],
+   "place": "anchor = pole foot (px3 78,81) at (camera.width-40, sy): clear of the 30-CSS wall art. Engine label (DM Sans 700 11px, unchanged text) right-aligns at anchor.x-26, baseline sy-4",
+   "note": "pole + pennant outline; draw AFTER milestone-flag_core-white",
+   "night_rim": {
+    "file": "markers/night-rim/milestone-flag_ink",
+    "px3": [
+     108,
+     108
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    6,
+    6,
+    88,
+    90
+   ]
+  },
+  "markers/milestone-flag_core-white": {
+   "css": [
+    32,
+    32
+   ],
+   "px3": [
+    96,
+    96
+   ],
+   "px2": [
+    64,
+    64
+   ],
+   "rim": false,
+   "anchor_px3": [
+    78,
+    81
+   ],
+   "pivot_px3": [
+    78,
+    81
+   ],
+   "place": "anchor = pole foot (px3 78,81) at (camera.width-40, sy): clear of the 30-CSS wall art. Engine label (DM Sans 700 11px, unchanged text) right-aligns at anchor.x-26, baseline sy-4",
+   "note": "white-on-alpha pennant fill; tint MILESTONE_COLORS[i] (passed: milestoneLinePassed) and draw first; engine draws the 2x..10x label",
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    13,
+    14,
+    78,
+    56
+   ]
+  },
+  "markers/best-rope-glow_tile": {
+   "css": [
+    32,
+    16
+   ],
+   "px3": [
+    96,
+    48
+   ],
+   "px2": [
+    64,
+    32
+   ],
+   "rim": false,
+   "tile": true,
+   "anchor_px3": [
+    0,
+    24
+   ],
+   "place": "NEW-BEST and near-miss ('SO CLOSE!') moments: additive (lighter) over the BEST rope, same extent x 12..w-12, anchor row px3 y=24 (CSS 8) = sy; pulse alpha 0->1->0 over ~0.6 s",
+   "collision_px3": "none (visual only)",
+   "body_px3": [
+    0,
+    19,
+    96,
+    29
+   ]
+  },
+  "character/ball_bonus-2x": {
+   "css": [
+    36,
+    36
+   ],
+   "px3": [
+    108,
+    108
+   ],
+   "px2": [
+    72,
+    72
+   ],
+   "rim": true,
+   "pivot_px3": [
+    54,
+    54
+   ],
+   "anchor_px3": [
+    54,
+    54
+   ],
+   "use": "drawBall when ball.isBonus (replaces the procedural purple gradient); face + hat overlays still drawn on top",
+   "note": "GEM #8C4BD8 = bonus purple (matches bonus platforms); gold/cream sparkles sit in the upper-right, outside the face area",
+   "night_rim": {
+    "file": "character/night-rim/ball_bonus-2x",
+    "px3": [
+     120,
+     120
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "circle",
+    "centre_px3": [
+     54,
+     54
+    ],
+    "r_px3": 42,
+    "engine": "BALL_RADIUS 14"
+   },
+   "body_px3": [
+    6,
+    6,
+    102,
+    102
+   ]
+  },
+  "character/ball_hero": {
+   "css": [
+    36,
+    36
+   ],
+   "px3": [
+    108,
+    108
+   ],
+   "px2": [
+    72,
+    72
+   ],
+   "rim": true,
+   "pivot_px3": [
+    54,
+    54
+   ],
+   "anchor_px3": [
+    54,
+    54
+   ],
+   "option": "alternate default-ball colour for DD to choose (art-requests 5.2 optional 'hero' colour); same use as ball_classic",
+   "note": "Hero Orange #FF7A2F, highlight #FFBB8B, shade #D9692B",
+   "night_rim": {
+    "file": "character/night-rim/ball_hero",
+    "px3": [
+     120,
+     120
+    ],
+    "offset_px3": [
+     -6,
+     -6
+    ],
+    "use": "Orbit + Deep Space (night switch altitude): draw first, then the sprite"
+   },
+   "collision_px3": {
+    "shape": "circle",
+    "centre_px3": [
+     54,
+     54
+    ],
+    "r_px3": 42,
+    "engine": "BALL_RADIUS 14"
+   },
+   "body_px3": [
+    6,
+    6,
+    102,
+    102
+   ]
+  }
+ }
+}
