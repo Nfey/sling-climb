@@ -17,6 +17,7 @@ import type {
   UpgradePickupData,
   WallTurretData,
 } from "../types"
+import { drawMountPlate } from "./canyon"
 import { NIGHT_RIM_CLIMB } from "./palette"
 import { playRight, wallLeft, wallRight } from "./layout"
 import {
@@ -294,6 +295,7 @@ export function drawPortalsArt(
   portals: readonly PortalData[],
   time: number,
   startHeight: number,
+  plateInk: string | null = null,
 ): boolean {
   if (!artReady()) return false
   const frame = spriteFrame("objects/portal-swirl_6f_10fps", time)
@@ -305,6 +307,17 @@ export function drawPortalsArt(
     const right = p.side === "right"
     const wallX = right ? wallRight(camera.width) : wallLeft()
     const centerY = top.y + h / 2
+    if (plateInk) {
+      drawMountPlate(
+        ctx,
+        p.side,
+        centerY,
+        p.height,
+        p.y + p.height / 2 - startHeight,
+        camera.width,
+        plateInk,
+      )
+    }
     const night = nightAt(p.y, startHeight)
     drawSprite(ctx, "objects/portal-pillar", wallX, centerY, {
       flipX: right,
@@ -327,6 +340,7 @@ export function drawTurretsArt(
   time: number,
   startHeight: number,
   muzzleAngle: (side: WallTurretData["side"], aim: number) => number,
+  plateInk: string | null = null,
 ): boolean {
   if (!artReady()) return false
   for (const t of turrets) {
@@ -336,6 +350,17 @@ export function drawTurretsArt(
         : wallRight(camera.width, TURRET_BODY_RADIUS)
     const s = camera.worldToScreen({ x: domeX, y: t.y })
     if (s.y < -40 || s.y > camera.height + 40) continue
+    if (plateInk) {
+      drawMountPlate(
+        ctx,
+        t.side,
+        s.y,
+        TURRET_BODY_RADIUS * 2,
+        t.y - startHeight,
+        camera.width,
+        plateInk,
+      )
+    }
     const night = nightAt(t.y, startHeight)
     const firing = t.fireCooldown < 0.25
     drawSprite(ctx, "objects/turret-body_idle", domeX, s.y, {

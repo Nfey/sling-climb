@@ -14,6 +14,11 @@ export class Camera {
   width = 390
   height = 844
   dpr = 1
+  /**
+   * CSS pixels of viewport to the left of the playfield. Desktop letterbox
+   * only: wall bodies draw into this gutter. Collision still uses x = 0.
+   */
+  gutter = 0
 
   /** Pixel Y of the slingshot / movement line on screen. */
   get slingshotScreenY(): number {

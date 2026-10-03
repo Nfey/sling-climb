@@ -1,4 +1,5 @@
 import manifestJson from "../../assets/art/manifest.json" with { type: "json" }
+import bgManifestJson from "../../assets/art/ship-bg-manifest.json" with { type: "json" }
 import { preloadLogos } from "./brand"
 
 /**
@@ -43,6 +44,10 @@ const manifest = manifestJson as unknown as {
   sprites: Record<string, SpriteMeta>
 }
 
+const bgManifest = bgManifestJson as unknown as {
+  sprites: Record<string, SpriteMeta>
+}
+
 const entries = new Map<string, SpriteEntry>()
 
 function spriteIdFromPath(path: string): string | null {
@@ -61,7 +66,7 @@ for (const [path, url] of Object.entries(artUrls)) {
   if (!id || isSkippedSprite(id)) continue
   const img = new Image()
   img.src = url
-  const meta = manifest.sprites[id]
+  const meta = manifest.sprites[id] ?? bgManifest.sprites[id]
   entries.set(id, meta ? { img, meta } : { img })
 }
 

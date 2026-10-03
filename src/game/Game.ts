@@ -373,14 +373,17 @@ export class Game implements BotGameApi {
 
   private resize(): void {
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    // Cap playfield width on wide desktops; mobile stays full-bleed.
-    const width = Math.min(window.innerWidth, PLAYFIELD_MAX_WIDTH)
+    // Cap playfield width on wide desktops. The canvas fills the viewport so
+    // wall bodies can paint into the letterbox; collision stays on the playfield.
+    const viewportW = window.innerWidth
     const height = window.innerHeight
-    this.canvas.width = Math.floor(width * dpr)
+    const width = Math.min(viewportW, PLAYFIELD_MAX_WIDTH)
+    this.canvas.width = Math.floor(viewportW * dpr)
     this.canvas.height = Math.floor(height * dpr)
-    this.canvas.style.width = `${width}px`
+    this.canvas.style.width = `${viewportW}px`
     this.canvas.style.height = `${height}px`
     this.camera.resize(width, height, dpr)
+    this.camera.gutter = (viewportW - width) / 2
 
     if (!this.started) {
       this.slingshot.x = width * 0.5
@@ -1660,8 +1663,13 @@ export class Game implements BotGameApi {
     const bestHeight = this.score.bestMaxHeight
     const highScore = this.score.highScore
     const backgroundStyle = this.cosmetics.getEquippedBackgroundStyle(bestHeight, highScore)
-    this.renderer.begin(cam, dt, this.score.startHeight, backgroundStyle)
-    this.renderer.drawAltitudeMarkers(cam, this.score.startHeight)
+    const onTitle =
+      (this.menuDemo || this.state === "menu") && this.menuScreen === "title"
+    this.renderer.begin(cam, dt, this.score.startHeight, backgroundStyle, {
+      portals: this.platforms.portals,
+      turrets: this.platforms.turrets,
+    })
+    if (!onTitle) this.renderer.drawAltitudeMarkers(cam, this.score.startHeight)
     this.renderer.drawMaxHeightLine(
       cam,
       this.score.heightLineWorldY,
@@ -1739,7 +1747,7 @@ export class Game implements BotGameApi {
         this.catchBurst / CATCH_BURST_DURATION,
       )
     }
-    this.renderer.drawScorePopups(cam, this.scorePopups)
+    if (!onTitle) this.renderer.drawScorePopups(cam, this.scorePopups)
 
     if (trajOrigin && trajVel) {
       this.renderer.drawTrajectory(cam, trajOrigin, trajVel)

@@ -85,6 +85,7 @@ import {
   drawTurretsArt,
   drawUpgradeArt,
 } from "./art/drawArt"
+import { drawCanyonBackdrop, drawCanyonWalls, type CanyonScenery } from "./art/canyon"
 import { skyColorForClimb } from "./art/palette"
 import { spritesReady } from "./art/sprites"
 import { SPRITE_ART_DEFAULT } from "./config"
@@ -102,6 +103,8 @@ export class Renderer {
   private sawBestPassed = false
   /** Classic slingshot body was drawn from art this frame (catch flash matches it). */
   private slingUsesArt = false
+  /** Portals and turrets props must avoid. Updated each frame before the backdrop. */
+  private scenery: CanyonScenery = { portals: [], turrets: [] }
 
   constructor(canvas: HTMLCanvasElement, spriteArt = SPRITE_ART_DEFAULT) {
     const ctx = canvas.getContext("2d")
@@ -114,45 +117,75 @@ export class Renderer {
     return this.spriteArt && spritesReady()
   }
 
-  begin(camera: Camera, dt: number, startHeight: number, backgroundStyle: BackgroundStyle = "classic"): void {
+  /** Canyon parallax, walls, and the sky table. Shop themes keep their own skies. */
+  private canyonOn(): boolean {
+    return this.useArt() && this.currentBackgroundStyle === "classic"
+  }
+
+  begin(
+    camera: Camera,
+    dt: number,
+    startHeight: number,
+    backgroundStyle: BackgroundStyle = "classic",
+    scenery?: CanyonScenery,
+  ): void {
     this.currentBackgroundStyle = backgroundStyle
     this.time += dt
     this.runStartHeight = startHeight
     this.bestFlash = Math.max(0, this.bestFlash - dt)
     this.bestGlow = Math.max(0, this.bestGlow - dt)
     this.slingUsesArt = false
+    if (scenery) this.scenery = scenery
     const ctx = this.ctx
     const dpr = camera.dpr
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.clearRect(0, 0, camera.width, camera.height)
-    const viewClimb = camera.screenToWorld(0, 0).y - startHeight
-    this.drawBackdrop(camera, viewClimb)
-    this.drawBackground(camera, startHeight, backgroundStyle)
-    this.drawWallStrips(camera, viewClimb)
+    const gutter = camera.gutter
+    ctx.setTransform(dpr, 0, 0, dpr, gutter * dpr, 0)
+    ctx.clearRect(-gutter - 2, -2, camera.width + gutter * 2 + 4, camera.height + 4)
+    const canyon = this.canyonOn()
+    if (canyon) {
+      this.drawBackdrop(camera, dt)
+      this.drawWallStrips(camera)
+    } else if (gutter > 0) {
+      ctx.fillStyle = "#e6e6e6"
+      ctx.fillRect(-gutter, 0, gutter, camera.height)
+      ctx.fillRect(camera.width, 0, gutter, camera.height)
+    }
+    this.drawBackground(camera, startHeight, backgroundStyle, canyon)
   }
 
-  /**
-   * Stage 2: Canyon Floor far / mid / haze layers and the blend strip at
-   * climb 2000 (parallax 0.15× / 0.4×). No-op until those layers ship.
-   */
-  private drawBackdrop(_camera: Camera, _climb: number): void {}
+  /** Canyon Floor parallax (far 0.15, mid 0.4), props, and tinted dust. */
+  private drawBackdrop(camera: Camera, dt: number): void {
+    drawCanyonBackdrop(
+      this.ctx,
+      camera,
+      this.runStartHeight,
+      dt,
+      this.time,
+      this.scenery,
+    )
+  }
 
-  /**
-   * Stage 2: per-zone 30×240 wall strips in a 20 CSS gutter outside the play
-   * area, inner edge on the bounce line. No-op in stage 1 (`PLAY_LEFT` is 0).
-   */
-  private drawWallStrips(_camera: Camera, _climb: number): void {}
+  /** Per-zone wall strips. Inner edge on the bounce line; body in the gutter. */
+  private drawWallStrips(camera: Camera): void {
+    drawCanyonWalls(this.ctx, camera, this.runStartHeight)
+  }
 
-  private drawBackground(camera: Camera, startHeight: number, backgroundStyle: BackgroundStyle): void {
+  private drawBackground(
+    camera: Camera,
+    startHeight: number,
+    backgroundStyle: BackgroundStyle,
+    canyon = false,
+  ): void {
     const ctx = this.ctx
     const { width, height } = camera
     const killY = camera.killScreenY
     const theme = getBackgroundTheme(backgroundStyle)
 
-    if (backgroundStyle === "classic") {
+    if (!canyon && backgroundStyle === "classic") {
       this.drawSkyBands(camera, startHeight, height)
 
-      // Soft hash for a bit of depth on white
+      // Soft hash for a bit of depth on the code-drawn sky. The canyon
+      // backdrop replaces it.
       ctx.save()
       ctx.globalAlpha = 0.04
       ctx.strokeStyle = COLORS.ink
@@ -165,7 +198,7 @@ export class Renderer {
         ctx.stroke()
       }
       ctx.restore()
-    } else {
+    } else if (!canyon) {
       drawBackgroundStyle(ctx, camera, backgroundStyle, this.time, height)
     }
 
@@ -229,26 +262,40 @@ export class Renderer {
       const sy = camera.worldToScreen({ x: 0, y: worldY }).y
       if (sy > camera.killScreenY || sy < 56) continue
 
-      ctx.strokeStyle = theme.heightMarker
+      const canyonRuler = this.canyonOn()
+      const ink = canyonRuler && climb >= 39_800 ? "#FFF1D6" : theme.ink
       ctx.lineWidth = 1
       ctx.setLineDash([5, 7])
       ctx.beginPath()
-      ctx.moveTo(36, sy)
-      ctx.lineTo(camera.width - 12, sy)
+      if (canyonRuler) {
+        ctx.globalAlpha = 0.2
+        ctx.strokeStyle = ink
+        ctx.moveTo(8, sy)
+        ctx.lineTo(camera.width - 8, sy)
+      } else {
+        ctx.strokeStyle = theme.heightMarker
+        ctx.moveTo(36, sy)
+        ctx.lineTo(camera.width - 12, sy)
+      }
       ctx.stroke()
       ctx.setLineDash([])
 
-      // Tick mark on the left
-      ctx.beginPath()
-      ctx.moveTo(8, sy)
-      ctx.lineTo(28, sy)
-      ctx.stroke()
+      if (!canyonRuler) {
+        ctx.beginPath()
+        ctx.moveTo(8, sy)
+        ctx.lineTo(28, sy)
+        ctx.stroke()
+      }
 
-      ctx.fillStyle = theme.heightMarkerLabel
-      ctx.font = "600 11px 'DM Sans', sans-serif"
+      ctx.globalAlpha = canyonRuler ? 0.55 : 1
+      ctx.fillStyle = canyonRuler ? ink : theme.heightMarkerLabel
+      ctx.font = canyonRuler
+        ? "700 11px 'DM Sans', sans-serif"
+        : "600 11px 'DM Sans', sans-serif"
       ctx.textAlign = "left"
       ctx.textBaseline = "middle"
-      ctx.fillText(formatHeightLabel(climb), 8, sy - 10)
+      ctx.fillText(formatHeightLabel(climb), canyonRuler ? 12 : 8, sy - 10)
+      ctx.globalAlpha = 1
     }
     ctx.textBaseline = "alphabetic"
     ctx.restore()
@@ -496,7 +543,14 @@ export class Renderer {
     const ctx = this.ctx
     if (
       this.useArt() &&
-      drawPortalsArt(ctx, camera, portals, anim, this.runStartHeight)
+      drawPortalsArt(
+        ctx,
+        camera,
+        portals,
+        anim,
+        this.runStartHeight,
+        this.canyonOn() ? getBackgroundTheme(this.currentBackgroundStyle).ink : null,
+      )
     ) {
       return
     }
@@ -552,7 +606,15 @@ export class Renderer {
     const ctx = this.ctx
     if (
       this.useArt() &&
-      drawTurretsArt(ctx, camera, turrets, anim, this.runStartHeight, turretMuzzleAngle)
+      drawTurretsArt(
+        ctx,
+        camera,
+        turrets,
+        anim,
+        this.runStartHeight,
+        turretMuzzleAngle,
+        this.canyonOn() ? getBackgroundTheme(this.currentBackgroundStyle).ink : null,
+      )
     ) {
       return
     }
@@ -896,6 +958,26 @@ export class Renderer {
     ctx.restore()
   }
 
+  /** 3px cream outline so canyon props don't swallow the top HUD digits. */
+  private fillHudText(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    x: number,
+    y: number,
+    fill: string,
+    outline: boolean,
+  ): void {
+    if (outline) {
+      ctx.lineJoin = "round"
+      ctx.miterLimit = 2
+      ctx.lineWidth = 3
+      ctx.strokeStyle = "#FFF8EC"
+      ctx.strokeText(text, x, y)
+    }
+    ctx.fillStyle = fill
+    ctx.fillText(text, x, y)
+  }
+
   drawHud(
     camera: Camera,
     score: number,
@@ -913,41 +995,49 @@ export class Renderer {
     const bestRowY = 36 + top
     const scoreY = 62 + top
 
+    const hudInk = this.canyonOn()
     ctx.textAlign = "left"
-    ctx.fillStyle = theme.inkDim
     ctx.font = "500 12px 'DM Sans', sans-serif"
-    ctx.fillText("SCORE", 20, labelY)
+    this.fillHudText(ctx, "SCORE", 20, labelY, theme.inkDim, hudInk)
 
     if (highScore > 0) {
-      ctx.fillStyle = COLORS.accent
       ctx.font = "600 11px 'DM Sans', sans-serif"
-      ctx.fillText(String(highScore), 20, bestRowY)
+      this.fillHudText(ctx, String(highScore), 20, bestRowY, COLORS.accent, hudInk)
     }
 
-    ctx.fillStyle = theme.ink
     ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText(String(score), 20, scoreY)
+    this.fillHudText(ctx, String(score), 20, scoreY, theme.ink, hudInk)
 
     if (combo >= 2) {
-      ctx.fillStyle = COLORS.accent
       ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
-      ctx.fillText(`${combo}x`, 20, scoreY + 26)
+      this.fillHudText(ctx, `${combo}x`, 20, scoreY + 26, COLORS.accent, hudInk)
     }
 
     ctx.textAlign = "right"
-    ctx.fillStyle = theme.inkDim
     ctx.font = "500 12px 'DM Sans', sans-serif"
-    ctx.fillText("HEIGHT", camera.width - 20, labelY)
+    this.fillHudText(ctx, "HEIGHT", camera.width - 20, labelY, theme.inkDim, hudInk)
 
     if (bestHeight > 0) {
-      ctx.fillStyle = COLORS.accent
       ctx.font = "600 11px 'DM Sans', sans-serif"
-      ctx.fillText(formatHeightLabel(bestHeight), camera.width - 20, bestRowY)
+      this.fillHudText(
+        ctx,
+        formatHeightLabel(bestHeight),
+        camera.width - 20,
+        bestRowY,
+        COLORS.accent,
+        hudInk,
+      )
     }
 
-    ctx.fillStyle = theme.ink
     ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText(formatHeightLabel(climbHeight), camera.width - 20, scoreY)
+    this.fillHudText(
+      ctx,
+      formatHeightLabel(climbHeight),
+      camera.width - 20,
+      scoreY,
+      theme.ink,
+      hudInk,
+    )
 
     if (tip) {
       ctx.textAlign = "center"
@@ -1094,10 +1184,9 @@ export class Renderer {
     ctx.textBaseline = "middle"
 
     const logo = this.useArt() ? logoForTheme(camera.dpr, theme.ink) : null
-    if (logo) {
-      const placed = placeTitleLogo(camera, logo)
-      ctx.drawImage(logo, placed.x, placed.y, placed.w, placed.h)
-      y = placed.y + placed.h + 16
+    const logoPlace = logo ? placeTitleLogo(camera, logo) : null
+    if (logoPlace) {
+      y = logoPlace.y + logoPlace.h + 16
     } else {
       ctx.fillStyle = theme.ink
       ctx.font = "800 44px 'Bricolage Grotesque', sans-serif"
@@ -1105,12 +1194,33 @@ export class Renderer {
       y += 36
     }
 
+    const showBests = highScore > 0 || bestHeight > 0
+    if (this.useArt()) {
+      const tagY = y
+      const tapY = tagY + 36 + (showBests ? 50 : 8) + 52 + 48 + 42
+      const panelTop = tagY - 14
+      const panelBottom = tapY + 16
+      const panelX = 12
+      const panelW = width - 24
+      ctx.save()
+      ctx.shadowColor = "rgba(43, 27, 23, 0.18)"
+      ctx.shadowBlur = 12
+      ctx.shadowOffsetY = 3
+      ctx.fillStyle = "rgba(255, 248, 236, 0.88)"
+      ctx.beginPath()
+      roundRect(ctx, panelX, panelTop, panelW, panelBottom - panelTop, 24)
+      ctx.fill()
+      ctx.restore()
+    }
+
+    if (logo && logoPlace) {
+      ctx.drawImage(logo, logoPlace.x, logoPlace.y, logoPlace.w, logoPlace.h)
+    }
+
     ctx.fillStyle = theme.inkDim
     ctx.font = "500 15px 'DM Sans', sans-serif"
     ctx.fillText("Pull back to launch · catch to climb", cx, y)
     y += 36
-
-    const showBests = highScore > 0 || bestHeight > 0
 
     if (showBests) {
       const rowW = Math.min(280, width - 48)
