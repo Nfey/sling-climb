@@ -72,6 +72,7 @@ import { logoForTheme } from "./art/brand"
 import {
   drawArrowPadsArt,
   drawBallArt,
+  drawClassicMenuBall,
   drawBestArt,
   drawBumpersArt,
   drawCatchFlashArt,
@@ -705,6 +706,7 @@ export class Renderer {
     pulse = 0,
     style: "normal" | "freeMove" | "pow" = "normal",
     cosmeticStyle: SlingshotStyle = "classic",
+    launchGuide = true,
   ): void {
     const ctx = this.ctx
     const base = camera.worldToScreen(sling.base)
@@ -788,20 +790,24 @@ export class Renderer {
       }
     }
 
-    ctx.save()
-    ctx.globalAlpha = freeMove ? 0.28 : pow ? 0.26 : 0.2
-    ctx.strokeStyle = freeMove
-      ? COLORS.freeMovePickup
-      : pow
-        ? COLORS.powPickup
-        : COLORS.ink
-    ctx.lineWidth = 1
-    ctx.setLineDash(freeMove || pow ? [4, 6] : [6, 8])
-    ctx.beginPath()
-    ctx.moveTo(12, rest.y)
-    ctx.lineTo(camera.width - 12, rest.y)
-    ctx.stroke()
-    ctx.restore()
+    // Faint rest dash. Hidden on the title, where it reads as an unlabeled
+    // height mark sitting on the launch line. Gameplay still draws it.
+    if (launchGuide) {
+      ctx.save()
+      ctx.globalAlpha = freeMove ? 0.28 : pow ? 0.26 : 0.2
+      ctx.strokeStyle = freeMove
+        ? COLORS.freeMovePickup
+        : pow
+          ? COLORS.powPickup
+          : COLORS.ink
+      ctx.lineWidth = 1
+      ctx.setLineDash(freeMove || pow ? [4, 6] : [6, 8])
+      ctx.beginPath()
+      ctx.moveTo(12, rest.y)
+      ctx.lineTo(camera.width - 12, rest.y)
+      ctx.stroke()
+      ctx.restore()
+    }
   }
 
   /** Expanding rings + flash when the ball is caught. `t` is 1→0 over the burst. */
@@ -1885,12 +1891,12 @@ export class Renderer {
       ctx.save()
       ctx.translate(cx, previewY)
       if (pool === "hat") {
-        drawBallStyle(ctx, ballStyle, 36, this.time)
+        drawMenuBall(ctx, ballStyle, 36, this.time, this.useArt(), hatStyle === "none")
         drawHatStyle(ctx, hatStyle, 36, this.time)
       } else {
         const local = previewTrailPoints(0, 8, 54)
         drawTrailStyle(ctx, trailStyle, local, this.time)
-        drawBallStyle(ctx, ballStyle, 28, this.time)
+        drawMenuBall(ctx, ballStyle, 28, this.time, this.useArt(), hatStyle === "none")
         drawHatStyle(ctx, hatStyle, 28, this.time)
       }
       ctx.restore()
@@ -1984,6 +1990,7 @@ export class Renderer {
         reveal,
         ballStyle,
         this.time,
+        this.useArt(),
       )
     }
 
@@ -2095,6 +2102,7 @@ export class Renderer {
         row.locked,
         this.time,
         row.hint,
+        this.useArt(),
       )
       pickers.push({
         prev: drawn.prev,
@@ -2340,6 +2348,25 @@ function formatHeightLabel(climb: number): string {
   return String(Math.round(climb))
 }
 
+/** Default ball in menus uses the stage-1 sprite. Other ball styles stay code-drawn. */
+function drawMenuBall(
+  ctx: CanvasRenderingContext2D,
+  ballStyle: BallStyle,
+  radius: number,
+  time: number,
+  spriteArt: boolean,
+  withHeadband: boolean,
+): void {
+  if (
+    spriteArt &&
+    ballStyle === "classic" &&
+    drawClassicMenuBall(ctx, radius, time, withHeadband)
+  ) {
+    return
+  }
+  drawBallStyle(ctx, ballStyle, radius, time)
+}
+
 function drawCornerVariantPicker(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -2353,6 +2380,7 @@ function drawCornerVariantPicker(
   locked: boolean,
   time: number,
   unlockHint: string | null = null,
+  spriteArt = false,
 ): { prev: ScreenRect; next: ScreenRect; icon: ScreenRect } {
   ctx.fillStyle = "rgba(255, 255, 255, 0.78)"
   ctx.beginPath()
@@ -2383,7 +2411,7 @@ function drawCornerVariantPicker(
   } else if (kind === "background") {
     drawBackgroundPreview(ctx, iconBox, style as BackgroundStyle, time)
   } else {
-    drawBallStyle(ctx, style as BallStyle, iconBox * 0.32, time)
+    drawMenuBall(ctx, style as BallStyle, iconBox * 0.32, time, spriteArt, true)
   }
   ctx.restore()
 
@@ -2540,6 +2568,7 @@ function drawGachaRevealOverlay(
   reveal: GachaRevealState,
   ballStyle: BallStyle,
   time: number,
+  spriteArt = false,
 ): void {
   const result = reveal.result
   if (!result || reveal.strip.length === 0) return
@@ -2588,7 +2617,7 @@ function drawGachaRevealOverlay(
     const x = i * cell - reveal.scroll
     if (x + slotW < -20 || x > width + 20) continue
     const isWon = landed && i === reveal.wonIndex
-    drawStripSlot(ctx, x, stripTop, slotW, slotH, slot, ballStyle, time, isWon)
+    drawStripSlot(ctx, x, stripTop, slotW, slotH, slot, ballStyle, time, isWon, spriteArt)
   }
   ctx.restore()
 
@@ -2651,6 +2680,7 @@ function drawStripSlot(
   ballStyle: BallStyle,
   time: number,
   highlight: boolean,
+  spriteArt = false,
 ): void {
   const rarityColor = RARITY_COLOR[slot.rarity]
   ctx.fillStyle = highlight ? "rgba(255,255,255,0.98)" : "rgba(30, 41, 59, 0.95)"
@@ -2674,12 +2704,12 @@ function drawStripSlot(
   ctx.clip()
   ctx.translate(x + w / 2, y + h / 2 - 6)
   if (slot.pool === "hat" && slot.hatStyle) {
-    drawBallStyle(ctx, ballStyle, 22, time)
+    drawMenuBall(ctx, ballStyle, 22, time, spriteArt, slot.hatStyle === "none")
     drawHatStyle(ctx, slot.hatStyle, 22, time)
   } else if (slot.pool === "trail" && slot.trailStyle) {
     const local = previewTrailPoints(0, 4, 28)
     drawTrailStyle(ctx, slot.trailStyle, local, time)
-    drawBallStyle(ctx, ballStyle, 16, time)
+    drawMenuBall(ctx, ballStyle, 16, time, spriteArt, true)
   }
   ctx.restore()
 

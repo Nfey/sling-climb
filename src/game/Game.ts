@@ -1739,6 +1739,7 @@ export class Game implements BotGameApi {
       pulse,
       slingStyle,
       slingshotStyle,
+      !onTitle,
     )
     if (this.catchBurst > 0) {
       this.renderer.drawCatchBurst(

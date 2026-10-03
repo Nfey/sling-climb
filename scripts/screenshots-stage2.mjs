@@ -41,6 +41,28 @@ const phone = await browser.newContext({
   hasTouch: true,
 })
 await shot(phone, "01-title.png", "")
+
+async function menuShot(name, x, y) {
+  const page = await phone.newPage()
+  await page.goto(base + "/", { waitUntil: "networkidle" })
+  await page.evaluate(() => document.fonts.ready)
+  await page.waitForFunction(
+    () => document.documentElement.dataset.artReady === "1",
+    null,
+    { timeout: 20000 },
+  )
+  await page.waitForTimeout(700)
+  await page.mouse.click(x, y)
+  await page.waitForTimeout(500)
+  await page.screenshot({ path: path.join(out, name) })
+  await page.close()
+  console.log("wrote", name)
+}
+
+// Title layout at 390×844: Daily / Hats / Trails row, centers measured on the title shot.
+await menuShot("05-hats.png", 195, 478)
+await menuShot("06-trails.png", 299, 478)
+
 await shot(phone, "02-low-canyon.png", "?debug=1&climb=400")
 await shot(phone, "03-storm-front.png", "?debug=1&climb=12000")
 await phone.close()

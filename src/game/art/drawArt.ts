@@ -650,3 +650,25 @@ export function drawBallArt(
   ctx.restore()
   return true
 }
+
+/**
+ * Shop and menu previews of the default ball. Same stage-1 sprites as play
+ * (`ball_classic` + idle face). The headband is the default hat; callers that
+ * draw another hat pass false. Code-drawn ball styles stay on drawBallStyle.
+ */
+export function drawClassicMenuBall(
+  ctx: CanvasRenderingContext2D,
+  radius: number,
+  time: number,
+  withHeadband: boolean,
+): boolean {
+  if (!artReady()) return false
+  const scale = radius / 14
+  if (!drawSprite(ctx, "character/ball_classic", 0, 0, { scale })) return false
+  drawSprite(ctx, "character/face_9f", 0, 0, {
+    scale,
+    frame: faceFrame(time, 0, 0),
+  })
+  if (withHeadband) drawSprite(ctx, "character/hat_headband", 0, 0, { scale })
+  return true
+}
