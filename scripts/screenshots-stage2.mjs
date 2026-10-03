@@ -51,17 +51,17 @@ async function menuShot(name, x, y) {
     null,
     { timeout: 20000 },
   )
-  await page.waitForTimeout(700)
-  await page.mouse.click(x, y)
   await page.waitForTimeout(500)
+  await page.locator("canvas").click({ position: { x, y } })
+  await page.waitForTimeout(400)
   await page.screenshot({ path: path.join(out, name) })
   await page.close()
   console.log("wrote", name)
 }
 
-// Title layout at 390×844: Daily / Hats / Trails row, centers measured on the title shot.
-await menuShot("05-hats.png", 195, 478)
-await menuShot("06-trails.png", 299, 478)
+// Title layout at 390×844: Daily / Hats / Trails row.
+await menuShot("05-hats.png", 195, 440)
+await menuShot("06-trails.png", 299, 440)
 
 await shot(phone, "02-low-canyon.png", "?debug=1&climb=400")
 await shot(phone, "03-storm-front.png", "?debug=1&climb=12000")
