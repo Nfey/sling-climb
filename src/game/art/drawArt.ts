@@ -23,6 +23,7 @@ import { NIGHT_RIM_CLIMB } from "./palette"
 import { playRight, wallLeft, wallRight } from "./layout"
 import {
   drawSprite,
+  drawSpriteDerived,
   drawSpriteTile,
   hasSprite,
   spriteFrame,
@@ -438,16 +439,29 @@ export function drawSlingshotArt(
   const anchor = slingshotArtAnchor(camera, sling)
   const night = nightAt(sling.y, startHeight)
   const body = pow
-    ? "character/slingshot_classic_pow"
+    ? "slings/classic_pow"
     : hasSprite(`slings/${style}`)
       ? `slings/${style}`
-      : style === "classic"
-        ? "character/slingshot_classic"
-        : null
-  if (!body || !drawSprite(ctx, body, anchor.x, anchor.y, { night })) return false
-  const pouchId = slingBand(style).pouch
-  if (!drawSprite(ctx, pouchId, pouchX, pouchY, { night })) {
-    drawSprite(ctx, "character/pouch", pouchX, pouchY, { night })
+      : null
+  if (!body || !hasSprite(body)) return false
+  if (night) {
+    drawSpriteDerived(ctx, body, anchor.x, anchor.y, {
+      color: "#FFF1D6",
+      alpha: 0.7,
+      padCss: 2,
+    })
+  }
+  if (!drawSprite(ctx, body, anchor.x, anchor.y)) return false
+  const pouchId = slingBand(pow ? "classic" : style).pouch
+  if (hasSprite(pouchId)) {
+    if (night) {
+      drawSpriteDerived(ctx, pouchId, pouchX, pouchY, {
+        color: "#FFF1D6",
+        alpha: 0.7,
+        padCss: 2,
+      })
+    }
+    drawSprite(ctx, pouchId, pouchX, pouchY)
   }
   return true
 }
@@ -457,12 +471,15 @@ export function drawCatchFlashArt(
   camera: Camera,
   sling: Slingshot,
   alpha: number,
+  bodyId = "slings/classic",
 ): boolean {
-  if (!artReady() || alpha <= 0) return false
+  if (!artReady() || alpha <= 0 || !hasSprite(bodyId)) return false
   const anchor = slingshotArtAnchor(camera, sling)
-  return drawSprite(ctx, "character/slingshot_classic_catchflash", anchor.x, anchor.y, {
-    composite: "lighter",
+  return drawSpriteDerived(ctx, bodyId, anchor.x, anchor.y, {
+    color: "#ffffff",
     alpha: Math.min(1, alpha),
+    padCss: 0,
+    composite: "lighter",
   })
 }
 

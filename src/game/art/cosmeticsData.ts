@@ -1,4 +1,5 @@
 import manifestJson from "../../assets/art/cosmetics-manifest.json" with { type: "json" }
+import type { CosmeticRarity } from "../rarity"
 
 /**
  * Runtime view of `cosmetics-manifest.json`. Later art batches add files and
@@ -44,6 +45,11 @@ export interface BallSkin {
   face_offset_r: [number, number]
 }
 
+export interface SlingBandPattern {
+  dash_css: number[]
+  core_width_css: number
+}
+
 export interface SlingBand {
   color: string
   core: string
@@ -51,6 +57,21 @@ export interface SlingBand {
   accent: string
   pouch: string
   anchor_src: [number, number]
+  pattern: SlingBandPattern | null
+}
+
+export type SlingUnlock =
+  | { kind: "default" }
+  | { kind: "coins"; price: number }
+  | { kind: "climbed"; value: number }
+  | { kind: "height"; value: number }
+
+export interface SlingCatalogEntry {
+  id: string
+  name: string
+  rarity: CosmeticRarity | null
+  unlock: SlingUnlock
+  fallbackUnlock?: { kind: "height"; value: number }
 }
 
 export interface TrailStamp {
@@ -74,8 +95,17 @@ interface ManifestBall {
 }
 
 interface ManifestSling {
+  name?: string
+  rarity?: string | null
+  unlock?: { kind?: string; price?: number; value?: number }
+  fallback_unlock?: { kind?: string; value?: number }
   anchor_src?: [number, number]
-  band?: { color?: string; core?: string; width_css?: number }
+  band?: {
+    color?: string
+    core?: string
+    width_css?: number
+    pattern?: { dash_css?: number[]; core_width_css?: number } | null
+  }
   accent?: string
   pouch?: string
 }
@@ -124,8 +154,9 @@ const SLING_DEFAULT: SlingBand = {
   core: "#E8443A",
   width_css: 3.5,
   accent: "#E8443A",
-  pouch: "character/pouch",
+  pouch: "slings/pouch_classic",
   anchor_src: [256, 472],
+  pattern: null,
 }
 
 export function hatPlacement(id: string): HatPlacement {
@@ -153,6 +184,23 @@ export function ballSkin(id: string): BallSkin {
   }
 }
 
+function slingPattern(raw: ManifestSling["band"]): SlingBandPattern | null {
+  const pattern = raw?.pattern
+  const dash = pattern?.dash_css
+  if (!dash || dash.length < 2) return null
+  return {
+    dash_css: dash,
+    core_width_css: pattern?.core_width_css ?? 1.2,
+  }
+}
+
+function slingUnlock(raw: ManifestSling["unlock"]): SlingUnlock {
+  if (raw?.kind === "coins" && raw.price != null) return { kind: "coins", price: raw.price }
+  if (raw?.kind === "climbed" && raw.value != null) return { kind: "climbed", value: raw.value }
+  if (raw?.kind === "height" && raw.value != null) return { kind: "height", value: raw.value }
+  return { kind: "default" }
+}
+
 export function slingBand(id: string): SlingBand {
   const raw = manifest.slings?.[id]
   if (!raw) return SLING_DEFAULT
@@ -163,7 +211,29 @@ export function slingBand(id: string): SlingBand {
     accent: raw.accent ?? SLING_DEFAULT.accent,
     pouch: raw.pouch ?? SLING_DEFAULT.pouch,
     anchor_src: raw.anchor_src ?? SLING_DEFAULT.anchor_src,
+    pattern: slingPattern(raw.band),
   }
+}
+
+const RARITIES = new Set(["common", "uncommon", "rare", "epic", "legendary"])
+
+/** Manifest order. Classic is the free default; the rest are shop slings. */
+export function slingCatalog(): SlingCatalogEntry[] {
+  const slings = manifest.slings ?? {}
+  return Object.entries(slings).map(([id, raw]) => {
+    const fallback = raw.fallback_unlock
+    const rarity = raw.rarity && RARITIES.has(raw.rarity) ? (raw.rarity as CosmeticRarity) : null
+    return {
+      id,
+      name: raw.name ?? id,
+      rarity,
+      unlock: slingUnlock(raw.unlock),
+      fallbackUnlock:
+        fallback?.kind === "height" && fallback.value != null
+          ? { kind: "height" as const, value: fallback.value }
+          : undefined,
+    }
+  })
 }
 
 export function trailStamp(id: string): TrailStamp {
@@ -186,10 +256,13 @@ export function explicitAnchor(id: string): [number, number] | null {
     }
     return raw?.anchor_src ?? null
   }
+  if (id.startsWith("slings/pouch_")) return [64, 48]
   if (id.startsWith("slings/")) {
     const slingId = id.slice("slings/".length).replace(/_pow$/, "")
-    return manifest.slings?.[slingId]?.anchor_src ?? null
+    return manifest.slings?.[slingId]?.anchor_src ?? [256, 472]
   }
+  // Static layers are 448² source px. (224, 224) is the ball centre.
+  if (id.endsWith("_static")) return [224, 224]
   return null
 }
 

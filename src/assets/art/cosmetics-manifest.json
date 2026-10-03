@@ -657,6 +657,11 @@
   },
   "slings": {
     "classic": {
+      "name": "Canyon Classic",
+      "rarity": null,
+      "unlock": {
+        "kind": "default"
+      },
       "anchor_src": [
         256,
         472
@@ -664,127 +669,213 @@
       "band": {
         "color": "#8E3A22",
         "core": "#E8443A",
-        "width_css": 3.5
+        "width_css": 3.5,
+        "pattern": null
       },
       "accent": "#E8443A",
-      "pouch": "character/pouch"
+      "pouch": "slings/pouch_classic"
     },
     "driftwood": {
+      "name": "Driftwood",
+      "rarity": "common",
+      "unlock": {
+        "kind": "coins",
+        "price": 20
+      },
       "anchor_src": [
         256,
         472
       ],
       "band": {
-        "color": "#6B4423",
-        "core": "#C4A574",
-        "width_css": 3.5
+        "color": "#5C3A24",
+        "core": "#BFA789",
+        "width_css": 3.5,
+        "pattern": {
+          "dash_css": [
+            1,
+            2
+          ],
+          "core_width_css": 1.4
+        }
       },
-      "accent": "#A0622A",
-      "pouch": "character/pouch"
+      "accent": "#C9A27A",
+      "pouch": "slings/pouch_driftwood"
     },
     "ironworks": {
+      "name": "Ironworks",
+      "rarity": "common",
+      "unlock": {
+        "kind": "coins",
+        "price": 20
+      },
       "anchor_src": [
         256,
         472
       ],
       "band": {
-        "color": "#3A3230",
-        "core": "#E8443A",
-        "width_css": 3.5
+        "color": "#4A2A20",
+        "core": "#C06C39",
+        "width_css": 3.5,
+        "pattern": null
       },
-      "accent": "#E8443A",
-      "pouch": "character/pouch"
+      "accent": "#E07A3A",
+      "pouch": "slings/pouch_ironworks"
     },
     "antler": {
+      "name": "Antler",
+      "rarity": "uncommon",
+      "unlock": {
+        "kind": "coins",
+        "price": 40
+      },
       "anchor_src": [
         256,
         472
       ],
       "band": {
-        "color": "#8E3A22",
-        "core": "#E8443A",
-        "width_css": 3.5
+        "color": "#5E2E1E",
+        "core": "#D0A77C",
+        "width_css": 3.5,
+        "pattern": null
       },
-      "accent": "#E8443A",
-      "pouch": "character/pouch"
+      "accent": "#D8B48A",
+      "pouch": "slings/pouch_antler"
     },
     "saguaro": {
+      "name": "Saguaro",
+      "rarity": "uncommon",
+      "unlock": {
+        "kind": "coins",
+        "price": 40
+      },
       "anchor_src": [
         256,
         472
       ],
       "band": {
-        "color": "#2F6B38",
-        "core": "#E8443A",
-        "width_css": 3.5
+        "color": "#2E5E34",
+        "core": "#8DDB7E",
+        "width_css": 3.5,
+        "pattern": null
       },
-      "accent": "#E8443A",
-      "pouch": "character/pouch"
+      "accent": "#8DDB7E",
+      "pouch": "slings/pouch_saguaro"
     },
     "wishbone": {
+      "name": "Wishbone",
+      "rarity": "uncommon",
+      "unlock": {
+        "kind": "coins",
+        "price": 40
+      },
       "anchor_src": [
         256,
         472
       ],
       "band": {
-        "color": "#8E3A22",
+        "color": "#7A1F1A",
         "core": "#E8443A",
-        "width_css": 3.5
+        "width_css": 3.5,
+        "pattern": null
       },
       "accent": "#E8443A",
-      "pouch": "character/pouch"
+      "pouch": "slings/pouch_wishbone"
     },
     "painted": {
+      "name": "Painted Desert",
+      "rarity": "rare",
+      "unlock": {
+        "kind": "coins",
+        "price": 80
+      },
       "anchor_src": [
         256,
         472
       ],
       "band": {
-        "color": "#6B2A14",
-        "core": "#E8443A",
-        "width_css": 3.5
+        "color": "#5A2A3A",
+        "core": "#E39A58",
+        "width_css": 3.5,
+        "pattern": null
       },
-      "accent": "#E8443A",
-      "pouch": "character/pouch"
+      "accent": "#E39A58",
+      "pouch": "slings/pouch_painted"
     },
     "cloudpuff": {
+      "name": "Cloud Puff",
+      "rarity": "rare",
+      "unlock": {
+        "kind": "coins",
+        "price": 80
+      },
       "anchor_src": [
         256,
         472
       ],
       "band": {
-        "color": "#8E3A22",
-        "core": "#E8443A",
-        "width_css": 3.5
+        "color": "#6B4A16",
+        "core": "#FFB547",
+        "width_css": 3.5,
+        "pattern": {
+          "dash_css": [
+            2,
+            1.5
+          ],
+          "core_width_css": 1.5
+        }
       },
-      "accent": "#C7B6D6",
-      "pouch": "character/pouch"
+      "accent": "#C9B8F0",
+      "pouch": "slings/pouch_cloudpuff"
     },
     "gilded": {
+      "name": "Gilded",
+      "rarity": "epic",
+      "unlock": {
+        "kind": "coins",
+        "price": 150
+      },
       "anchor_src": [
         256,
         472
       ],
       "band": {
-        "color": "#8E3A22",
-        "core": "#FFB547",
-        "width_css": 3.5
+        "color": "#6B3A10",
+        "core": "#FFCD80",
+        "width_css": 3.5,
+        "pattern": {
+          "dash_css": [
+            2,
+            3
+          ],
+          "core_width_css": 1.2
+        }
       },
       "accent": "#FFB547",
-      "pouch": "character/pouch"
+      "pouch": "slings/pouch_gilded"
     },
     "sunforge": {
+      "name": "Sunforge",
+      "rarity": "legendary",
+      "unlock": {
+        "kind": "climbed",
+        "value": 2000000
+      },
+      "fallback_unlock": {
+        "kind": "height",
+        "value": 20000
+      },
       "anchor_src": [
         256,
         472
       ],
       "band": {
-        "color": "#6B2A14",
-        "core": "#E2662F",
-        "width_css": 3.5
+        "color": "#3A2228",
+        "core": "#F27740",
+        "width_css": 3.5,
+        "pattern": null
       },
-      "accent": "#E2662F",
-      "pouch": "character/pouch"
+      "accent": "#F27740",
+      "pouch": "slings/pouch_sunforge"
     }
   },
   "trails": {
@@ -854,5 +945,5 @@
       "fps": 0
     }
   },
-  "use_climbed_unlocks_note": "Game flag USE_CLIMBED_UNLOCKS in src/game/cosmetics.ts. false selects fallback_unlock (turquoise height 15000, geode points 30000, meteor height 75000)."
+  "use_climbed_unlocks_note": "Game flag USE_CLIMBED_UNLOCKS in src/game/cosmetics.ts. false selects fallback_unlock (turquoise height 15000, geode points 30000, meteor height 75000). Sunforge fallback is best height 20000."
 }

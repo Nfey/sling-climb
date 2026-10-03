@@ -104,8 +104,9 @@ export class Renderer {
   private bestFlash = 0
   private bestGlow = 0
   private sawBestPassed = false
-  /** Classic slingshot body was drawn from art this frame (catch flash matches it). */
+  /** Slingshot body drawn from art this frame (catch flash matches it). */
   private slingUsesArt = false
+  private slingBodyId = "slings/classic"
   /** Portals and turrets props must avoid. Updated each frame before the backdrop. */
   private scenery: CanyonScenery = { portals: [], turrets: [] }
 
@@ -745,6 +746,7 @@ export class Renderer {
     }
 
     const artStyle = pow || freeMove ? "classic" : cosmeticStyle
+    const bodyId = pow ? "slings/classic_pow" : `slings/${artStyle}`
     this.slingUsesArt =
       this.useArt() &&
       drawSlingshotArt(
@@ -757,40 +759,20 @@ export class Renderer {
         pow,
         this.runStartHeight,
       )
+    if (this.slingUsesArt) this.slingBodyId = bodyId
     if (!this.slingUsesArt) {
-      if (pow) {
-        drawSlingshotFork(ctx, geom, "crimson", this.time, 10, 8)
-      } else {
-        drawSlingshotFork(ctx, geom, slingStyle, this.time, 10, 8)
-      }
+      drawSlingshotFork(ctx, geom, slingStyle, this.time, 10, 8)
     }
 
-    if (!pow) {
-      drawSlingshotBands(
-        ctx,
-        left,
-        right,
-        pouchScreen,
-        slingStyle,
-        this.time,
-        3.5,
-      )
-    } else {
-      ctx.strokeStyle = "#991b1b"
-      ctx.lineWidth = 3.5
-      ctx.lineCap = "round"
-      for (const tip of [left, right]) {
-        ctx.beginPath()
-        ctx.moveTo(tip.x, tip.y)
-        ctx.quadraticCurveTo(
-          (tip.x + pouchScreen.x) * 0.5,
-          (tip.y + pouchScreen.y) * 0.5 + 6,
-          pouchScreen.x,
-          pouchScreen.y,
-        )
-        ctx.stroke()
-      }
-    }
+    drawSlingshotBands(
+      ctx,
+      left,
+      right,
+      pouchScreen,
+      slingStyle,
+      this.time,
+      3.5,
+    )
 
     // Faint rest dash. Hidden on the title, where it reads as an unlabeled
     // height mark sitting on the launch line. Gameplay still draws it.
@@ -821,7 +803,7 @@ export class Renderer {
 
     ctx.save()
     if (this.slingUsesArt) {
-      drawCatchFlashArt(ctx, camera, sling, alpha)
+      drawCatchFlashArt(ctx, camera, sling, alpha, this.slingBodyId)
     }
     // Bright core flash
     ctx.globalAlpha = 0.35 * alpha
@@ -1055,8 +1037,10 @@ export class Renderer {
     )
 
     if (tip) {
+      const tipWorld = camera.screenToWorld(0, camera.slingshotScreenY)
+      const nightHint = nightAt(tipWorld.y, this.runStartHeight)
       ctx.textAlign = "center"
-      ctx.fillStyle = theme.inkDim
+      ctx.fillStyle = nightHint ? "#f8fafc" : theme.inkDim
       ctx.font = "500 14px 'DM Sans', sans-serif"
       const y = camera.slingshotScreenY - 56
       ctx.fillText(tip, camera.width / 2, y)
@@ -2032,6 +2016,7 @@ export class Renderer {
     backgroundUnlockHint: string | null,
     ballUnlockHint: string | null,
     ballProgress: { current: number; goal: number } | null = null,
+    slingProgress: { current: number; goal: number } | null = null,
   ): ShopHitAreas {
     const ctx = this.ctx
     const { width, height } = camera
@@ -2042,12 +2027,12 @@ export class Renderer {
     ctx.fillRect(0, 0, width, height)
 
     const topPad = 36 + safeAreaInsetTop()
-    const rowGap = 56
+    const rowGap = 64
     const rowsTop = topPad + 56
     const backH = 44
     const slingH = 64
     const bgH = 64
-    const ballH = 96
+    const ballH = 128
     const ballPickerY = rowsTop + slingH + rowGap + bgH + rowGap
     const backY = Math.min(height - backH - 20, ballPickerY + ballH + 36)
     if (this.useArt()) {
@@ -2093,7 +2078,7 @@ export class Renderer {
         hint: ballLocked ? ballUnlockHint : null,
         price: null as number | null,
         h: ballH,
-        iconBox: 80,
+        iconBox: 128,
       },
     ]
 
@@ -2161,6 +2146,15 @@ export class Renderer {
         backgroundRow.icon,
         backgroundRow.price,
         lifetimeCoins,
+      )
+    }
+
+    if (slingProgress && slingshotRow.locked) {
+      drawClimbedProgressChip(
+        ctx,
+        slingshotRow.icon,
+        slingProgress.current,
+        slingProgress.goal,
       )
     }
 
@@ -2452,22 +2446,19 @@ function drawCornerVariantPicker(
   ctx.translate(iconCx, iconCy)
   if (kind === "slingshot") {
     const slingStyle = style as SlingshotStyle
-    const classicId = hasSprite("slings/classic")
-      ? "slings/classic"
-      : "character/slingshot_classic"
-    if (spriteArt && slingStyle === "classic" && hasSprite(classicId)) {
-      const cssH = 80
-      const anchorY = 59
-      const scale = (iconBox * 0.9) / cssH
-      const top = -iconBox / 2 + 2
-      drawSprite(ctx, classicId, 0, top + anchorY * scale, { scale })
+    const slingId = `slings/${slingStyle}`
+    if (spriteArt && hasSprite(slingId)) {
+      // Centre the 64×80 CSS canvas in the icon. The pivot sits 19 CSS below that centre.
+      const scale = 0.62
+      drawSprite(ctx, slingId, 0, 19 * scale, { scale })
     } else {
       drawSlingshotIconStyle(ctx, 0, 0, iconBox * 0.72, slingStyle, time)
     }
   } else if (kind === "background") {
     drawBackgroundPreview(ctx, iconBox, style as BackgroundStyle, time)
   } else {
-    const ballR = iconBox >= 80 ? 32 : iconBox * 0.32
+    // Static layers are 56 CSS at ball radius 14. Keep the whole layer inside the icon.
+    const ballR = ((iconBox - 8) / 56) * 14
     drawMenuBall(ctx, style as BallStyle, ballR, time, spriteArt, "none")
   }
   ctx.restore()

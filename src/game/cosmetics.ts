@@ -1,12 +1,14 @@
 export type SlingshotStyle =
   | "classic"
-  | "twig"
-  | "iron"
-  | "vine"
-  | "royal"
-  | "crimson"
-  | "golden"
-  | "rainbow"
+  | "driftwood"
+  | "ironworks"
+  | "antler"
+  | "saguaro"
+  | "wishbone"
+  | "painted"
+  | "cloudpuff"
+  | "gilded"
+  | "sunforge"
 
 import {
   BACKGROUND_VARIANTS,
@@ -33,6 +35,7 @@ import {
   type TrailStyle,
 } from "./trails"
 import type { CosmeticRarity } from "./rarity"
+import { slingCatalog, type SlingCatalogEntry, type SlingUnlock } from "./art/cosmeticsData"
 
 export {
   BACKGROUND_VARIANTS,
@@ -89,18 +92,45 @@ export interface BallUnlock {
 }
 
 /**
- * Climbed unlocks (turquoise, geode, meteor) are implemented but not yet
- * confirmed. Set this to false to use each ball's `fallbackUnlock`
- * (turquoise height 15_000, geode points 30_000, meteor height 75_000).
- * Meteor's height fallback is the plan's unconfirmed best-height.
+ * Climbed unlocks (turquoise, geode, meteor, and the Sunforge sling) are
+ * implemented but not yet confirmed. Set this to false to use each item's
+ * `fallbackUnlock` (turquoise height 15_000, geode points 30_000, meteor
+ * height 75_000, Sunforge best height 20_000). Meteor's height fallback is
+ * the plan's unconfirmed best-height.
  */
 export const USE_CLIMBED_UNLOCKS = true
 
 export interface SlingshotVariant {
   id: string
   name: string
-  price: number
   style: SlingshotStyle
+  rarity: CosmeticRarity | null
+  unlock: SlingUnlock
+  /** Used when `USE_CLIMBED_UNLOCKS` is false and `unlock.kind` is `"climbed"`. */
+  fallbackUnlock?: { kind: "height"; value: number }
+}
+
+/** Saved ids from before the sling rename. Owners keep the new sling. */
+const SLING_ID_ALIASES: Readonly<Record<string, string>> = {
+  twig: "driftwood",
+  iron: "ironworks",
+  vine: "saguaro",
+  golden: "gilded",
+}
+
+function canonicalSlingId(id: string): string {
+  return SLING_ID_ALIASES[id] ?? id
+}
+
+function toSlingVariant(entry: SlingCatalogEntry): SlingshotVariant {
+  return {
+    id: entry.id,
+    name: entry.name,
+    style: entry.id as SlingshotStyle,
+    rarity: entry.rarity,
+    unlock: entry.unlock,
+    fallbackUnlock: entry.fallbackUnlock,
+  }
 }
 
 export interface BallVariant {
@@ -126,15 +156,21 @@ export function activeBallUnlock(variant: BallVariant): BallUnlock {
   return variant.unlock
 }
 
-export const SLINGSHOT_VARIANTS: readonly SlingshotVariant[] = [
-  { id: "twig", name: "Twig", price: 5, style: "twig" },
-  { id: "iron", name: "Iron", price: 10, style: "iron" },
-  { id: "vine", name: "Vine", price: 15, style: "vine" },
-  { id: "royal", name: "Royal", price: 20, style: "royal" },
-  { id: "crimson", name: "Crimson", price: 25, style: "crimson" },
-  { id: "golden", name: "Golden", price: 50, style: "golden" },
-  { id: "rainbow", name: "Rainbow", price: 100, style: "rainbow" },
-]
+/** Shop slings in manifest order. Classic stays the free `default` id. */
+export const SLINGSHOT_VARIANTS: readonly SlingshotVariant[] = slingCatalog()
+  .filter((entry) => entry.id !== "classic")
+  .map(toSlingVariant)
+
+export function activeSlingUnlock(variant: SlingshotVariant): SlingUnlock {
+  if (
+    !USE_CLIMBED_UNLOCKS &&
+    variant.unlock.kind === "climbed" &&
+    variant.fallbackUnlock
+  ) {
+    return variant.fallbackUnlock
+  }
+  return variant.unlock
+}
 
 export const BALL_VARIANTS: readonly BallVariant[] = [
   { id: "tangerine", name: "Tangerine", style: "tangerine", rarity: "common", unlock: { kind: "height", value: 500 } },
@@ -264,6 +300,17 @@ export class CosmeticsStore {
 
   isSlingshotOwned(id: string): boolean {
     return this.slingshotUnlocked.has(id)
+  }
+
+  isSlingshotUnlocked(id: string, bestHeight: number, lifetimeClimbed: number): boolean {
+    if (id === DEFAULT_COSMETIC_ID || id === "classic") return true
+    const variant = findSlingshotVariant(id)
+    if (!variant) return false
+    const unlock = activeSlingUnlock(variant)
+    if (unlock.kind === "coins") return this.slingshotUnlocked.has(id)
+    if (unlock.kind === "climbed") return lifetimeClimbed >= unlock.value
+    if (unlock.kind === "height") return bestHeight >= unlock.value
+    return true
   }
 
   isHatOwned(id: string): boolean {
@@ -422,8 +469,8 @@ export class CosmeticsStore {
 
   purchaseSlingshot(id: string, spendCoins: (amount: number) => boolean): boolean {
     const variant = findSlingshotVariant(id)
-    if (!variant || this.isSlingshotOwned(id)) return false
-    if (!spendCoins(variant.price)) return false
+    if (!variant || variant.unlock.kind !== "coins" || this.isSlingshotOwned(id)) return false
+    if (!spendCoins(variant.unlock.price)) return false
     this.slingshotUnlocked.add(id)
     this.equipSlingshot(id)
     if (this.persist) this.saveUnlocks()
@@ -443,11 +490,11 @@ export class CosmeticsStore {
     this.saveEquipped()
   }
 
-  /** Active slingshot style for gameplay (owned variants only). */
-  getEquippedSlingshotStyle(): SlingshotStyle {
+  /** Active slingshot style for gameplay (unlocked variants only). */
+  getEquippedSlingshotStyle(bestHeight: number, lifetimeClimbed: number): SlingshotStyle {
     if (
       this.equippedSlingshotId !== DEFAULT_COSMETIC_ID &&
-      !this.isSlingshotOwned(this.equippedSlingshotId)
+      !this.isSlingshotUnlocked(this.equippedSlingshotId, bestHeight, lifetimeClimbed)
     ) {
       return "classic"
     }
@@ -548,6 +595,11 @@ export class CosmeticsStore {
     return findSlingshotVariant(this.equippedSlingshotId)?.style ?? "classic"
   }
 
+  getSelectedSlingshotVariant(): SlingshotVariant | null {
+    if (this.equippedSlingshotId === DEFAULT_COSMETIC_ID) return null
+    return findSlingshotVariant(this.equippedSlingshotId) ?? null
+  }
+
   getSelectedBallStyle(): BallStyle {
     if (this.equippedBallId === DEFAULT_COSMETIC_ID) return "classic"
     if (!isBallVariantVisible(this.equippedBallId)) return "classic"
@@ -567,10 +619,10 @@ export class CosmeticsStore {
     return ballUnlockHint(variant)
   }
 
-  isSlingshotSelectionLocked(): boolean {
+  isSlingshotSelectionLocked(bestHeight: number, lifetimeClimbed: number): boolean {
     return (
       this.equippedSlingshotId !== DEFAULT_COSMETIC_ID &&
-      !this.isSlingshotOwned(this.equippedSlingshotId)
+      !this.isSlingshotUnlocked(this.equippedSlingshotId, bestHeight, lifetimeClimbed)
     )
   }
 
@@ -589,8 +641,8 @@ export class CosmeticsStore {
   previewSlingshotPrice(): number | null {
     if (this.equippedSlingshotId === DEFAULT_COSMETIC_ID) return null
     const variant = findSlingshotVariant(this.equippedSlingshotId)
-    if (!variant || this.isSlingshotOwned(variant.id)) return null
-    return variant.price
+    if (!variant || variant.unlock.kind !== "coins" || this.isSlingshotOwned(variant.id)) return null
+    return variant.unlock.price
   }
 
   private load(): void {
@@ -599,8 +651,10 @@ export class CosmeticsStore {
       if (raw) {
         const ids = JSON.parse(raw) as string[]
         if (Array.isArray(ids)) {
-          for (const id of ids) {
-            if (SLINGSHOT_VARIANTS.some((v) => v.id === id)) {
+          for (const rawId of ids) {
+            const id = canonicalSlingId(rawId)
+            const variant = findSlingshotVariant(id)
+            if (variant && variant.unlock.kind === "coins") {
               this.slingshotUnlocked.add(id)
             }
           }
@@ -610,8 +664,15 @@ export class CosmeticsStore {
       // ignore
     }
 
+    const savedSling = canonicalSlingId(
+      this.loadString(EQUIPPED_SLINGSHOT_KEY) ?? DEFAULT_COSMETIC_ID,
+    )
     this.equippedSlingshotId =
-      this.loadString(EQUIPPED_SLINGSHOT_KEY) ?? DEFAULT_COSMETIC_ID
+      savedSling === "classic" || savedSling === DEFAULT_COSMETIC_ID
+        ? DEFAULT_COSMETIC_ID
+        : findSlingshotVariant(savedSling)
+          ? savedSling
+          : DEFAULT_COSMETIC_ID
     this.equippedBallId = this.loadString(EQUIPPED_BALL_KEY) ?? DEFAULT_COSMETIC_ID
     if (
       this.equippedBallId !== DEFAULT_COSMETIC_ID &&

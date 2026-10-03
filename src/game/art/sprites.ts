@@ -591,6 +591,95 @@ export function spriteBitmap(
   return { img: chosen.img, pxPerCss: chosen.pxPerCss }
 }
 
+const derivedCache = new Map<string, HTMLCanvasElement>()
+
+/**
+ * Silhouette of `id`, optionally dilated and punched out, filled with `color`.
+ * Placed on the same anchor as `drawSprite`. Night rims use padCss 2; the
+ * catch flash uses padCss 0 (solid silhouette).
+ */
+export function drawSpriteDerived(
+  ctx: CanvasRenderingContext2D,
+  id: string,
+  x: number,
+  y: number,
+  options: {
+    scale?: number
+    padCss?: number
+    color: string
+    alpha?: number
+    composite?: GlobalCompositeOperation
+  },
+): boolean {
+  const rec = sprites.get(id)
+  if (!rec || !spritesReady()) return false
+  const frame = frameCss(rec)
+  if (!frame) return false
+  const scale = options.scale ?? 1
+  const density = spriteDrawDensity(ctx, id, scale)
+  if (density == null) return false
+  const padCss = options.padCss ?? 0
+  const layer = derivedLayer(id, density, options.color, padCss)
+  if (!layer) return false
+  const [anchorX, anchorY] = anchorCss(rec, frame)
+  const cssW = frame.w + padCss * 2
+  const cssH = frame.h + padCss * 2
+  ctx.save()
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = "high"
+  ctx.translate(x, y)
+  if (scale !== 1) ctx.scale(scale, scale)
+  if (options.alpha != null) ctx.globalAlpha *= options.alpha
+  if (options.composite) ctx.globalCompositeOperation = options.composite
+  ctx.drawImage(layer.canvas, -anchorX - padCss, -anchorY - padCss, cssW, cssH)
+  ctx.restore()
+  return true
+}
+
+function derivedLayer(
+  id: string,
+  pxPerCss: number,
+  color: string,
+  padCss: number,
+): { canvas: HTMLCanvasElement } | null {
+  const key = `${id}|${pxPerCss}|${color}|${padCss}`
+  const cached = derivedCache.get(key)
+  if (cached) return { canvas: cached }
+  const bmp = spriteBitmap(id, pxPerCss)
+  if (!bmp || bmp.img.naturalWidth === 0) return null
+  const px = bmp.pxPerCss
+  const srcW = Math.max(1, Math.round((bmp.img.naturalWidth / px) * px))
+  const srcH = Math.max(1, Math.round((bmp.img.naturalHeight / px) * px))
+  const src = document.createElement("canvas")
+  src.width = srcW
+  src.height = srcH
+  const sg = src.getContext("2d")
+  if (!sg) return null
+  sg.drawImage(bmp.img, 0, 0, srcW, srcH)
+  const pad = Math.max(0, Math.round(padCss * px))
+  const out = document.createElement("canvas")
+  out.width = srcW + pad * 2
+  out.height = srcH + pad * 2
+  const g = out.getContext("2d")
+  if (!g) return null
+  if (pad > 0) {
+    const steps = 16
+    for (let i = 0; i < steps; i++) {
+      const a = (i / steps) * Math.PI * 2
+      g.drawImage(src, pad + Math.cos(a) * pad, pad + Math.sin(a) * pad)
+    }
+    g.globalCompositeOperation = "destination-out"
+    g.drawImage(src, pad, pad)
+  } else {
+    g.drawImage(src, 0, 0)
+  }
+  g.globalCompositeOperation = "source-in"
+  g.fillStyle = color
+  g.fillRect(0, 0, out.width, out.height)
+  derivedCache.set(key, out)
+  return { canvas: out }
+}
+
 /**
  * Stretch `id` into a rectangle, ignoring the anchor. Used for the
  * locked-card progress chip and its 3-slice fill.
