@@ -22,6 +22,8 @@ import {
   TIP_HIDE_CLIMB_HEIGHT,
   MAX_PULL,
   MENU_DEMO_COIN_CHANCE,
+  MOVING_PLATFORM_AMPLITUDE,
+  MOVING_PLATFORM_SPEED,
   PLAYFIELD_MAX_WIDTH,
   POW_DURATION,
   POW_LAUNCH_MULT,
@@ -92,6 +94,7 @@ import type {
   GameState,
   MainMenuHitAreas,
   MenuScreen,
+  PlatformKind,
   ShopHitAreas,
   ScorePopup,
   TurretShotData,
@@ -207,7 +210,7 @@ export class Game implements BotGameApi {
       () => this.audio.unlock(),
       (id) => this.onPointerEnd(id),
     )
-    this.renderer = new Renderer(canvas)
+    this.renderer = new Renderer(canvas, this.config.spriteArt)
     this.resize()
     window.addEventListener("resize", () => this.resize())
     window.addEventListener("orientationchange", () => this.resize())
@@ -325,7 +328,8 @@ export class Game implements BotGameApi {
     this.sessionElapsed = 0
     this.sessionEnded = false
     // Normal game opens on an attract-mode menu; bot/playable skip straight in.
-    if (this.config.mode === "normal") {
+    // `?debug=1` also skips the menu so climb / BEST screenshots start in play.
+    if (this.config.mode === "normal" && !this.config.debug) {
       this.enterMenuDemo()
     } else {
       this.resetRun(false)
@@ -369,14 +373,17 @@ export class Game implements BotGameApi {
 
   private resize(): void {
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    // Cap playfield width on wide desktops; mobile stays full-bleed.
-    const width = Math.min(window.innerWidth, PLAYFIELD_MAX_WIDTH)
+    // Cap playfield width on wide desktops. The canvas fills the viewport so
+    // wall bodies can paint into the letterbox; collision stays on the playfield.
+    const viewportW = window.innerWidth
     const height = window.innerHeight
-    this.canvas.width = Math.floor(width * dpr)
+    const width = Math.min(viewportW, PLAYFIELD_MAX_WIDTH)
+    this.canvas.width = Math.floor(viewportW * dpr)
     this.canvas.height = Math.floor(height * dpr)
-    this.canvas.style.width = `${width}px`
+    this.canvas.style.width = `${viewportW}px`
     this.canvas.style.height = `${height}px`
     this.camera.resize(width, height, dpr)
+    this.camera.gutter = (viewportW - width) / 2
 
     if (!this.started) {
       this.slingshot.x = width * 0.5
@@ -393,7 +400,8 @@ export class Game implements BotGameApi {
   private resetRun(toMenu = false): void {
     this.audio.resetFlight()
     const width = this.camera.width
-    this.slingshot.reset(width * 0.5, 0)
+    const climb = this.config.debugClimb
+    this.slingshot.reset(width * 0.5, climb != null ? climb : 0)
     this.ball.reset(this.slingshot.x, this.slingshot.y)
     this.bonusBalls = []
     this.bullets = []
@@ -401,7 +409,16 @@ export class Game implements BotGameApi {
     this.platforms.reset(width, this.slingshot.y, {
       coinChance: this.menuDemo ? MENU_DEMO_COIN_CHANCE : undefined,
     })
-    this.score.reset(this.slingshot.y)
+    if (this.config.debugBest != null) {
+      this.score.bestMaxHeight = this.config.debugBest
+    }
+    // A debug climb parks the slingshot at that altitude but keeps the run
+    // origin at 0, so night rims and height lines use real climb numbers.
+    this.score.reset(climb != null ? 0 : this.slingshot.y)
+    if (this.config.debugBest != null) {
+      this.score.runHeightLine = this.config.debugBest
+    }
+    this.applyDebugScene()
     this.camera.followSlingshot(this.slingshot.y)
     this.state = toMenu ? "menu" : "ready"
     this.started = false
@@ -419,6 +436,46 @@ export class Game implements BotGameApi {
     this.runCoinMult = 1
     this.runCoinMultRemaining = 0
     this.trailPoints = []
+  }
+
+  /**
+   * Debug-only composition for screenshots. Does not run unless `?debug=1`,
+   * and never changes collision sizes. A climb param forces one aimed turret
+   * into the first screen and shows one of each platform kind.
+   */
+  private applyDebugScene(): void {
+    if (!this.config.debug || this.config.debugClimb == null) return
+    const slingY = this.slingshot.y
+    const band = this.platforms.platforms.filter(
+      (p) => p.y > slingY + 70 && p.y < slingY + 520,
+    )
+    const kinds: PlatformKind[] = ["normal", "bonus", "crumbling", "moving"]
+    for (let i = 0; i < band.length && i < kinds.length; i++) {
+      const platform = band[i]!
+      const kind = kinds[i]!
+      platform.kind = kind
+      if (kind === "moving") {
+        platform.originX = platform.x
+        platform.phase = 0.4
+        platform.amplitude = MOVING_PLATFORM_AMPLITUDE
+        platform.speed = MOVING_PLATFORM_SPEED
+      }
+    }
+    const viewTop = slingY + Math.min(520, this.camera.height * 0.62)
+    const hasTurret = this.platforms.turrets.some(
+      (t) => t.y > slingY + 60 && t.y < viewTop,
+    )
+    if (!hasTurret) {
+      const arc = TURRET_AIM_ARC || 1
+      this.platforms.turrets.push({
+        side: "left",
+        y: slingY + 230,
+        aimAngle: 0.7,
+        phase: Math.asin(Math.min(1, 0.7 / arc)),
+        phaseOffset: 0,
+        fireCooldown: 2.2,
+      })
+    }
   }
 
   private endPlayableSession(): void {
@@ -1606,15 +1663,31 @@ export class Game implements BotGameApi {
     const bestHeight = this.score.bestMaxHeight
     const highScore = this.score.highScore
     const backgroundStyle = this.cosmetics.getEquippedBackgroundStyle(bestHeight, highScore)
-    this.renderer.begin(cam, dt, this.score.startHeight, backgroundStyle)
-    this.renderer.drawAltitudeMarkers(cam, this.score.startHeight)
+    const inMenu = this.menuDemo || this.state === "menu"
+    const onTitle = inMenu && this.menuScreen === "title"
+    // Shop, Hats, and Trails share the title's hidden attract chrome.
+    // Caught! stays on the title; on these cards it paints through the buttons.
+    const onMenuCard =
+      inMenu &&
+      (this.menuScreen === "shop" ||
+        this.menuScreen === "hatGacha" ||
+        this.menuScreen === "trailGacha")
+    const hideRuler = onTitle || onMenuCard
+    this.renderer.begin(cam, dt, this.score.startHeight, backgroundStyle, {
+      portals: this.platforms.portals,
+      turrets: this.platforms.turrets,
+    })
+    if (!hideRuler) this.renderer.drawAltitudeMarkers(cam, this.score.startHeight)
     this.renderer.drawMaxHeightLine(
       cam,
       this.score.heightLineWorldY,
       this.score.heightLinePassed,
     )
     this.renderer.drawMilestoneHeightLines(cam, this.score.milestoneLines)
-    this.renderer.drawPlatforms(cam, this.platforms.platforms)
+    this.renderer.drawPlatforms(cam, this.platforms.platforms, [
+      this.ball,
+      ...this.bonusBalls,
+    ])
     this.renderer.drawBumpers(cam, this.platforms.bumpers, this.anim)
     this.renderer.drawArrowPads(cam, this.platforms.arrowPads, this.anim)
     this.renderer.drawUpgradePickups(cam, this.platforms.upgrades, this.anim)
@@ -1674,15 +1747,16 @@ export class Game implements BotGameApi {
       pulse,
       slingStyle,
       slingshotStyle,
+      !hideRuler,
     )
-    if (this.catchBurst > 0) {
+    if (this.catchBurst > 0 && !onMenuCard) {
       this.renderer.drawCatchBurst(
         cam,
         this.slingshot,
         this.catchBurst / CATCH_BURST_DURATION,
       )
     }
-    this.renderer.drawScorePopups(cam, this.scorePopups)
+    if (!hideRuler) this.renderer.drawScorePopups(cam, this.scorePopups)
 
     if (trajOrigin && trajVel) {
       this.renderer.drawTrajectory(cam, trajOrigin, trajVel)

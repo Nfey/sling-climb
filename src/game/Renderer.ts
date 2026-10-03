@@ -10,7 +10,6 @@ import {
   TURRET_BARREL_LENGTH,
   TURRET_BARREL_WIDTH,
   TURRET_BODY_RADIUS,
-  skyZoneColor,
 } from "./constants"
 import { turretMuzzleAngle } from "./turret"
 import type { Ball } from "./Ball"
@@ -69,38 +68,125 @@ import {
 } from "./cosmeticArt"
 import { drawBackgroundPreview, drawBackgroundStyle } from "./backgroundArt"
 import { getBackgroundTheme } from "./backgrounds"
+import { logoForTheme } from "./art/brand"
+import {
+  drawArrowPadsArt,
+  drawBallArt,
+  drawClassicMenuBall,
+  drawBestArt,
+  drawBumpersArt,
+  drawCatchFlashArt,
+  drawCoinsArt,
+  drawKillLineArt,
+  drawMilestonesArt,
+  drawPlatformsArt,
+  drawPortalsArt,
+  drawSlingshotArt,
+  drawTurretShotsArt,
+  drawTurretsArt,
+  drawUpgradeArt,
+} from "./art/drawArt"
+import { drawCanyonBackdrop, drawCanyonWalls, type CanyonScenery } from "./art/canyon"
+import { skyColorForClimb } from "./art/palette"
+import { spritesReady } from "./art/sprites"
+import { SPRITE_ART_DEFAULT } from "./config"
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D
   private time = 0
+  private runStartHeight = 0
   private currentBackgroundStyle: BackgroundStyle = "classic"
+  /** Art is the default. `?art=0` keeps the code-drawn look. */
+  private spriteArt: boolean
+  /** NEW-BEST flash / rope glow, seconds remaining. */
+  private bestFlash = 0
+  private bestGlow = 0
+  private sawBestPassed = false
+  /** Classic slingshot body was drawn from art this frame (catch flash matches it). */
+  private slingUsesArt = false
+  /** Portals and turrets props must avoid. Updated each frame before the backdrop. */
+  private scenery: CanyonScenery = { portals: [], turrets: [] }
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, spriteArt = SPRITE_ART_DEFAULT) {
     const ctx = canvas.getContext("2d")
     if (!ctx) throw new Error("Canvas 2D not available")
     this.ctx = ctx
+    this.spriteArt = spriteArt
   }
 
-  begin(camera: Camera, dt: number, startHeight: number, backgroundStyle: BackgroundStyle = "classic"): void {
+  private useArt(): boolean {
+    return this.spriteArt && spritesReady()
+  }
+
+  /** Canyon parallax, walls, and the sky table. Shop themes keep their own skies. */
+  private canyonOn(): boolean {
+    return this.useArt() && this.currentBackgroundStyle === "classic"
+  }
+
+  begin(
+    camera: Camera,
+    dt: number,
+    startHeight: number,
+    backgroundStyle: BackgroundStyle = "classic",
+    scenery?: CanyonScenery,
+  ): void {
     this.currentBackgroundStyle = backgroundStyle
     this.time += dt
+    this.runStartHeight = startHeight
+    this.bestFlash = Math.max(0, this.bestFlash - dt)
+    this.bestGlow = Math.max(0, this.bestGlow - dt)
+    this.slingUsesArt = false
+    if (scenery) this.scenery = scenery
     const ctx = this.ctx
     const dpr = camera.dpr
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    ctx.clearRect(0, 0, camera.width, camera.height)
-    this.drawBackground(camera, startHeight, backgroundStyle)
+    const gutter = camera.gutter
+    ctx.setTransform(dpr, 0, 0, dpr, gutter * dpr, 0)
+    ctx.clearRect(-gutter - 2, -2, camera.width + gutter * 2 + 4, camera.height + 4)
+    const canyon = this.canyonOn()
+    if (canyon) {
+      this.drawBackdrop(camera, dt)
+      this.drawWallStrips(camera)
+    } else if (gutter > 0) {
+      ctx.fillStyle = "#e6e6e6"
+      ctx.fillRect(-gutter, 0, gutter, camera.height)
+      ctx.fillRect(camera.width, 0, gutter, camera.height)
+    }
+    this.drawBackground(camera, startHeight, backgroundStyle, canyon)
   }
 
-  private drawBackground(camera: Camera, startHeight: number, backgroundStyle: BackgroundStyle): void {
+  /** Canyon Floor parallax (far 0.15, mid 0.4), props, and tinted dust. */
+  private drawBackdrop(camera: Camera, dt: number): void {
+    drawCanyonBackdrop(
+      this.ctx,
+      camera,
+      this.runStartHeight,
+      dt,
+      this.time,
+      this.scenery,
+    )
+  }
+
+  /** Per-zone wall strips. Inner edge on the bounce line; body in the gutter. */
+  private drawWallStrips(camera: Camera): void {
+    drawCanyonWalls(this.ctx, camera, this.runStartHeight)
+  }
+
+  private drawBackground(
+    camera: Camera,
+    startHeight: number,
+    backgroundStyle: BackgroundStyle,
+    canyon = false,
+  ): void {
     const ctx = this.ctx
     const { width, height } = camera
     const killY = camera.killScreenY
     const theme = getBackgroundTheme(backgroundStyle)
 
-    if (backgroundStyle === "classic") {
+    if (!canyon && backgroundStyle === "classic") {
       this.drawSkyBands(camera, startHeight, height)
 
-      // Soft hash for a bit of depth on white
+      // Soft hash for a bit of depth on the code-drawn sky. The canyon
+      // backdrop replaces it.
       ctx.save()
       ctx.globalAlpha = 0.04
       ctx.strokeStyle = COLORS.ink
@@ -113,9 +199,11 @@ export class Renderer {
         ctx.stroke()
       }
       ctx.restore()
-    } else {
+    } else if (!canyon) {
       drawBackgroundStyle(ctx, camera, backgroundStyle, this.time, height)
     }
+
+    if (this.useArt() && drawKillLineArt(ctx, camera, startHeight)) return
 
     ctx.strokeStyle = theme.dividerLine
     ctx.lineWidth = 1
@@ -149,7 +237,7 @@ export class Renderer {
       const y1 = Math.min(bgHeight, syBottom)
       if (y1 <= y0) continue
 
-      ctx.fillStyle = skyZoneColor(climb)
+      ctx.fillStyle = skyColorForClimb(climb)
       ctx.fillRect(0, y0, width, y1 - y0)
     }
   }
@@ -175,26 +263,40 @@ export class Renderer {
       const sy = camera.worldToScreen({ x: 0, y: worldY }).y
       if (sy > camera.killScreenY || sy < 56) continue
 
-      ctx.strokeStyle = theme.heightMarker
+      const canyonRuler = this.canyonOn()
+      const ink = canyonRuler && climb >= 39_800 ? "#FFF1D6" : theme.ink
       ctx.lineWidth = 1
       ctx.setLineDash([5, 7])
       ctx.beginPath()
-      ctx.moveTo(36, sy)
-      ctx.lineTo(camera.width - 12, sy)
+      if (canyonRuler) {
+        ctx.globalAlpha = 0.2
+        ctx.strokeStyle = ink
+        ctx.moveTo(8, sy)
+        ctx.lineTo(camera.width - 8, sy)
+      } else {
+        ctx.strokeStyle = theme.heightMarker
+        ctx.moveTo(36, sy)
+        ctx.lineTo(camera.width - 12, sy)
+      }
       ctx.stroke()
       ctx.setLineDash([])
 
-      // Tick mark on the left
-      ctx.beginPath()
-      ctx.moveTo(8, sy)
-      ctx.lineTo(28, sy)
-      ctx.stroke()
+      if (!canyonRuler) {
+        ctx.beginPath()
+        ctx.moveTo(8, sy)
+        ctx.lineTo(28, sy)
+        ctx.stroke()
+      }
 
-      ctx.fillStyle = theme.heightMarkerLabel
-      ctx.font = "600 11px 'DM Sans', sans-serif"
+      ctx.globalAlpha = canyonRuler ? 0.55 : 1
+      ctx.fillStyle = canyonRuler ? ink : theme.heightMarkerLabel
+      ctx.font = canyonRuler
+        ? "700 11px 'DM Sans', sans-serif"
+        : "600 11px 'DM Sans', sans-serif"
       ctx.textAlign = "left"
       ctx.textBaseline = "middle"
-      ctx.fillText(formatHeightLabel(climb), 8, sy - 10)
+      ctx.fillText(formatHeightLabel(climb), canyonRuler ? 12 : 8, sy - 10)
+      ctx.globalAlpha = 1
     }
     ctx.textBaseline = "alphabetic"
     ctx.restore()
@@ -210,9 +312,29 @@ export class Renderer {
     passed: boolean,
   ): void {
     if (worldY <= 0) return
+    if (passed && !this.sawBestPassed) {
+      this.bestFlash = 0.25
+      this.bestGlow = 0.6
+    }
+    this.sawBestPassed = passed
     const ctx = this.ctx
     const sy = camera.worldToScreen({ x: 0, y: worldY }).y
     if (sy < -20 || sy > camera.killScreenY + 10) return
+    if (
+      this.useArt() &&
+      drawBestArt(
+        ctx,
+        camera,
+        sy,
+        passed,
+        worldY,
+        this.runStartHeight,
+        this.bestFlash,
+        this.bestGlow,
+      )
+    ) {
+      return
+    }
 
     const color = passed ? COLORS.maxHeightLinePassed : COLORS.maxHeightLine
 
@@ -243,6 +365,9 @@ export class Renderer {
     milestones: { worldY: number; label: string; passed: boolean; colorIndex: number }[],
   ): void {
     const ctx = this.ctx
+    if (this.useArt() && drawMilestonesArt(ctx, camera, milestones, this.runStartHeight)) {
+      return
+    }
     ctx.save()
     ctx.lineWidth = 2
     ctx.setLineDash([8, 5])
@@ -269,8 +394,18 @@ export class Renderer {
     ctx.restore()
   }
 
-  drawPlatforms(camera: Camera, platforms: PlatformData[]): void {
+  drawPlatforms(
+    camera: Camera,
+    platforms: PlatformData[],
+    contacts: readonly { x: number; y: number; radius: number; squash: number }[] = [],
+  ): void {
     const ctx = this.ctx
+    if (
+      this.useArt() &&
+      drawPlatformsArt(ctx, camera, platforms, contacts, this.time, this.runStartHeight)
+    ) {
+      return
+    }
     const killY = camera.killScreenY
     for (const p of platforms) {
       if (p.active === false) continue
@@ -306,6 +441,7 @@ export class Renderer {
 
   drawBumpers(camera: Camera, bumpers: BumperData[], anim: number): void {
     const ctx = this.ctx
+    if (this.useArt() && drawBumpersArt(ctx, camera, bumpers, this.runStartHeight)) return
     const killY = camera.killScreenY
     const pulse = 0.85 + Math.sin(anim * 7) * 0.15
     for (const b of bumpers) {
@@ -347,6 +483,7 @@ export class Renderer {
 
   drawArrowPads(camera: Camera, pads: ArrowPadData[], anim: number): void {
     const ctx = this.ctx
+    if (this.useArt() && drawArrowPadsArt(ctx, camera, pads, this.runStartHeight)) return
     const killY = camera.killScreenY
     const pulse = 0.9 + Math.sin(anim * 6) * 0.1
     for (const pad of pads) {
@@ -405,6 +542,19 @@ export class Renderer {
 
   drawPortals(camera: Camera, portals: PortalData[], anim: number): void {
     const ctx = this.ctx
+    if (
+      this.useArt() &&
+      drawPortalsArt(
+        ctx,
+        camera,
+        portals,
+        anim,
+        this.runStartHeight,
+        this.canyonOn() ? getBackgroundTheme(this.currentBackgroundStyle).ink : null,
+      )
+    ) {
+      return
+    }
     const pulse = 0.55 + Math.sin(anim * 5) * 0.2
     for (const p of portals) {
       const top = camera.worldToScreen({ x: 0, y: p.y + p.height })
@@ -455,6 +605,20 @@ export class Renderer {
 
   drawWallTurrets(camera: Camera, turrets: WallTurretData[], anim: number): void {
     const ctx = this.ctx
+    if (
+      this.useArt() &&
+      drawTurretsArt(
+        ctx,
+        camera,
+        turrets,
+        anim,
+        this.runStartHeight,
+        turretMuzzleAngle,
+        this.canyonOn() ? getBackgroundTheme(this.currentBackgroundStyle).ink : null,
+      )
+    ) {
+      return
+    }
     for (const t of turrets) {
       const centerX =
         t.side === "left" ? TURRET_BODY_RADIUS : camera.width - TURRET_BODY_RADIUS
@@ -507,6 +671,12 @@ export class Renderer {
 
   drawTurretShots(camera: Camera, shots: TurretShotData[]): void {
     const ctx = this.ctx
+    if (
+      this.useArt() &&
+      drawTurretShotsArt(ctx, camera, shots, this.time, this.runStartHeight)
+    ) {
+      return
+    }
     for (const shot of shots) {
       const s = camera.worldToScreen({ x: shot.x, y: shot.y })
       if (s.y < -20 || s.y > camera.height + 20) continue
@@ -536,6 +706,7 @@ export class Renderer {
     pulse = 0,
     style: "normal" | "freeMove" | "pow" = "normal",
     cosmeticStyle: SlingshotStyle = "classic",
+    launchGuide = true,
   ): void {
     const ctx = this.ctx
     const base = camera.worldToScreen(sling.base)
@@ -571,10 +742,25 @@ export class Renderer {
       rest: { x: rest.x, y: rest.y },
     }
 
-    if (pow) {
-      drawSlingshotFork(ctx, geom, "crimson", this.time, 10, 8)
-    } else {
-      drawSlingshotFork(ctx, geom, slingStyle, this.time, 10, 8)
+    const classicBody = !freeMove && (pow || cosmeticStyle === "classic")
+    this.slingUsesArt =
+      classicBody &&
+      this.useArt() &&
+      drawSlingshotArt(
+        ctx,
+        camera,
+        sling,
+        pouchScreen.x,
+        pouchScreen.y,
+        pow,
+        this.runStartHeight,
+      )
+    if (!this.slingUsesArt) {
+      if (pow) {
+        drawSlingshotFork(ctx, geom, "crimson", this.time, 10, 8)
+      } else {
+        drawSlingshotFork(ctx, geom, slingStyle, this.time, 10, 8)
+      }
     }
 
     if (!pow) {
@@ -604,20 +790,24 @@ export class Renderer {
       }
     }
 
-    ctx.save()
-    ctx.globalAlpha = freeMove ? 0.28 : pow ? 0.26 : 0.2
-    ctx.strokeStyle = freeMove
-      ? COLORS.freeMovePickup
-      : pow
-        ? COLORS.powPickup
-        : COLORS.ink
-    ctx.lineWidth = 1
-    ctx.setLineDash(freeMove || pow ? [4, 6] : [6, 8])
-    ctx.beginPath()
-    ctx.moveTo(12, rest.y)
-    ctx.lineTo(camera.width - 12, rest.y)
-    ctx.stroke()
-    ctx.restore()
+    // Faint rest dash. Hidden on the title, where it reads as an unlabeled
+    // height mark sitting on the launch line. Gameplay still draws it.
+    if (launchGuide) {
+      ctx.save()
+      ctx.globalAlpha = freeMove ? 0.28 : pow ? 0.26 : 0.2
+      ctx.strokeStyle = freeMove
+        ? COLORS.freeMovePickup
+        : pow
+          ? COLORS.powPickup
+          : COLORS.ink
+      ctx.lineWidth = 1
+      ctx.setLineDash(freeMove || pow ? [4, 6] : [6, 8])
+      ctx.beginPath()
+      ctx.moveTo(12, rest.y)
+      ctx.lineTo(camera.width - 12, rest.y)
+      ctx.stroke()
+      ctx.restore()
+    }
   }
 
   /** Expanding rings + flash when the ball is caught. `t` is 1→0 over the burst. */
@@ -628,6 +818,9 @@ export class Renderer {
     const alpha = Math.max(0, t)
 
     ctx.save()
+    if (this.slingUsesArt) {
+      drawCatchFlashArt(ctx, camera, sling, alpha)
+    }
     // Bright core flash
     ctx.globalAlpha = 0.35 * alpha
     ctx.fillStyle = COLORS.accent
@@ -724,6 +917,22 @@ export class Renderer {
   ): void {
     const ctx = this.ctx
     const s = camera.worldToScreen({ x: ball.x, y: ball.y })
+    if (
+      this.useArt() &&
+      drawBallArt(
+        ctx,
+        ball,
+        s.x,
+        s.y,
+        ballStyle === "classic",
+        hatStyle === "none",
+        this.runStartHeight,
+        this.time,
+        (hatCtx) => drawHatStyle(hatCtx, hatStyle, ball.radius, this.time),
+      )
+    ) {
+      return
+    }
     const squash = ball.squash
     const scaleX = 1 + squash * 0.25
     const scaleY = 1 - squash * 0.2
@@ -755,6 +964,26 @@ export class Renderer {
     ctx.restore()
   }
 
+  /** 3px cream outline so canyon props don't swallow the top HUD digits. */
+  private fillHudText(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    x: number,
+    y: number,
+    fill: string,
+    outline: boolean,
+  ): void {
+    if (outline) {
+      ctx.lineJoin = "round"
+      ctx.miterLimit = 2
+      ctx.lineWidth = 3
+      ctx.strokeStyle = "#FFF8EC"
+      ctx.strokeText(text, x, y)
+    }
+    ctx.fillStyle = fill
+    ctx.fillText(text, x, y)
+  }
+
   drawHud(
     camera: Camera,
     score: number,
@@ -772,41 +1001,49 @@ export class Renderer {
     const bestRowY = 36 + top
     const scoreY = 62 + top
 
+    const hudInk = this.canyonOn()
     ctx.textAlign = "left"
-    ctx.fillStyle = theme.inkDim
     ctx.font = "500 12px 'DM Sans', sans-serif"
-    ctx.fillText("SCORE", 20, labelY)
+    this.fillHudText(ctx, "SCORE", 20, labelY, theme.inkDim, hudInk)
 
     if (highScore > 0) {
-      ctx.fillStyle = COLORS.accent
       ctx.font = "600 11px 'DM Sans', sans-serif"
-      ctx.fillText(String(highScore), 20, bestRowY)
+      this.fillHudText(ctx, String(highScore), 20, bestRowY, COLORS.accent, hudInk)
     }
 
-    ctx.fillStyle = theme.ink
     ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText(String(score), 20, scoreY)
+    this.fillHudText(ctx, String(score), 20, scoreY, theme.ink, hudInk)
 
     if (combo >= 2) {
-      ctx.fillStyle = COLORS.accent
       ctx.font = "800 20px 'Bricolage Grotesque', sans-serif"
-      ctx.fillText(`${combo}x`, 20, scoreY + 26)
+      this.fillHudText(ctx, `${combo}x`, 20, scoreY + 26, COLORS.accent, hudInk)
     }
 
     ctx.textAlign = "right"
-    ctx.fillStyle = theme.inkDim
     ctx.font = "500 12px 'DM Sans', sans-serif"
-    ctx.fillText("HEIGHT", camera.width - 20, labelY)
+    this.fillHudText(ctx, "HEIGHT", camera.width - 20, labelY, theme.inkDim, hudInk)
 
     if (bestHeight > 0) {
-      ctx.fillStyle = COLORS.accent
       ctx.font = "600 11px 'DM Sans', sans-serif"
-      ctx.fillText(formatHeightLabel(bestHeight), camera.width - 20, bestRowY)
+      this.fillHudText(
+        ctx,
+        formatHeightLabel(bestHeight),
+        camera.width - 20,
+        bestRowY,
+        COLORS.accent,
+        hudInk,
+      )
     }
 
-    ctx.fillStyle = theme.ink
     ctx.font = "800 28px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText(formatHeightLabel(climbHeight), camera.width - 20, scoreY)
+    this.fillHudText(
+      ctx,
+      formatHeightLabel(climbHeight),
+      camera.width - 20,
+      scoreY,
+      theme.ink,
+      hudInk,
+    )
 
     if (tip) {
       ctx.textAlign = "center"
@@ -819,9 +1056,13 @@ export class Renderer {
 
   drawUpgradePickups(camera: Camera, pickups: UpgradePickupData[], anim: number): void {
     const ctx = this.ctx
+    const drewPow =
+      this.useArt() &&
+      drawUpgradeArt(ctx, camera, pickups, anim, this.runStartHeight)
+    const visible = drewPow ? pickups.filter((u) => u.kind !== "pow") : pickups
     const killY = camera.killScreenY
     const bob = Math.sin(anim * 4) * 3
-    for (const u of pickups) {
+    for (const u of visible) {
       const s = camera.worldToScreen({ x: u.x, y: u.y })
       s.y += bob
       if (s.y - u.radius >= killY || s.y + u.radius < -20) continue
@@ -867,6 +1108,7 @@ export class Renderer {
 
   drawCoins(camera: Camera, coins: CoinData[], anim: number): void {
     const ctx = this.ctx
+    if (this.useArt() && drawCoinsArt(ctx, camera, coins, anim, this.runStartHeight)) return
     const killY = camera.killScreenY
     const bob = Math.sin(anim * 5) * 2.5
     for (const c of coins) {
@@ -947,17 +1189,34 @@ export class Renderer {
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
 
-    ctx.fillStyle = theme.ink
-    ctx.font = "800 44px 'Bricolage Grotesque', sans-serif"
-    ctx.fillText("Sling Bounce™", cx, y)
-    y += 36
+    const logo = this.useArt() ? logoForTheme(camera.dpr, theme.ink) : null
+    const logoPlace = logo ? placeTitleLogo(camera, logo) : null
+    if (logoPlace) {
+      y = logoPlace.y + logoPlace.h + 16
+    } else {
+      ctx.fillStyle = theme.ink
+      ctx.font = "800 44px 'Bricolage Grotesque', sans-serif"
+      ctx.fillText("Sling Bounce™", cx, y)
+      y += 36
+    }
+
+    const showBests = highScore > 0 || bestHeight > 0
+    if (this.useArt()) {
+      const tagY = y
+      const tapY = tagY + 36 + (showBests ? 50 : 8) + 52 + 48 + 42
+      const panelTop = tagY - 14
+      const panelBottom = tapY + 16
+      fillCreamPanel(ctx, 12, panelTop, width - 24, panelBottom - panelTop)
+    }
+
+    if (logo && logoPlace) {
+      ctx.drawImage(logo, logoPlace.x, logoPlace.y, logoPlace.w, logoPlace.h)
+    }
 
     ctx.fillStyle = theme.inkDim
     ctx.font = "500 15px 'DM Sans', sans-serif"
     ctx.fillText("Pull back to launch · catch to climb", cx, y)
     y += 36
-
-    const showBests = highScore > 0 || bestHeight > 0
 
     if (showBests) {
       const rowW = Math.min(280, width - 48)
@@ -1602,6 +1861,18 @@ export class Renderer {
     drawLifetimeCoins(ctx, width, lifetimeCoins)
 
     const topPad = 36 + safeAreaInsetTop()
+    const previewY = topPad + 108
+    const equipY = previewY + 100
+    const pullH = 52
+    const pullY = equipY + 52
+    const backH = 44
+    const backY = Math.min(height - backH - 20, pullY + pullH + 40)
+    if (!revealing && this.useArt()) {
+      const panelTop = topPad - 22
+      const panelBottom = backY + backH + 18
+      fillCreamPanel(ctx, 12, panelTop, width - 24, panelBottom - panelTop)
+    }
+
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
     ctx.fillStyle = theme.ink
@@ -1617,17 +1888,16 @@ export class Renderer {
       topPad + 34,
     )
 
-    const previewY = topPad + 108
     if (!revealing) {
       ctx.save()
       ctx.translate(cx, previewY)
       if (pool === "hat") {
-        drawBallStyle(ctx, ballStyle, 36, this.time)
+        drawMenuBall(ctx, ballStyle, 36, this.time, this.useArt(), hatStyle === "none")
         drawHatStyle(ctx, hatStyle, 36, this.time)
       } else {
         const local = previewTrailPoints(0, 8, 54)
         drawTrailStyle(ctx, trailStyle, local, this.time)
-        drawBallStyle(ctx, ballStyle, 28, this.time)
+        drawMenuBall(ctx, ballStyle, 28, this.time, this.useArt(), hatStyle === "none")
         drawHatStyle(ctx, hatStyle, 28, this.time)
       }
       ctx.restore()
@@ -1650,7 +1920,6 @@ export class Renderer {
     }
 
     const arrowW = 40
-    const equipY = previewY + 100
     const equipPrev: ScreenRect = { x: cx - 100, y: equipY, w: arrowW, h: 36 }
     const equipNext: ScreenRect = { x: cx + 60, y: equipY, w: arrowW, h: 36 }
     if (!revealing) {
@@ -1672,10 +1941,9 @@ export class Renderer {
 
     const canAfford = lifetimeCoins >= GACHA_PULL_COST
     const pullW = 180
-    const pullH = 52
     const pull: ScreenRect = {
       x: cx - pullW / 2,
-      y: equipY + 52,
+      y: pullY,
       w: pullW,
       h: pullH,
     }
@@ -1694,10 +1962,9 @@ export class Renderer {
     }
 
     const backW = 140
-    const backH = 44
     const back: ScreenRect = {
       x: cx - backW / 2,
-      y: Math.min(height - backH - 20, pull.y + pullH + 40),
+      y: backY,
       w: backW,
       h: backH,
     }
@@ -1721,6 +1988,7 @@ export class Renderer {
         reveal,
         ballStyle,
         this.time,
+        this.useArt(),
       )
     }
 
@@ -1762,6 +2030,18 @@ export class Renderer {
     drawLifetimeCoins(ctx, width, lifetimeCoins)
 
     const topPad = 36 + safeAreaInsetTop()
+    const pickerH = 64
+    const rowGap = 56
+    const rowsTop = topPad + 56
+    const backH = 44
+    const ballPickerY = rowsTop + 2 * (pickerH + rowGap)
+    const backY = Math.min(height - backH - 20, ballPickerY + pickerH + 36)
+    if (this.useArt()) {
+      const panelTop = topPad - 22
+      const panelBottom = backY + backH + 18
+      fillCreamPanel(ctx, 12, panelTop, width - 24, panelBottom - panelTop)
+    }
+
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
     ctx.fillStyle = theme.ink
@@ -1771,10 +2051,7 @@ export class Renderer {
     const arrowW = 34
     const iconBox = 48
     const pickerW = arrowW + iconBox + arrowW
-    const pickerH = 64
-    const rowGap = 56
     const labelOffset = 22
-    const rowsTop = topPad + 56
     const rows = [
       {
         kind: "slingshot" as const,
@@ -1832,6 +2109,7 @@ export class Renderer {
         row.locked,
         this.time,
         row.hint,
+        this.useArt(),
       )
       pickers.push({
         prev: drawn.prev,
@@ -1868,10 +2146,9 @@ export class Renderer {
     }
 
     const backW = 140
-    const backH = 44
     const back: ScreenRect = {
       x: cx - backW / 2,
-      y: Math.min(height - backH - 20, ballRow.picker.y + ballRow.picker.h + 36),
+      y: backY,
       w: backW,
       h: backH,
     }
@@ -2048,6 +2325,26 @@ function safeAreaInsetTop(): number {
   return Number.isFinite(px) ? px : 0
 }
 
+/**
+ * Stacked-subtitle lockup. The PNG is square and already padded (clear space
+ * around the wordmark). Width stays in the 240–280 CSS range so the subtitle
+ * stays readable; short screens shrink it only down to that floor.
+ */
+function placeTitleLogo(
+  camera: Camera,
+  _logo: CanvasImageSource,
+): { x: number; y: number; w: number; h: number } {
+  const top = Math.max(46, safeAreaInsetTop() + 40)
+  const maxW = Math.min(280, camera.width - 40)
+  const minW = Math.min(maxW, 258)
+  let w = Math.min(272, maxW)
+  if (w < minW) w = minW
+  const menuTail = 268
+  const limit = camera.height - 16 - menuTail
+  if (top + w > limit) w = Math.max(minW, limit - top)
+  return { x: (camera.width - w) / 2, y: top, w, h: w }
+}
+
 /** Compact altitude label for HUD and left-side marks (climb px above start). */
 function formatHeightLabel(climb: number): string {
   if (climb >= 1000) {
@@ -2055,6 +2352,25 @@ function formatHeightLabel(climb: number): string {
     return Number.isInteger(k) ? `${k}k` : `${k.toFixed(1)}k`
   }
   return String(Math.round(climb))
+}
+
+/** Default ball in menus uses the stage-1 sprite. Other ball styles stay code-drawn. */
+function drawMenuBall(
+  ctx: CanvasRenderingContext2D,
+  ballStyle: BallStyle,
+  radius: number,
+  time: number,
+  spriteArt: boolean,
+  withHeadband: boolean,
+): void {
+  if (
+    spriteArt &&
+    ballStyle === "classic" &&
+    drawClassicMenuBall(ctx, radius, time, withHeadband)
+  ) {
+    return
+  }
+  drawBallStyle(ctx, ballStyle, radius, time)
 }
 
 function drawCornerVariantPicker(
@@ -2070,6 +2386,7 @@ function drawCornerVariantPicker(
   locked: boolean,
   time: number,
   unlockHint: string | null = null,
+  spriteArt = false,
 ): { prev: ScreenRect; next: ScreenRect; icon: ScreenRect } {
   ctx.fillStyle = "rgba(255, 255, 255, 0.78)"
   ctx.beginPath()
@@ -2100,7 +2417,7 @@ function drawCornerVariantPicker(
   } else if (kind === "background") {
     drawBackgroundPreview(ctx, iconBox, style as BackgroundStyle, time)
   } else {
-    drawBallStyle(ctx, style as BallStyle, iconBox * 0.32, time)
+    drawMenuBall(ctx, style as BallStyle, iconBox * 0.32, time, spriteArt, true)
   }
   ctx.restore()
 
@@ -2257,6 +2574,7 @@ function drawGachaRevealOverlay(
   reveal: GachaRevealState,
   ballStyle: BallStyle,
   time: number,
+  spriteArt = false,
 ): void {
   const result = reveal.result
   if (!result || reveal.strip.length === 0) return
@@ -2305,7 +2623,7 @@ function drawGachaRevealOverlay(
     const x = i * cell - reveal.scroll
     if (x + slotW < -20 || x > width + 20) continue
     const isWon = landed && i === reveal.wonIndex
-    drawStripSlot(ctx, x, stripTop, slotW, slotH, slot, ballStyle, time, isWon)
+    drawStripSlot(ctx, x, stripTop, slotW, slotH, slot, ballStyle, time, isWon, spriteArt)
   }
   ctx.restore()
 
@@ -2368,6 +2686,7 @@ function drawStripSlot(
   ballStyle: BallStyle,
   time: number,
   highlight: boolean,
+  spriteArt = false,
 ): void {
   const rarityColor = RARITY_COLOR[slot.rarity]
   ctx.fillStyle = highlight ? "rgba(255,255,255,0.98)" : "rgba(30, 41, 59, 0.95)"
@@ -2391,12 +2710,12 @@ function drawStripSlot(
   ctx.clip()
   ctx.translate(x + w / 2, y + h / 2 - 6)
   if (slot.pool === "hat" && slot.hatStyle) {
-    drawBallStyle(ctx, ballStyle, 22, time)
+    drawMenuBall(ctx, ballStyle, 22, time, spriteArt, slot.hatStyle === "none")
     drawHatStyle(ctx, slot.hatStyle, 22, time)
   } else if (slot.pool === "trail" && slot.trailStyle) {
     const local = previewTrailPoints(0, 4, 28)
     drawTrailStyle(ctx, slot.trailStyle, local, time)
-    drawBallStyle(ctx, ballStyle, 16, time)
+    drawMenuBall(ctx, ballStyle, 16, time, spriteArt, true)
   }
   ctx.restore()
 
@@ -2465,6 +2784,25 @@ function drawMenuCoinIcon(
   ctx.textAlign = "center"
   ctx.textBaseline = "middle"
   ctx.fillText("$", x, y + 0.5)
+  ctx.restore()
+}
+
+/** Title-screen card: cream fill, r24, soft ink shadow. */
+function fillCreamPanel(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): void {
+  ctx.save()
+  ctx.shadowColor = "rgba(43, 27, 23, 0.18)"
+  ctx.shadowBlur = 12
+  ctx.shadowOffsetY = 3
+  ctx.fillStyle = "rgba(255, 248, 236, 0.88)"
+  ctx.beginPath()
+  roundRect(ctx, x, y, w, h, 24)
+  ctx.fill()
   ctx.restore()
 }
 

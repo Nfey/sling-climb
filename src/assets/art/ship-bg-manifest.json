@@ -1,0 +1,1116 @@
+{
+ "_doc": "Sling Bounce ship-bg-v1: Sunbaked Canyon background drop for Canyon Floor (0-2k) + per-zone wall strips + 7-zone sky table. Files are @2x (engine DPR cap 2x); *_px3 values are @3x master pixels: divide by 1.5 for @2x (ship/ convention). PLACE BY ANCHOR, never by canvas. Copy this folder's contents into src/assets/art/ next to ship/: categories bg/, props/, fx/, walls/ do not collide with ship/ (character/, platforms/, objects/, markers/). ship/ is unchanged by this drop.",
+ "drop": "ship-bg-v1",
+ "built": "2026-10-02 08:13 PT",
+ "generator": "art-side build_bg_v1 (code-drawn, reproducible; not shipped)",
+ "scale": {
+  "files": "@2x",
+  "px3_to_px2": "divide by 1.5",
+  "css_to_px2": "x2",
+  "masters": "@3x masters kept art-side (not in this folder)"
+ },
+ "coordinates": {
+  "c": "camera climb = camera.y - startHeight (world CSS px above the run start; HUD '2k' = 2000)",
+  "world_to_screen": "sy = camera.slingshotScreenY - (worldClimb - c)",
+  "playfield": "camera.width 360..430 CSS. Full-width layers are authored 430 wide: centre them (x0 = (camera.width - 430)/2). Props and walls stay wall-anchored."
+ },
+ "z_order": {
+  "_doc": "back to front; all background layers draw inside Renderer.drawBackground (before the kill line), so every ship/ sprite draws on top",
+  "layers": [
+   [
+    "sky gradient (code, sky_table)",
+    0
+   ],
+   [
+    "bg/canyon_far-key",
+    10
+   ],
+   [
+    "bg/canyon_haze-band",
+    12
+   ],
+   [
+    "bg/canyon_mid_tile",
+    20
+   ],
+   [
+    "bg/canyon-to-mesa_blend",
+    25
+   ],
+   [
+    "props/*",
+    30
+   ],
+   [
+    "fx/dust_* (ambient)",
+    35
+   ],
+   [
+    "walls/night-rim/* (night zones)",
+    39
+   ],
+   [
+    "walls/*",
+    40
+   ],
+   [
+    "ship markers/kill-line_tile (drawBackground)",
+    50
+   ],
+   [
+    "altitude marks, BEST + milestone markers",
+    60
+   ],
+   [
+    "ship platforms/*",
+    70
+   ],
+   [
+    "ship objects/* (bumpers, arrow pads, POW, coins, portals, turrets: portals + turrets overlap the walls)",
+    80
+   ],
+   [
+    "ship character/slingshot_classic + pouch",
+    90
+   ],
+   [
+    "ship character/ball_* + face + hat",
+    100
+   ],
+   [
+    "HUD",
+    200
+   ]
+  ]
+ },
+ "parallax": {
+  "_doc": "screen offset = c * factor (1.0 = moves with the world/platforms)",
+  "sky": 0.0,
+  "far_key": 0.15,
+  "haze_band": 0.15,
+  "mid_tile": 0.4,
+  "blend_strip": 1.0,
+  "props": 1.0,
+  "walls": 1.0,
+  "dust": 0.6
+ },
+ "home_turf": {
+  "zone": "Canyon Floor",
+  "climb": [
+   0,
+   2000
+  ],
+  "theme": "sunbaked-canyon (default)",
+  "blend_into": "Mesa Tops at 2000",
+  "note": "Mesa Tops art is not in this drop: above the blend strip the screen is sky + rock walls + dust until Mesa Tops ships."
+ },
+ "blend": {
+  "sky": "each of the 3 stops lerps zone N -> N+1 with smoothstep over boundary +-200 climb (Canyon->Mesa: 1800..2200); same rule at every zone boundary",
+  "far_key_and_haze": "alpha 1 - smoothstep(2000, 2400, c)",
+  "mid_tile": "alpha 1 - smoothstep(1700, 2100, c)",
+  "blend_strip": "bg/canyon-to-mesa_blend, centre row on world climb 2000 (parallax 1.0); top and bottom rows fully transparent",
+  "props": "spawn only below climb 1950",
+  "dust": "Canyon Floor + Mesa Tops; fade spawn out over 4500..5000",
+  "walls": "rock in both zones: no change at 2000"
+ },
+ "props_scatter": {
+  "files": [
+   "props/canyon_cactus-ledge",
+   "props/canyon_ledge-a",
+   "props/canyon_ledge-b",
+   "props/canyon_outcrop",
+   "props/canyon_scrub-ledge",
+   "props/canyon_spire"
+  ],
+  "spawn": "world-anchored, climb 0..1950, one every 220-380 CSS of climb, alternate sides (30% same side), never repeat the last 2",
+  "avoid": "skip if within 70 CSS (vertical) of a portal or turret on the same wall",
+  "lane": "max reach 56 CSS from the wall face (x <= 76): stays in the outer 20%, never the centre 60%",
+  "mirror": "right wall = horizontal mirror"
+ },
+ "ambient": {
+  "dust": {
+   "files": [
+    "fx/dust_mote",
+    "fx/dust_wisp"
+   ],
+   "tint": "#FFF1D6",
+   "alpha": [
+    0.25,
+    0.5
+   ],
+   "alive": "6-10",
+   "spawn": "70% in the outer lanes (x < 86 or x > camera.width - 86), 30% anywhere at alpha <= 0.3",
+   "motion": "drift up 6-14 CSS/s + sideways sine +-8 CSS; life 4-7 s with 0.6 s fade in/out; screen-space, offset by c*0.6",
+   "zones": [
+    "Canyon Floor",
+    "Mesa Tops"
+   ]
+  }
+ },
+ "walls": {
+  "width_css": 20,
+  "canvas_css": [
+   30,
+   240
+  ],
+  "tile_period_css": 240,
+  "tile_axis": "y",
+  "parallax": 1.0,
+  "engine_note": "wall body = x 0..20 CSS of each strip (WALL = 20). The DD-approved inner edge line is centred on x = 20 (inner_edge_x_css) and must sit EXACTLY on the collision edge: Engineering Manager draws the 20-CSS body in a gutter outside the play area, so x = 20 of the strip lands on play x = 0 (left) / play width (right, mirrored). Only the pillar / cloud bumps cross that line into the play area, by max_intrusion_css <= 4 CSS (DD 2026-10-02); the straight ink lines cross by half their 2 px width. Canvas stays 30 CSS (art never reaches past x = 24, so nothing is clipped).",
+  "alignment": {
+   "inner_edge_x_css": 20,
+   "max_intrusion_limit_css": 4.0,
+   "per_strip": {
+    "walls/night-rim/wall_night_tile": {
+     "inner_edge_x_css": 22,
+     "max_intrusion_css": 3.0,
+     "what": "2 CSS cream rim @70% outside the night wall's ink line (DD-approved rim)"
+    },
+    "walls/wall_cloud_tile": {
+     "inner_edge_x_css": 20,
+     "max_intrusion_css": 4.0,
+     "what": "cloud puffs (squashed) + half the 2px ink line"
+    },
+    "walls/wall_night_tile": {
+     "inner_edge_x_css": 20,
+     "max_intrusion_css": 1.0,
+     "what": "2px ink line @60% centred on the edge (half its width)"
+    },
+    "walls/wall_rock_tile": {
+     "inner_edge_x_css": 20,
+     "max_intrusion_css": 1.0,
+     "what": "2px ink line @60% centred on the edge (half its width)"
+    },
+    "walls/wall_storm_tile": {
+     "inner_edge_x_css": 20,
+     "max_intrusion_css": 4.0,
+     "what": "pillar bumps (squashed) + half the 4px ink outline"
+    },
+    "walls/wall_strato_tile": {
+     "inner_edge_x_css": 20,
+     "max_intrusion_css": 4.0,
+     "what": "pillar bumps (squashed) + half the 4px ink outline"
+    }
+   },
+   "props": "props keep anchor x = 4 CSS = the wall face: put that on the same collision edge (left canvas x = playLeft - 4); max reach 47.5 CSS from the edge"
+  },
+  "zone_wall": {
+   "Canyon Floor": "walls/wall_rock_tile",
+   "Mesa Tops": "walls/wall_rock_tile",
+   "Cloud Kingdom": "walls/wall_cloud_tile",
+   "Storm Front": "walls/wall_storm_tile",
+   "Stratosphere": "walls/wall_strato_tile",
+   "Orbit": "walls/wall_night_tile",
+   "Deep Space": "walls/wall_night_tile"
+  },
+  "orbit": "placeholder: Orbit uses wall_night (+ night rim) like the contact sheets; 'station rails' are not designed yet (needs DD).",
+  "night_rim": {
+   "file": "walls/night-rim/wall_night_tile",
+   "zones": [
+    "Orbit",
+    "Deep Space"
+   ],
+   "from_climb": 40000
+  },
+  "zone_change": "crossfade over 96 CSS of world height centred on the zone boundary: lower kind drawn up to boundary+48, upper kind from boundary-48 with alpha = smoothstep(b-48, b+48, rowClimb).",
+  "contrast_ref": "art-side step-3 walls contrast table: turret dome, portal pillar and ball vs every wall tone all pass (unchanged tones)"
+ },
+ "sky_table": {
+  "gradient": "screen-space vertical linear: top at y=0, mid at 0.5*camera.height, bottom at camera.height (kit3.sky3)",
+  "zone_blend_half_width": 200,
+  "night_switch_climb": 40000,
+  "night": "night rims + crumbling-night stone + wall_night rim from Orbit up",
+  "source": "approval kit v3.1 ZONES7 (Canyon Floor stops == the Sunbaked Canyon theme table; Stratosphere = DD re-key)",
+  "zones": [
+   {
+    "zone": "Canyon Floor",
+    "range": [
+     0,
+     2000
+    ],
+    "top": "#F7A08A",
+    "mid": "#FFC9A6",
+    "bottom": "#FFE0B5",
+    "night": false,
+    "wall": "rock"
+   },
+   {
+    "zone": "Mesa Tops",
+    "range": [
+     2000,
+     5000
+    ],
+    "top": "#FFB06A",
+    "mid": "#FFD394",
+    "bottom": "#FFF0CC",
+    "night": false,
+    "wall": "rock"
+   },
+   {
+    "zone": "Cloud Kingdom",
+    "range": [
+     5000,
+     10000
+    ],
+    "top": "#62BDEB",
+    "mid": "#A9DDF5",
+    "bottom": "#FFEED6",
+    "night": false,
+    "wall": "cloud"
+   },
+   {
+    "zone": "Storm Front",
+    "range": [
+     10000,
+     20000
+    ],
+    "top": "#B4AED4",
+    "mid": "#CBC4E0",
+    "bottom": "#E6DCE8",
+    "night": false,
+    "wall": "storm"
+   },
+   {
+    "zone": "Stratosphere",
+    "range": [
+     20000,
+     40000
+    ],
+    "top": "#D4A0CC",
+    "mid": "#EFB2C9",
+    "bottom": "#FFCCD6",
+    "night": false,
+    "wall": "strato"
+   },
+   {
+    "zone": "Orbit",
+    "range": [
+     40000,
+     75000
+    ],
+    "top": "#0E1838",
+    "mid": "#1A2550",
+    "bottom": "#2E2C62",
+    "night": true,
+    "wall": "night"
+   },
+   {
+    "zone": "Deep Space",
+    "range": [
+     75000,
+     null
+    ],
+    "top": "#07091A",
+    "mid": "#120F2E",
+    "bottom": "#261C46",
+    "night": true,
+    "wall": "night"
+   }
+  ]
+ },
+ "checks": {
+  "result": "PASS",
+  "rules": {
+   "edge_min": 3.0,
+   "blur_pop_min": 1.5,
+   "lane_local_p99_max": 1.5,
+   "edge_lane_local_p99_max": 2.0,
+   "chroma_over_sky_max": 0.02,
+   "budget_mb": 1.5
+  },
+  "files": 18,
+  "total_kb": 136.1,
+  "ship_plus_bg_mb": 0.44,
+  "pop_min": {
+   "edge": 6.49,
+   "blur_pop": 1.9,
+   "blur_pop_note": "wall-mounted turret/portal exempt from blur pop (they sit on the wall; wall contrast = the step-3 walls table, Hi Cream ring >= 4.19:1)"
+  },
+  "lane_local_vs_sky_p99_max": 1.36,
+  "seams": "all tile files tiled 3x: wrap seam <= interior row-diff p99, and tile rows 0-7 == the continuous render past the tile end (<= 8/255 premultiplied, sub-pixel AA)",
+  "hero_orange_pixels": 0,
+  "canyon_blue_pixels": 0,
+  "wall_max_intrusion_css": {
+   "walls/night-rim/wall_night_tile": 3.0,
+   "walls/wall_cloud_tile": 4.0,
+   "walls/wall_night_tile": 1.0,
+   "walls/wall_rock_tile": 1.0,
+   "walls/wall_storm_tile": 4.0,
+   "walls/wall_strato_tile": 4.0
+  },
+  "wall_intrusion_limit_css": 4.0,
+  "props_max_reach_css": 47.5,
+  "props_lane_ok": true,
+  "verify": "art-side VERIFY + review sheet (not shipped)"
+ },
+ "sprites": {
+  "bg/canyon-to-mesa_blend": {
+   "css": [
+    430,
+    340
+   ],
+   "px3": [
+    1290,
+    1020
+   ],
+   "px2": [
+    860,
+    680
+   ],
+   "anchor_px3": [
+    645,
+    510
+   ],
+   "parallax": 1.0,
+   "tile_axis": "none",
+   "note": "sunlit mesa tops + Mesa-gold haze; top and bottom rows fully transparent",
+   "file": "bg/canyon-to-mesa_blend@2x.png",
+   "scale": 2,
+   "kb": 26.7,
+   "z": 25,
+   "place": "world-anchored marker: centre row (px3 510) at sy = camera.slingshotScreenY - (2000 - c), x0 = (camera.width-430)/2. Draw after the mid tile.",
+   "altitude_climb": [
+    1200,
+    2900
+   ]
+  },
+  "bg/canyon_far-key": {
+   "css": [
+    430,
+    720
+   ],
+   "px3": [
+    1290,
+    2160
+   ],
+   "px2": [
+    860,
+    1440
+   ],
+   "anchor_px3": [
+    645,
+    900
+   ],
+   "parallax": 0.15,
+   "tile_axis": "none",
+   "note": "distant mesas + sun + canyon floor; opaque mesa tints so the sun never shows through; top rows fully transparent",
+   "file": "bg/canyon_far-key@2x.png",
+   "scale": 2,
+   "kb": 26.6,
+   "z": 10,
+   "place": "anchor (px3 645,900 = kill row) at (camera.width/2, camera.killScreenY + c*0.15). alpha = 1 - smoothstep(2000, 2400, c). 420 CSS of floor below the anchor covers the strip under the kill line on screens up to ~1340 CSS tall; top rows are fully transparent (sky shows).",
+   "altitude_climb": [
+    0,
+    2400
+   ]
+  },
+  "bg/canyon_haze-band": {
+   "css": [
+    430,
+    160
+   ],
+   "px3": [
+    1290,
+    480
+   ],
+   "px2": [
+    860,
+    320
+   ],
+   "anchor_px3": [
+    645,
+    240
+   ],
+   "parallax": 0.15,
+   "tile_axis": "x",
+   "note": "horizontal dust haze over the canyon floor; uniform across x (stretch or tile freely)",
+   "file": "bg/canyon_haze-band@2x.png",
+   "scale": 2,
+   "kb": 7.3,
+   "z": 12,
+   "place": "centre row (px3 240) at the far-key anchor row - 30 CSS (moves with the far key, same alpha fade). Uniform across x: stretch or tile.",
+   "altitude_climb": [
+    0,
+    2400
+   ]
+  },
+  "bg/canyon_mid_tile": {
+   "css": [
+    430,
+    684
+   ],
+   "px3": [
+    1290,
+    2052
+   ],
+   "px2": [
+    860,
+    1368
+   ],
+   "anchor_px3": [
+    645,
+    0
+   ],
+   "parallax": 0.4,
+   "tile_axis": "y",
+   "tile_period_css": 684,
+   "note": "receding canyon strata buttes on both sides (rock @17%, sand ledge lips, no ink); centre 60% empty",
+   "file": "bg/canyon_mid_tile@2x.png",
+   "scale": 2,
+   "kb": 32.2,
+   "z": 20,
+   "place": "tile vertically: a tile top at screen y = camera.slingshotScreenY + c*0.4 + k*684 (wrap). Centre on the playfield (x0 = (camera.width-430)/2). Clip to rows above camera.killScreenY (the kill rope hides the cut; the far-key floor stays clean below it). alpha = 1 - smoothstep(1700, 2100, c) (fades out under the blend strip; no positional cut).",
+   "altitude_climb": [
+    0,
+    2100
+   ]
+  },
+  "fx/dust_mote": {
+   "css": [
+    12,
+    12
+   ],
+   "px3": [
+    36,
+    36
+   ],
+   "px2": [
+    24,
+    24
+   ],
+   "anchor_px3": [
+    18,
+    18
+   ],
+   "parallax": 0.6,
+   "tile_axis": "none",
+   "tint": "#FFF1D6",
+   "white_on_alpha": true,
+   "note": "soft sand mote, 3 stepped discs (flat style); tint in code",
+   "file": "fx/dust_mote@2x.png",
+   "scale": 2,
+   "kb": 0.5,
+   "z": 35,
+   "place": "ambient particle, white-on-alpha: tint (multiply) with `tint`, see ambient.dust",
+   "altitude_climb": [
+    0,
+    5000
+   ]
+  },
+  "fx/dust_wisp": {
+   "css": [
+    30,
+    16
+   ],
+   "px3": [
+    90,
+    48
+   ],
+   "px2": [
+    60,
+    32
+   ],
+   "anchor_px3": [
+    45,
+    24
+   ],
+   "parallax": 0.6,
+   "tile_axis": "none",
+   "tint": "#FFF1D6",
+   "white_on_alpha": true,
+   "note": "drifting dust wisp; tint in code; may stretch x up to 1.5",
+   "file": "fx/dust_wisp@2x.png",
+   "scale": 2,
+   "kb": 0.7,
+   "z": 35,
+   "place": "ambient particle, white-on-alpha: tint (multiply) with `tint`, see ambient.dust",
+   "altitude_climb": [
+    0,
+    5000
+   ]
+  },
+  "props/canyon_cactus-ledge": {
+   "css": [
+    50,
+    76
+   ],
+   "px3": [
+    150,
+    228
+   ],
+   "px2": [
+    100,
+    152
+   ],
+   "anchor_px3": [
+    12,
+    150
+   ],
+   "parallax": 1.0,
+   "tile_axis": "none",
+   "flush": "left",
+   "note": "saguaro on a small ledge; muted sage so it never reads as a moving (green) platform",
+   "file": "props/canyon_cactus-ledge@2x.png",
+   "scale": 2,
+   "kb": 1.8,
+   "z": 30,
+   "place": "anchor x (4 CSS) = the wall face = the collision edge. Gutter layout: left canvas x = playLeft - anchor_x_css, right = mirror, canvas x = playRight + anchor_x_css - css_w (walls drawn inside the screen instead: left canvas x = 20 - anchor_x_css = 16, right = camera.width - 20 + anchor_x_css - css_w). y = sy - anchor_y_css with sy = slingshotScreenY - (propClimb - c).",
+   "altitude_climb": [
+    0,
+    1950
+   ]
+  },
+  "props/canyon_ledge-a": {
+   "css": [
+    60,
+    44
+   ],
+   "px3": [
+    180,
+    132
+   ],
+   "px2": [
+    120,
+    88
+   ],
+   "anchor_px3": [
+    12,
+    18
+   ],
+   "parallax": 1.0,
+   "tile_axis": "none",
+   "flush": "left",
+   "note": "sloping rock lip; top drops 14 CSS outward and has no top highlight stripe, so it never reads as a platform",
+   "file": "props/canyon_ledge-a@2x.png",
+   "scale": 2,
+   "kb": 2.2,
+   "z": 30,
+   "place": "anchor x (4 CSS) = the wall face = the collision edge. Gutter layout: left canvas x = playLeft - anchor_x_css, right = mirror, canvas x = playRight + anchor_x_css - css_w (walls drawn inside the screen instead: left canvas x = 20 - anchor_x_css = 16, right = camera.width - 20 + anchor_x_css - css_w). y = sy - anchor_y_css with sy = slingshotScreenY - (propClimb - c).",
+   "altitude_climb": [
+    0,
+    1950
+   ]
+  },
+  "props/canyon_ledge-b": {
+   "css": [
+    42,
+    32
+   ],
+   "px3": [
+    126,
+    96
+   ],
+   "px2": [
+    84,
+    64
+   ],
+   "anchor_px3": [
+    12,
+    15
+   ],
+   "parallax": 1.0,
+   "tile_axis": "none",
+   "flush": "left",
+   "note": "small sloping rock lip (no top highlight stripe)",
+   "file": "props/canyon_ledge-b@2x.png",
+   "scale": 2,
+   "kb": 1.4,
+   "z": 30,
+   "place": "anchor x (4 CSS) = the wall face = the collision edge. Gutter layout: left canvas x = playLeft - anchor_x_css, right = mirror, canvas x = playRight + anchor_x_css - css_w (walls drawn inside the screen instead: left canvas x = 20 - anchor_x_css = 16, right = camera.width - 20 + anchor_x_css - css_w). y = sy - anchor_y_css with sy = slingshotScreenY - (propClimb - c).",
+   "altitude_climb": [
+    0,
+    1950
+   ]
+  },
+  "props/canyon_outcrop": {
+   "css": [
+    42,
+    64
+   ],
+   "px3": [
+    126,
+    192
+   ],
+   "px2": [
+    84,
+    128
+   ],
+   "anchor_px3": [
+    12,
+    120
+   ],
+   "parallax": 1.0,
+   "tile_axis": "none",
+   "flush": "left",
+   "note": "lopsided boulder pile hugging the wall (no symmetric bumps, never letter-like); anchor = wall face",
+   "file": "props/canyon_outcrop@2x.png",
+   "scale": 2,
+   "kb": 2.4,
+   "z": 30,
+   "place": "anchor x (4 CSS) = the wall face = the collision edge. Gutter layout: left canvas x = playLeft - anchor_x_css, right = mirror, canvas x = playRight + anchor_x_css - css_w (walls drawn inside the screen instead: left canvas x = 20 - anchor_x_css = 16, right = camera.width - 20 + anchor_x_css - css_w). y = sy - anchor_y_css with sy = slingshotScreenY - (propClimb - c).",
+   "altitude_climb": [
+    0,
+    1950
+   ]
+  },
+  "props/canyon_scrub-ledge": {
+   "css": [
+    46,
+    44
+   ],
+   "px3": [
+    138,
+    132
+   ],
+   "px2": [
+    92,
+    88
+   ],
+   "anchor_px3": [
+    12,
+    60
+   ],
+   "parallax": 1.0,
+   "tile_axis": "none",
+   "flush": "left",
+   "note": "dry scrub tuft on a ledge",
+   "file": "props/canyon_scrub-ledge@2x.png",
+   "scale": 2,
+   "kb": 3.0,
+   "z": 30,
+   "place": "anchor x (4 CSS) = the wall face = the collision edge. Gutter layout: left canvas x = playLeft - anchor_x_css, right = mirror, canvas x = playRight + anchor_x_css - css_w (walls drawn inside the screen instead: left canvas x = 20 - anchor_x_css = 16, right = camera.width - 20 + anchor_x_css - css_w). y = sy - anchor_y_css with sy = slingshotScreenY - (propClimb - c).",
+   "altitude_climb": [
+    0,
+    1950
+   ]
+  },
+  "props/canyon_spire": {
+   "css": [
+    28,
+    100
+   ],
+   "px3": [
+    84,
+    300
+   ],
+   "px2": [
+    56,
+    200
+   ],
+   "anchor_px3": [
+    12,
+    288
+   ],
+   "parallax": 1.0,
+   "tile_axis": "none",
+   "flush": "left",
+   "note": "hoodoo (tapered column + cap stone) leaning on the wall; anchor = wall face at the foot",
+   "file": "props/canyon_spire@2x.png",
+   "scale": 2,
+   "kb": 2.4,
+   "z": 30,
+   "place": "anchor x (4 CSS) = the wall face = the collision edge. Gutter layout: left canvas x = playLeft - anchor_x_css, right = mirror, canvas x = playRight + anchor_x_css - css_w (walls drawn inside the screen instead: left canvas x = 20 - anchor_x_css = 16, right = camera.width - 20 + anchor_x_css - css_w). y = sy - anchor_y_css with sy = slingshotScreenY - (propClimb - c).",
+   "altitude_climb": [
+    0,
+    1950
+   ]
+  },
+  "walls/night-rim/wall_night_tile": {
+   "css": [
+    34,
+    240
+   ],
+   "px3": [
+    102,
+    720
+   ],
+   "px2": [
+    68,
+    480
+   ],
+   "anchor_px3": [
+    6,
+    0
+   ],
+   "offset_px3": [
+    -6,
+    0
+   ],
+   "parallax": 1.0,
+   "tile_axis": "y",
+   "tile_period_css": 240,
+   "wall_kind": "night",
+   "night_rim_of": "walls/wall_night_tile",
+   "note": "night rim for wall_night (Orbit + Deep Space): cream #FFF1D6 @70%, 2 CSS outside the inner edge; draw first, same tiling phase, offset (-6,0)px3 / (-4,0)px2",
+   "inner_edge_x_css": 22,
+   "max_intrusion_css": 3.0,
+   "intrusion_limit_css": 4.0,
+   "intrusion_measured": {
+    "@2x_alpha>0": 3.0,
+    "@2x_alpha>8": 3.0,
+    "@3x_alpha>0": 3.0,
+    "@3x_alpha>8": 3.0
+   },
+   "intrusion_is": "2 CSS cream rim @70% outside the night wall's ink line (DD-approved rim)",
+   "bumps_squashed": null,
+   "file": "walls/night-rim/wall_night_tile@2x.png",
+   "scale": 2,
+   "kb": 0.6,
+   "z": 39,
+   "place": "Orbit + Deep Space only: draw first, same tiling phase as walls/wall_night_tile, canvas x offset -2 CSS from the wall (px3 -6, px2 -4), i.e. its inner_edge_x_css (22) on the same collision edge; mirror on the right like the wall.",
+   "altitude_climb": "per zone_wall (see walls)"
+  },
+  "walls/wall_cloud_tile": {
+   "css": [
+    30,
+    240
+   ],
+   "px3": [
+    90,
+    720
+   ],
+   "px2": [
+    60,
+    480
+   ],
+   "anchor_px3": [
+    0,
+    0
+   ],
+   "parallax": 1.0,
+   "tile_axis": "y",
+   "tile_period_css": 240,
+   "wall_depth_css": 20,
+   "wall_kind": "cloud",
+   "note": "Cloud Kingdom: cloud pillar #F6FAFE / shade #DCEAF6, inner edge 2px ink @60% (kit3.cloud_pillar); wall body x 0..20 CSS, canvas 30 so the inner-edge line / pillar scallop bulge (visual only) is never clipped",
+   "inner_edge_x_css": 20,
+   "max_intrusion_css": 4.0,
+   "intrusion_limit_css": 4.0,
+   "intrusion_measured": {
+    "@2x_alpha>0": 4.0,
+    "@2x_alpha>8": 4.0,
+    "@3x_alpha>0": 4.0,
+    "@3x_alpha>8": 4.0
+   },
+   "intrusion_is": "cloud puffs (squashed) + half the 2px ink line",
+   "bumps_squashed": [
+    {
+     "sag_before_css": 6.19,
+     "sag_after_css": 2.9
+    },
+    {
+     "sag_before_css": 8.85,
+     "sag_after_css": 2.9
+    },
+    {
+     "sag_before_css": 6.75,
+     "sag_after_css": 2.9
+    },
+    {
+     "sag_before_css": 7.13,
+     "sag_after_css": 2.9
+    },
+    {
+     "sag_before_css": 7.51,
+     "sag_after_css": 2.9
+    },
+    {
+     "sag_before_css": 6.94,
+     "sag_after_css": 2.9
+    },
+    {
+     "sag_before_css": 8.27,
+     "sag_after_css": 2.9
+    },
+    {
+     "sag_before_css": 6.56,
+     "sag_after_css": 2.9
+    },
+    {
+     "sag_before_css": 7.32,
+     "sag_after_css": 2.9
+    },
+    {
+     "sag_before_css": 7.7,
+     "sag_after_css": 2.9
+    },
+    {
+     "sag_before_css": 6.19,
+     "sag_after_css": 2.9
+    },
+    {
+     "sag_before_css": 8.85,
+     "sag_after_css": 2.9
+    }
+   ],
+   "file": "walls/wall_cloud_tile@2x.png",
+   "scale": 2,
+   "kb": 8.6,
+   "z": 40,
+   "place": "align by inner_edge_x_css (20): that x of the strip goes ON the collision edge. Gutter layout (body outside the play area): left canvas x = playLeft - 20, right = horizontal mirror, canvas x = playRight + 20 - css_w. Only the pillar / cloud bumps cross into the play area, by max_intrusion_css (<= 4). World-anchored vertical tiling: a tile top at world height (k+1)*240 => sy = slingshotScreenY - ((k+1)*240 - c). Same phase on both sides.",
+   "altitude_climb": "per zone_wall (see walls)"
+  },
+  "walls/wall_night_tile": {
+   "css": [
+    30,
+    240
+   ],
+   "px3": [
+    90,
+    720
+   ],
+   "px2": [
+    60,
+    480
+   ],
+   "anchor_px3": [
+    0,
+    0
+   ],
+   "parallax": 1.0,
+   "tile_axis": "y",
+   "tile_period_css": 240,
+   "wall_depth_css": 20,
+   "wall_kind": "night",
+   "note": "Orbit + Deep Space: night rock #5A2A3A, ink strata @18% (kit.wall night=True); Orbit station rails not designed yet; wall body x 0..20 CSS, canvas 30 so the inner-edge line / pillar scallop bulge (visual only) is never clipped",
+   "inner_edge_x_css": 20,
+   "max_intrusion_css": 1.0,
+   "intrusion_limit_css": 4.0,
+   "intrusion_measured": {
+    "@2x_alpha>0": 1.0,
+    "@2x_alpha>8": 1.0,
+    "@3x_alpha>0": 1.0,
+    "@3x_alpha>8": 1.0
+   },
+   "intrusion_is": "2px ink line @60% centred on the edge (half its width)",
+   "bumps_squashed": null,
+   "file": "walls/wall_night_tile@2x.png",
+   "scale": 2,
+   "kb": 0.8,
+   "z": 40,
+   "place": "align by inner_edge_x_css (20): that x of the strip goes ON the collision edge. Gutter layout (body outside the play area): left canvas x = playLeft - 20, right = horizontal mirror, canvas x = playRight + 20 - css_w. Only the pillar / cloud bumps cross into the play area, by max_intrusion_css (<= 4). World-anchored vertical tiling: a tile top at world height (k+1)*240 => sy = slingshotScreenY - ((k+1)*240 - c). Same phase on both sides.",
+   "altitude_climb": "per zone_wall (see walls)"
+  },
+  "walls/wall_rock_tile": {
+   "css": [
+    30,
+    240
+   ],
+   "px3": [
+    90,
+    720
+   ],
+   "px2": [
+    60,
+    480
+   ],
+   "anchor_px3": [
+    0,
+    0
+   ],
+   "parallax": 1.0,
+   "tile_axis": "y",
+   "tile_period_css": 240,
+   "wall_depth_css": 20,
+   "wall_kind": "rock",
+   "note": "Canyon Floor + Mesa Tops: sandstone #B4512F, strata #A3492B, inner edge 2px ink @60% (kit.wall); wall body x 0..20 CSS, canvas 30 so the inner-edge line / pillar scallop bulge (visual only) is never clipped",
+   "inner_edge_x_css": 20,
+   "max_intrusion_css": 1.0,
+   "intrusion_limit_css": 4.0,
+   "intrusion_measured": {
+    "@2x_alpha>0": 1.0,
+    "@2x_alpha>8": 1.0,
+    "@3x_alpha>0": 1.0,
+    "@3x_alpha>8": 1.0
+   },
+   "intrusion_is": "2px ink line @60% centred on the edge (half its width)",
+   "bumps_squashed": null,
+   "file": "walls/wall_rock_tile@2x.png",
+   "scale": 2,
+   "kb": 0.9,
+   "z": 40,
+   "place": "align by inner_edge_x_css (20): that x of the strip goes ON the collision edge. Gutter layout (body outside the play area): left canvas x = playLeft - 20, right = horizontal mirror, canvas x = playRight + 20 - css_w. Only the pillar / cloud bumps cross into the play area, by max_intrusion_css (<= 4). World-anchored vertical tiling: a tile top at world height (k+1)*240 => sy = slingshotScreenY - ((k+1)*240 - c). Same phase on both sides.",
+   "altitude_climb": "per zone_wall (see walls)"
+  },
+  "walls/wall_storm_tile": {
+   "css": [
+    30,
+    240
+   ],
+   "px3": [
+    90,
+    720
+   ],
+   "px2": [
+    60,
+    480
+   ],
+   "anchor_px3": [
+    0,
+    0
+   ],
+   "parallax": 1.0,
+   "tile_axis": "y",
+   "tile_period_css": 240,
+   "wall_depth_css": 20,
+   "wall_kind": "storm",
+   "note": "Storm Front: pillar #78709C / underside #6F6894, cream rim (walls.pillar; DD-locked); wall body x 0..20 CSS, canvas 30 so the inner-edge line / pillar scallop bulge (visual only) is never clipped",
+   "inner_edge_x_css": 20,
+   "max_intrusion_css": 4.0,
+   "intrusion_limit_css": 4.0,
+   "intrusion_measured": {
+    "@2x_alpha>0": 4.0,
+    "@2x_alpha>8": 4.0,
+    "@3x_alpha>0": 4.0,
+    "@3x_alpha>8": 4.0
+   },
+   "intrusion_is": "pillar bumps (squashed) + half the 4px ink outline",
+   "bumps_squashed": [
+    {
+     "sag_before_css": 7.52,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 9.56,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 6.25,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 8.44,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 8.44,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 7.33,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 8.07,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 7.52,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 6.79,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 7.52,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 9.56,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 6.25,
+     "sag_after_css": 1.9
+    }
+   ],
+   "file": "walls/wall_storm_tile@2x.png",
+   "scale": 2,
+   "kb": 8.5,
+   "z": 40,
+   "place": "align by inner_edge_x_css (20): that x of the strip goes ON the collision edge. Gutter layout (body outside the play area): left canvas x = playLeft - 20, right = horizontal mirror, canvas x = playRight + 20 - css_w. Only the pillar / cloud bumps cross into the play area, by max_intrusion_css (<= 4). World-anchored vertical tiling: a tile top at world height (k+1)*240 => sy = slingshotScreenY - ((k+1)*240 - c). Same phase on both sides.",
+   "altitude_climb": "per zone_wall (see walls)"
+  },
+  "walls/wall_strato_tile": {
+   "css": [
+    30,
+    240
+   ],
+   "px3": [
+    90,
+    720
+   ],
+   "px2": [
+    60,
+    480
+   ],
+   "anchor_px3": [
+    0,
+    0
+   ],
+   "parallax": 1.0,
+   "tile_axis": "y",
+   "tile_period_css": 240,
+   "wall_depth_css": 20,
+   "wall_kind": "strato",
+   "note": "Stratosphere: pillar #976991 / underside #8A6286, cream rim @70% (walls.pillar; DD 3.1 re-key); wall body x 0..20 CSS, canvas 30 so the inner-edge line / pillar scallop bulge (visual only) is never clipped",
+   "inner_edge_x_css": 20,
+   "max_intrusion_css": 4.0,
+   "intrusion_limit_css": 4.0,
+   "intrusion_measured": {
+    "@2x_alpha>0": 4.0,
+    "@2x_alpha>8": 4.0,
+    "@3x_alpha>0": 4.0,
+    "@3x_alpha>8": 4.0
+   },
+   "intrusion_is": "pillar bumps (squashed) + half the 4px ink outline",
+   "bumps_squashed": [
+    {
+     "sag_before_css": 6.61,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 9.0,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 7.33,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 8.25,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 8.44,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 7.7,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 8.07,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 6.61,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 7.88,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 6.61,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 9.0,
+     "sag_after_css": 1.9
+    },
+    {
+     "sag_before_css": 7.33,
+     "sag_after_css": 1.9
+    }
+   ],
+   "file": "walls/wall_strato_tile@2x.png",
+   "scale": 2,
+   "kb": 9.5,
+   "z": 40,
+   "place": "align by inner_edge_x_css (20): that x of the strip goes ON the collision edge. Gutter layout (body outside the play area): left canvas x = playLeft - 20, right = horizontal mirror, canvas x = playRight + 20 - css_w. Only the pillar / cloud bumps cross into the play area, by max_intrusion_css (<= 4). World-anchored vertical tiling: a tile top at world height (k+1)*240 => sy = slingshotScreenY - ((k+1)*240 - c). Same phase on both sides.",
+   "altitude_climb": "per zone_wall (see walls)"
+  }
+ }
+}

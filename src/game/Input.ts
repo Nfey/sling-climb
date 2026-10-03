@@ -1,3 +1,4 @@
+import { PLAYFIELD_MAX_WIDTH } from "./constants"
 import type { PointerState, Vec2 } from "./types"
 
 /**
@@ -159,8 +160,10 @@ export class Input {
    */
   private clientToCanvas(clientX: number, clientY: number): { x: number; y: number } {
     const rect = this.canvas.getBoundingClientRect()
+    const playfield = Math.min(rect.width, PLAYFIELD_MAX_WIDTH)
+    const gutter = (rect.width - playfield) / 2
     return {
-      x: clientX - rect.left,
+      x: clientX - rect.left - gutter,
       y: clientY - rect.top,
     }
   }
