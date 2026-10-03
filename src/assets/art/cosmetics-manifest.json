@@ -1,0 +1,858 @@
+{
+  "px_per_css": 8,
+  "note": "Cosmetics v2 drop-in manifest. Art batches add files under src/assets/art and entries here. Missing files fall back to procedural placeholders. Anchors are source px (divide by 8 for CSS).",
+  "balls": {
+    "classic": {
+      "face_knock": null,
+      "blush": "#FF8E5E",
+      "blush_alpha": 1,
+      "light": "balls/_light",
+      "static_layer": null,
+      "face_offset_r": [
+        0,
+        0
+      ]
+    },
+    "bonus": {
+      "face_knock": null,
+      "blush": "#FF8E5E",
+      "blush_alpha": 0.85,
+      "light": "balls/_light",
+      "static_layer": null,
+      "face_offset_r": [
+        0,
+        0
+      ]
+    },
+    "tangerine": {
+      "face_knock": null,
+      "blush": "#E8443A",
+      "blush_alpha": 0.7,
+      "light": "balls/_light",
+      "static_layer": "balls/tangerine_static",
+      "face_offset_r": [
+        0,
+        0
+      ],
+      "name": "Tangerine",
+      "rarity": "common",
+      "unlock": {
+        "kind": "height",
+        "value": 500
+      }
+    },
+    "soccer": {
+      "face_knock": "#FFF1D6",
+      "blush": "#FF8E5E",
+      "blush_alpha": 0.85,
+      "light": "balls/_light",
+      "static_layer": null,
+      "face_offset_r": [
+        0,
+        0
+      ],
+      "name": "Soccer",
+      "rarity": "common",
+      "unlock": {
+        "kind": "height",
+        "value": 1000
+      }
+    },
+    "baseball": {
+      "face_knock": "#FCE7C7",
+      "blush": "#FF8E5E",
+      "blush_alpha": 0.85,
+      "light": "balls/_light",
+      "static_layer": null,
+      "face_offset_r": [
+        0,
+        0
+      ],
+      "name": "Baseball",
+      "rarity": "common",
+      "unlock": {
+        "kind": "points",
+        "value": 2000
+      }
+    },
+    "tennis": {
+      "face_knock": "#B8D94A",
+      "blush": "#FF8E5E",
+      "blush_alpha": 0.85,
+      "light": "balls/_light",
+      "static_layer": null,
+      "face_offset_r": [
+        0,
+        0
+      ],
+      "name": "Tennis",
+      "rarity": "common",
+      "unlock": {
+        "kind": "height",
+        "value": 2000
+      }
+    },
+    "basketball": {
+      "face_knock": "#E2662F",
+      "blush": "#FF8E5E",
+      "blush_alpha": 0.85,
+      "light": "balls/_light",
+      "static_layer": null,
+      "face_offset_r": [
+        0,
+        0
+      ],
+      "name": "Basketball",
+      "rarity": "uncommon",
+      "unlock": {
+        "kind": "points",
+        "value": 5000
+      }
+    },
+    "beach": {
+      "face_knock": "#FFF1D6",
+      "blush": "#FF8E5E",
+      "blush_alpha": 0.85,
+      "light": "balls/_light",
+      "static_layer": null,
+      "face_offset_r": [
+        0,
+        0
+      ],
+      "name": "Beach Ball",
+      "rarity": "uncommon",
+      "unlock": {
+        "kind": "height",
+        "value": 3000
+      }
+    },
+    "volleyball": {
+      "face_knock": "#FFF1D6",
+      "blush": "#FF8E5E",
+      "blush_alpha": 0.85,
+      "light": "balls/_light",
+      "static_layer": null,
+      "face_offset_r": [
+        0,
+        0
+      ],
+      "name": "Volleyball",
+      "rarity": "rare",
+      "unlock": {
+        "kind": "points",
+        "value": 10000
+      }
+    },
+    "bowling": {
+      "face_knock": "#885799",
+      "blush": "#FF8E5E",
+      "blush_alpha": 0.85,
+      "light": "balls/bowling_light",
+      "static_layer": null,
+      "face_offset_r": [
+        0,
+        0
+      ],
+      "name": "Bowling",
+      "rarity": "rare",
+      "unlock": {
+        "kind": "height",
+        "value": 5000
+      }
+    },
+    "cactus": {
+      "face_knock": "#4FAE5A",
+      "blush": "#E8443A",
+      "blush_alpha": 0.7,
+      "light": "balls/_light",
+      "static_layer": "balls/cactus_static",
+      "face_offset_r": [
+        0,
+        0
+      ],
+      "name": "Barrel Cactus",
+      "rarity": "rare",
+      "unlock": {
+        "kind": "height",
+        "value": 7500
+      }
+    },
+    "tumbleweed": {
+      "face_knock": null,
+      "blush": "#E8443A",
+      "blush_alpha": 0.7,
+      "light": "balls/_light",
+      "static_layer": null,
+      "face_offset_r": [
+        0,
+        0
+      ],
+      "name": "Tumbleweed",
+      "rarity": "rare",
+      "unlock": {
+        "kind": "points",
+        "value": 12000
+      }
+    },
+    "turquoise": {
+      "face_knock": "#44C0B0",
+      "blush": "#E8443A",
+      "blush_alpha": 0.7,
+      "light": "balls/turquoise_light",
+      "static_layer": null,
+      "face_offset_r": [
+        0,
+        0
+      ],
+      "name": "Turquoise",
+      "rarity": "epic",
+      "unlock": {
+        "kind": "climbed",
+        "value": 300000
+      },
+      "fallback_unlock": {
+        "kind": "height",
+        "value": 15000
+      }
+    },
+    "geode": {
+      "face_knock": "#B29776",
+      "blush": "#E8443A",
+      "blush_alpha": 0.7,
+      "light": "balls/geode_light",
+      "static_layer": null,
+      "face_offset_r": [
+        0,
+        0
+      ],
+      "name": "Geode",
+      "rarity": "epic",
+      "unlock": {
+        "kind": "climbed",
+        "value": 750000
+      },
+      "fallback_unlock": {
+        "kind": "points",
+        "value": 30000
+      }
+    },
+    "moon": {
+      "face_knock": null,
+      "blush": "#FF8E5E",
+      "blush_alpha": 0.85,
+      "light": "balls/moon_light",
+      "static_layer": null,
+      "face_offset_r": [
+        0,
+        0
+      ],
+      "name": "Moon",
+      "rarity": "legendary",
+      "unlock": {
+        "kind": "height",
+        "value": 40000
+      }
+    },
+    "glider": {
+      "face_knock": null,
+      "blush": "#E8443A",
+      "blush_alpha": 0.7,
+      "light": "balls/_light",
+      "static_layer": "balls/glider_static",
+      "face_offset_r": [
+        0,
+        0
+      ],
+      "name": "Glider",
+      "rarity": "legendary",
+      "unlock": {
+        "kind": "points",
+        "value": 50000
+      }
+    },
+    "meteor": {
+      "face_knock": "#805A3B",
+      "blush": "#E8443A",
+      "blush_alpha": 0.7,
+      "light": "balls/meteor_light",
+      "static_layer": null,
+      "face_offset_r": [
+        0,
+        0
+      ],
+      "name": "Meteor",
+      "rarity": "legendary",
+      "unlock": {
+        "kind": "climbed",
+        "value": 5000000
+      },
+      "fallback_unlock": {
+        "kind": "height",
+        "value": 75000
+      }
+    }
+  },
+  "hats": {
+    "headband": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -0.56
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": null,
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true,
+      "legacy_center": true,
+      "sprite": "character/hat_headband"
+    },
+    "beanie": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -0.55
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": null,
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true
+    },
+    "cap": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -0.6
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": null,
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true
+    },
+    "hardhat": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -0.55
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": null,
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true
+    },
+    "paperboat": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -0.7
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": null,
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true
+    },
+    "party": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -0.72
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": null,
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true
+    },
+    "cowboy": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -0.55
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": null,
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true
+    },
+    "chef": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -0.8
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": null,
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true
+    },
+    "propeller": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -0.55
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [
+        {
+          "id": "hats/propeller_blade",
+          "anchor_src": [
+            192,
+            64
+          ],
+          "at_src": [
+            192,
+            80
+          ],
+          "spin_rad_s": 10
+        }
+      ],
+      "pulse": null,
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true
+    },
+    "bloom": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -0.6
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "split",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": null,
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true
+    },
+    "viking": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -0.55
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": null,
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true
+    },
+    "tophat": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -0.9
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": null,
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true
+    },
+    "crown": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -0.65
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": null,
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true
+    },
+    "wizard": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -0.7
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": null,
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true
+    },
+    "duck": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -0.85
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": null,
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true
+    },
+    "halo": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -1.15
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": {
+        "alpha": [
+          0.7,
+          1
+        ],
+        "hz": 0.64
+      },
+      "frames": 1,
+      "fps": 0,
+      "hides_headband": true
+    },
+    "thunderhead": {
+      "anchor_src": [
+        192,
+        288
+      ],
+      "seat_r": [
+        0,
+        -1.25
+      ],
+      "scale": 1,
+      "tilt_deg": 0,
+      "layer": "front",
+      "follow_spin": false,
+      "follow_squash": true,
+      "parts": [],
+      "pulse": null,
+      "frames": 4,
+      "fps": 8,
+      "hides_headband": true
+    }
+  },
+  "slings": {
+    "classic": {
+      "anchor_src": [
+        256,
+        472
+      ],
+      "band": {
+        "color": "#8E3A22",
+        "core": "#E8443A",
+        "width_css": 3.5
+      },
+      "accent": "#E8443A",
+      "pouch": "character/pouch"
+    },
+    "driftwood": {
+      "anchor_src": [
+        256,
+        472
+      ],
+      "band": {
+        "color": "#6B4423",
+        "core": "#C4A574",
+        "width_css": 3.5
+      },
+      "accent": "#A0622A",
+      "pouch": "character/pouch"
+    },
+    "ironworks": {
+      "anchor_src": [
+        256,
+        472
+      ],
+      "band": {
+        "color": "#3A3230",
+        "core": "#E8443A",
+        "width_css": 3.5
+      },
+      "accent": "#E8443A",
+      "pouch": "character/pouch"
+    },
+    "antler": {
+      "anchor_src": [
+        256,
+        472
+      ],
+      "band": {
+        "color": "#8E3A22",
+        "core": "#E8443A",
+        "width_css": 3.5
+      },
+      "accent": "#E8443A",
+      "pouch": "character/pouch"
+    },
+    "saguaro": {
+      "anchor_src": [
+        256,
+        472
+      ],
+      "band": {
+        "color": "#2F6B38",
+        "core": "#E8443A",
+        "width_css": 3.5
+      },
+      "accent": "#E8443A",
+      "pouch": "character/pouch"
+    },
+    "wishbone": {
+      "anchor_src": [
+        256,
+        472
+      ],
+      "band": {
+        "color": "#8E3A22",
+        "core": "#E8443A",
+        "width_css": 3.5
+      },
+      "accent": "#E8443A",
+      "pouch": "character/pouch"
+    },
+    "painted": {
+      "anchor_src": [
+        256,
+        472
+      ],
+      "band": {
+        "color": "#6B2A14",
+        "core": "#E8443A",
+        "width_css": 3.5
+      },
+      "accent": "#E8443A",
+      "pouch": "character/pouch"
+    },
+    "cloudpuff": {
+      "anchor_src": [
+        256,
+        472
+      ],
+      "band": {
+        "color": "#8E3A22",
+        "core": "#E8443A",
+        "width_css": 3.5
+      },
+      "accent": "#C7B6D6",
+      "pouch": "character/pouch"
+    },
+    "gilded": {
+      "anchor_src": [
+        256,
+        472
+      ],
+      "band": {
+        "color": "#8E3A22",
+        "core": "#FFB547",
+        "width_css": 3.5
+      },
+      "accent": "#FFB547",
+      "pouch": "character/pouch"
+    },
+    "sunforge": {
+      "anchor_src": [
+        256,
+        472
+      ],
+      "band": {
+        "color": "#6B2A14",
+        "core": "#E2662F",
+        "width_css": 3.5
+      },
+      "accent": "#E2662F",
+      "pouch": "character/pouch"
+    }
+  },
+  "trails": {
+    "dust": {
+      "sprite": "trails/dust",
+      "frames": 1,
+      "fps": 0
+    },
+    "sparkle": {
+      "sprite": "trails/sparkle",
+      "frames": 1,
+      "fps": 0
+    },
+    "bubbles": {
+      "sprite": "trails/bubbles",
+      "frames": 1,
+      "fps": 0
+    },
+    "sage": {
+      "sprite": "trails/sage",
+      "frames": 1,
+      "fps": 0
+    },
+    "hearts": {
+      "sprite": "trails/hearts",
+      "frames": 1,
+      "fps": 0
+    },
+    "confetti": {
+      "sprite": "trails/confetti",
+      "frames": 1,
+      "fps": 0
+    },
+    "ribbon": {
+      "sprite": "trails/ribbon",
+      "frames": 1,
+      "fps": 0
+    },
+    "feathers": {
+      "sprite": "trails/feathers",
+      "frames": 1,
+      "fps": 0
+    },
+    "stars": {
+      "sprite": "trails/stars",
+      "frames": 1,
+      "fps": 0
+    },
+    "flame": {
+      "sprite": "trails/flame",
+      "frames": 1,
+      "fps": 0
+    },
+    "blooms": {
+      "sprite": "trails/blooms",
+      "frames": 1,
+      "fps": 0
+    },
+    "rainbow": {
+      "sprite": "trails/rainbow",
+      "frames": 1,
+      "fps": 0
+    },
+    "lightning": {
+      "sprite": "trails/lightning",
+      "frames": 1,
+      "fps": 0
+    }
+  },
+  "use_climbed_unlocks_note": "Game flag USE_CLIMBED_UNLOCKS in src/game/cosmetics.ts. false selects fallback_unlock (turquoise height 15000, geode points 30000, meteor height 75000)."
+}

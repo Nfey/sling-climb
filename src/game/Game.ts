@@ -57,6 +57,7 @@ import { Renderer, hitRect } from "./Renderer"
 import { Score } from "./Score"
 import { Slingshot } from "./Slingshot"
 import {
+  activeBallUnlock,
   CosmeticsStore,
   DEFAULT_COSMETIC_ID,
 } from "./cosmetics"
@@ -1310,6 +1311,7 @@ export class Game implements BotGameApi {
       this.score.observe(this.ball.y)
       this.recordTrailPoint()
       if (!this.menuDemo) {
+        this.score.bankClimb(this.score.climbHeight)
         this.achievements.onFlightFrame(this.ball.y, this.score.current)
         this.dailyMissions.onHeight(this.score.climbHeight)
         this.dailyMissions.onScore(this.score.current)
@@ -1739,7 +1741,12 @@ export class Game implements BotGameApi {
 
     const slingStyle = this.freeMoveActive ? "freeMove" : this.powActive ? "pow" : "normal"
     const slingshotStyle = this.cosmetics.getEquippedSlingshotStyle()
-    const ballStyle = this.cosmetics.getEquippedBallStyle(bestHeight, highScore)
+    const lifetimeClimbed = this.score.lifetimeClimbed
+    const ballStyle = this.cosmetics.getEquippedBallStyle(
+      bestHeight,
+      highScore,
+      lifetimeClimbed,
+    )
     this.renderer.drawSlingshot(
       cam,
       this.slingshot,
@@ -1782,7 +1789,13 @@ export class Game implements BotGameApi {
         const ballLocked = this.cosmetics.isBallSelectionLocked(
           bestHeight,
           highScore,
+          lifetimeClimbed,
         )
+        const selectedBall = this.cosmetics.getSelectedBallVariant()
+        const ballProgress =
+          ballLocked && selectedBall && activeBallUnlock(selectedBall).kind === "climbed"
+            ? { current: lifetimeClimbed, goal: activeBallUnlock(selectedBall).value }
+            : null
         this.menuHitAreas = null
         this.dailyHitAreas = null
         this.gachaHitAreas = null
@@ -1801,7 +1814,8 @@ export class Game implements BotGameApi {
           backgroundLocked
             ? this.cosmetics.getSelectedBackgroundUnlockHint()
             : null,
-          ballLocked ? this.cosmetics.getSelectedBallUnlockHint() : null,
+          ballProgress ? null : ballLocked ? this.cosmetics.getSelectedBallUnlockHint() : null,
+          ballProgress,
         )
       } else if (this.menuScreen === "daily") {
         this.menuHitAreas = null

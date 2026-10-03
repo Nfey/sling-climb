@@ -5,7 +5,7 @@ import {
   TURRET_BODY_RADIUS,
 } from "../constants"
 import type { Camera } from "../Camera"
-import type { Ball } from "../Ball"
+import type { SlingshotStyle } from "../cosmetics"
 import type { Slingshot } from "../Slingshot"
 import type {
   ArrowPadData,
@@ -17,12 +17,14 @@ import type {
   UpgradePickupData,
   WallTurretData,
 } from "../types"
+import { slingBand } from "./cosmeticsData"
 import { drawMountPlate } from "./canyon"
 import { NIGHT_RIM_CLIMB } from "./palette"
 import { playRight, wallLeft, wallRight } from "./layout"
 import {
   drawSprite,
   drawSpriteTile,
+  hasSprite,
   spriteFrame,
   spritesReady,
   tintedSprite,
@@ -428,15 +430,25 @@ export function drawSlingshotArt(
   sling: Slingshot,
   pouchX: number,
   pouchY: number,
+  style: SlingshotStyle,
   pow: boolean,
   startHeight: number,
 ): boolean {
   if (!artReady()) return false
   const anchor = slingshotArtAnchor(camera, sling)
   const night = nightAt(sling.y, startHeight)
-  const body = pow ? "character/slingshot_classic_pow" : "character/slingshot_classic"
-  drawSprite(ctx, body, anchor.x, anchor.y, { night })
-  drawSprite(ctx, "character/pouch", pouchX, pouchY, { night })
+  const body = pow
+    ? "character/slingshot_classic_pow"
+    : hasSprite(`slings/${style}`)
+      ? `slings/${style}`
+      : style === "classic"
+        ? "character/slingshot_classic"
+        : null
+  if (!body || !drawSprite(ctx, body, anchor.x, anchor.y, { night })) return false
+  const pouchId = slingBand(style).pouch
+  if (!drawSprite(ctx, pouchId, pouchX, pouchY, { night })) {
+    drawSprite(ctx, "character/pouch", pouchX, pouchY, { night })
+  }
   return true
 }
 
@@ -565,115 +577,3 @@ function drawHeightLabel(
   ctx.restore()
 }
 
-const FACE_ORDER = [
-  "idle",
-  "blink1",
-  "blink2",
-  "determined",
-  "joy",
-  "ecstatic",
-  "scared",
-  "relieved",
-  "dizzy",
-] as const
-
-function faceFrame(time: number, squash: number, speed: number): number {
-  if (squash > 0.55) return FACE_ORDER.indexOf("determined")
-  if (speed > 900) return FACE_ORDER.indexOf("ecstatic")
-  if (speed > 520) return FACE_ORDER.indexOf("joy")
-  const cycle = time % 3.4
-  if (cycle > 3.22 && cycle <= 3.3) return FACE_ORDER.indexOf("blink1")
-  if (cycle > 3.3 && cycle <= 3.38) return FACE_ORDER.indexOf("blink2")
-  return 0
-}
-
-export function drawBallArt(
-  ctx: CanvasRenderingContext2D,
-  ball: Ball,
-  screenX: number,
-  screenY: number,
-  classic: boolean,
-  hatIsNone: boolean,
-  startHeight: number,
-  time: number,
-  drawHat: (ctx: CanvasRenderingContext2D) => void,
-): boolean {
-  if (!artReady()) return false
-  if (!ball.isBonus && !classic) return false
-  const id = ball.isBonus ? "character/ball_bonus-2x" : "character/ball_classic"
-  const night = nightAt(ball.y, startHeight)
-  const scale = ball.radius / 14
-  const squashX = 1 + ball.squash * 0.25
-  const squashY = 1 - ball.squash * 0.2
-  const speed = Math.hypot(ball.vx, ball.vy)
-  const lookLen = Math.min(1, speed / 280)
-  const lookX = speed > 1 ? (ball.vx / speed) * lookLen : 0
-  const lookY = speed > 1 ? (-ball.vy / speed) * lookLen : 0
-
-  ctx.save()
-  ctx.translate(screenX, screenY)
-  ctx.scale(squashX, squashY)
-  ctx.rotate(ball.spin)
-  drawSprite(ctx, id, 0, 0, { scale, night })
-  ctx.rotate(-ball.spin)
-
-  const blinking = faceFrame(time, ball.squash, speed) !== 0 && ball.squash <= 0.55 && speed <= 520
-  const useLook = speed > 40 && !blinking && ball.squash <= 0.55
-  if (useLook) {
-    drawSprite(ctx, "character/face_idle-nopupil", 0, 0, { scale })
-    const r = ball.radius
-    const eyes: Array<[number, number]> = [
-      [-0.38, -0.06],
-      [0.38, -0.06],
-    ]
-    for (const [ex, ey] of eyes) {
-      drawSprite(
-        ctx,
-        "character/face_pupil",
-        (ex + lookX * 0.1035) * r,
-        (ey + lookY * 0.1265) * r,
-        { scale },
-      )
-    }
-  } else {
-    drawSprite(ctx, "character/face_9f", 0, 0, {
-      scale,
-      frame: faceFrame(time, ball.squash, speed),
-    })
-  }
-
-  if (!ball.isBonus && classic && hatIsNone) {
-    drawSprite(ctx, "character/hat_headband", 0, 0, { scale, night })
-  } else if (!hatIsNone) {
-    drawHat(ctx)
-  }
-  ctx.restore()
-  return true
-}
-
-/**
- * Shop and menu previews of the default ball. Same stage-1 sprites as play
- * (`ball_classic` + idle face + default headband) at the authored scale.
- *
- * Callers pass the old code-drawn circle radius (up to 36). That radius is
- * not the gameplay radius: `ball_classic` is already the r14 ball at scale 1,
- * and `hat_headband` bakes a solid ink restroke sized for that ball. Scaling
- * the pair by radius/14 turns the restroke into a dark disc behind the face.
- * Shrink only when the slot is smaller than the title ball.
- */
-export function drawClassicMenuBall(
-  ctx: CanvasRenderingContext2D,
-  radius: number,
-  time: number,
-  withHeadband: boolean,
-): boolean {
-  if (!artReady()) return false
-  const scale = Math.min(1, radius / 14)
-  if (!drawSprite(ctx, "character/ball_classic", 0, 0, { scale })) return false
-  drawSprite(ctx, "character/face_9f", 0, 0, {
-    scale,
-    frame: faceFrame(time, 0, 0),
-  })
-  if (withHeadband) drawSprite(ctx, "character/hat_headband", 0, 0, { scale })
-  return true
-}

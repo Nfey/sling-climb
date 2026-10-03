@@ -1,3 +1,4 @@
+import { slingBand } from "./art/cosmeticsData"
 import type { BallStyle, SlingshotStyle } from "./cosmetics"
 
 /** Animated rainbow hue for slings/balls. */
@@ -25,61 +26,53 @@ export function drawBallStyle(
     case "classic":
       if (phase !== "pattern") drawClassicBall(ctx, radius, "#fff6dd", "#f0d9a0", "#d4b06a")
       break
+    case "tangerine":
+      if (phase !== "pattern") drawClassicBall(ctx, radius, "#ffd0a8", "#f28a3a", "#c45a16")
+      break
     case "soccer":
       drawSoccerBall(ctx, radius, phase)
       break
     case "baseball":
       drawBaseball(ctx, radius, phase)
       break
-    case "wiffle":
-      drawWiffleBall(ctx, radius, phase)
-      break
     case "tennis":
       drawTennisBall(ctx, radius, phase)
-      break
-    case "pingpong":
-      drawPingPongBall(ctx, radius, phase)
       break
     case "basketball":
       drawBasketball(ctx, radius, phase)
       break
-    case "football":
-      drawFootball(ctx, radius, phase)
-      break
-    case "golf":
-      drawGolfBall(ctx, radius, phase)
-      break
     case "beach":
       drawBeachBall(ctx, radius, phase)
-      break
-    case "bowling":
-      drawBowlingBall(ctx, radius, phase)
       break
     case "volleyball":
       drawVolleyballBall(ctx, radius, phase)
       break
-    case "ruby":
-      drawGemBall(ctx, radius, "#fb7185", "#be123c", "#ffe4e6", phase)
+    case "bowling":
+      drawBowlingBall(ctx, radius, phase)
       break
-    case "emerald":
-      drawGemBall(ctx, radius, "#34d399", "#047857", "#ecfdf5", phase)
+    case "cactus":
+      if (phase !== "pattern") drawClassicBall(ctx, radius, "#b7e3a8", "#4FAE5A", "#2f7a38")
       break
-    case "sapphire":
-      drawGemBall(ctx, radius, "#60a5fa", "#1d4ed8", "#eff6ff", phase)
+    case "tumbleweed":
+      if (phase !== "pattern") drawClassicBall(ctx, radius, "#e6d2a8", "#c4a574", "#8A6A4A")
       break
-    case "amethyst":
-      drawGemBall(ctx, radius, "#a78bfa", "#6d28d9", "#f5f3ff", phase)
+    case "turquoise":
+      if (phase !== "pattern") drawClassicBall(ctx, radius, "#d5fff8", "#44C0B0", "#1d7a70")
       break
-    case "topaz":
-      drawGemBall(ctx, radius, "#fbbf24", "#b45309", "#fffbeb", phase)
+    case "geode":
+      if (phase !== "pattern") drawClassicBall(ctx, radius, "#f3e6d4", "#b29776", "#6b5344")
       break
-    case "winged":
-      drawWingedBall(ctx, radius, time, phase)
+    case "moon":
+      if (phase !== "pattern") drawClassicBall(ctx, radius, "#ffffff", "#f4f0e6", "#c9c2b2")
       break
-    case "rainbow":
-      if (phase !== "pattern") drawRainbowBall(ctx, radius, time)
+    case "glider":
+      if (phase !== "pattern") drawClassicBall(ctx, radius, "#fff4d2", "#f0c14a", "#b8860b")
+      break
+    case "meteor":
+      if (phase !== "pattern") drawClassicBall(ctx, radius, "#d7c4ae", "#805A3B", "#3d2a1c")
       break
   }
+  void time
 }
 
 function drawClassicBall(
@@ -262,21 +255,6 @@ function drawBaseballStitch(
   ctx.restore()
 }
 
-function drawWiffleBall(ctx: CanvasRenderingContext2D, radius: number, phase: BallDrawPhase): void {
-  if (phase !== "pattern") drawClassicBall(ctx, radius, "#ffffff", "#f1f5f9", "#cbd5e1")
-  if (phase !== "lighting") {
-    ctx.fillStyle = "#94a3b8"
-    const holes = [
-      [0, 0], [-0.35, -0.2], [0.35, -0.2], [-0.35, 0.25], [0.35, 0.25], [0, 0.45],
-    ]
-    for (const [hx, hy] of holes) {
-      ctx.beginPath()
-      ctx.arc(hx * radius, hy * radius, radius * 0.13, 0, Math.PI * 2)
-      ctx.fill()
-    }
-  }
-}
-
 function drawTennisBall(ctx: CanvasRenderingContext2D, radius: number, phase: BallDrawPhase): void {
   if (phase !== "pattern") {
     const base = ctx.createRadialGradient(-radius * 0.15, -radius * 0.1, radius * 0.05, 0, 0, radius)
@@ -350,22 +328,6 @@ function drawTennisBallSeams(ctx: CanvasRenderingContext2D, radius: number): voi
   ctx.restore()
 }
 
-function drawPingPongBall(ctx: CanvasRenderingContext2D, radius: number, phase: BallDrawPhase): void {
-  if (phase !== "pattern") drawClassicBall(ctx, radius, "#ffffff", "#fafafa", "#e5e5e5")
-  if (phase !== "lighting") {
-    ctx.strokeStyle = "rgba(0,0,0,0.12)"
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    ctx.moveTo(-radius * 0.85, 0)
-    ctx.quadraticCurveTo(0, -radius * 0.5, radius * 0.85, 0)
-    ctx.stroke()
-    ctx.beginPath()
-    ctx.moveTo(-radius * 0.85, 0)
-    ctx.quadraticCurveTo(0, radius * 0.5, radius * 0.85, 0)
-    ctx.stroke()
-  }
-}
-
 function drawBasketball(ctx: CanvasRenderingContext2D, radius: number, phase: BallDrawPhase): void {
   if (phase !== "pattern") {
     const grd = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, 1, 0, 0, radius)
@@ -394,48 +356,6 @@ function drawBasketball(ctx: CanvasRenderingContext2D, radius: number, phase: Ba
     ctx.beginPath()
     ctx.arc(0, 0, radius * 0.92, Math.PI - 0.6, Math.PI + 0.6)
     ctx.stroke()
-  }
-}
-
-function drawFootball(ctx: CanvasRenderingContext2D, radius: number, phase: BallDrawPhase): void {
-  if (phase !== "pattern") {
-    const grd = ctx.createRadialGradient(-radius * 0.2, -radius * 0.25, 1, 0, 0, radius)
-    grd.addColorStop(0, "#b45309")
-    grd.addColorStop(0.55, "#92400e")
-    grd.addColorStop(1, "#451a03")
-    ctx.fillStyle = grd
-    ctx.beginPath()
-    ctx.ellipse(0, 0, radius * 1.05, radius * 0.72, 0, 0, Math.PI * 2)
-    ctx.fill()
-  }
-  if (phase !== "lighting") {
-    ctx.strokeStyle = "#fef3c7"
-    ctx.lineWidth = Math.max(1.5, radius * 0.1)
-    ctx.beginPath()
-    ctx.moveTo(0, -radius * 0.45)
-    ctx.lineTo(0, radius * 0.45)
-    ctx.stroke()
-    for (let i = -2; i <= 2; i++) {
-      ctx.beginPath()
-      ctx.moveTo(-radius * 0.12, i * radius * 0.18)
-      ctx.lineTo(radius * 0.12, i * radius * 0.18)
-      ctx.stroke()
-    }
-  }
-}
-
-function drawGolfBall(ctx: CanvasRenderingContext2D, radius: number, phase: BallDrawPhase): void {
-  if (phase !== "pattern") drawClassicBall(ctx, radius, "#ffffff", "#f8fafc", "#cbd5e1")
-  if (phase !== "lighting") {
-    ctx.fillStyle = "rgba(148, 163, 184, 0.35)"
-    for (let row = -2; row <= 2; row++) {
-      for (let col = -2; col <= 2; col++) {
-        if ((row + col) % 2 !== 0) continue
-        ctx.beginPath()
-        ctx.arc(col * radius * 0.22, row * radius * 0.22, radius * 0.07, 0, Math.PI * 2)
-        ctx.fill()
-      }
-    }
   }
 }
 
@@ -520,80 +440,6 @@ function drawVolleyballBall(ctx: CanvasRenderingContext2D, radius: number, phase
     ctx.arc(0, -radius * 0.55, radius * 0.08, 0, Math.PI * 2)
     ctx.fill()
   }
-}
-
-function drawGemBall(
-  ctx: CanvasRenderingContext2D,
-  radius: number,
-  fill: string,
-  stroke: string,
-  highlight: string,
-  phase: BallDrawPhase,
-): void {
-  if (phase !== "pattern") {
-    const grd = ctx.createRadialGradient(-radius * 0.35, -radius * 0.4, 1, 0, 0, radius)
-    grd.addColorStop(0, highlight)
-    grd.addColorStop(0.45, fill)
-    grd.addColorStop(1, stroke)
-    ctx.fillStyle = grd
-    ctx.beginPath()
-    ctx.arc(0, 0, radius, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.strokeStyle = "rgba(255,255,255,0.5)"
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.arc(-radius * 0.25, -radius * 0.3, radius * 0.2, 0, Math.PI * 2)
-    ctx.stroke()
-  }
-  if (phase !== "lighting") {
-    ctx.strokeStyle = stroke
-    ctx.lineWidth = 1.5
-    ctx.globalAlpha = 0.55
-    for (let i = 0; i < 3; i++) {
-      const a = (i / 3) * Math.PI * 2 + 0.4
-      ctx.beginPath()
-      ctx.moveTo(0, 0)
-      ctx.lineTo(Math.cos(a) * radius, Math.sin(a) * radius)
-      ctx.stroke()
-    }
-    ctx.globalAlpha = 1
-  }
-}
-
-function drawWingedBall(ctx: CanvasRenderingContext2D, radius: number, time: number, phase: BallDrawPhase): void {
-  if (phase !== "pattern") {
-    const flap = Math.sin(time * 9) * 0.45
-    for (const side of [-1, 1]) {
-      ctx.save()
-      ctx.scale(side, 1)
-      ctx.rotate(flap * side - 0.2)
-      ctx.fillStyle = "rgba(255, 255, 255, 0.92)"
-      ctx.strokeStyle = "rgba(148, 163, 184, 0.55)"
-      ctx.lineWidth = 1.2
-      ctx.beginPath()
-      ctx.moveTo(radius * 0.15, 0)
-      ctx.quadraticCurveTo(radius * 1.1, -radius * 0.55, radius * 1.65, -radius * 0.05)
-      ctx.quadraticCurveTo(radius * 1.05, radius * 0.15, radius * 0.15, 0)
-      ctx.fill()
-      ctx.stroke()
-      ctx.restore()
-    }
-    drawClassicBall(ctx, radius, "#fff6dd", "#f0d9a0", "#d4b06a")
-  }
-}
-
-function drawRainbowBall(ctx: CanvasRenderingContext2D, radius: number, time: number): void {
-  const grd = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, 1, 0, 0, radius)
-  for (let i = 0; i <= 6; i++) {
-    grd.addColorStop(i / 6, rainbowColor(time, i * 55))
-  }
-  ctx.fillStyle = grd
-  ctx.beginPath()
-  ctx.arc(0, 0, radius, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.strokeStyle = "rgba(255,255,255,0.45)"
-  ctx.lineWidth = 2
-  ctx.stroke()
 }
 
 /** Mini slingshot icon for menu pickers. */
@@ -816,6 +662,8 @@ export function drawSlingshotBands(
   const drawBand = (x1: number, y1: number, ox: number) => {
     if (style === "rainbow") {
       ctx.strokeStyle = rainbowBandColor(time, ox)
+    } else if (style === "classic") {
+      ctx.strokeStyle = slingBand("classic").color
     } else {
       ctx.strokeStyle = bandColorForStyle(style)
     }
@@ -823,6 +671,13 @@ export function drawSlingshotBands(
     ctx.moveTo(x1, y1)
     ctx.quadraticCurveTo((x1 + pouch.x) * 0.5, (y1 + pouch.y) * 0.5 + 6, pouch.x, pouch.y)
     ctx.stroke()
+    if (style === "classic") {
+      const core = slingBand("classic").core
+      ctx.strokeStyle = core
+      ctx.lineWidth = lineWidth * 0.35
+      ctx.stroke()
+      ctx.lineWidth = lineWidth
+    }
     if (style === "golden") {
       ctx.strokeStyle = "rgba(255, 255, 255, 0.45)"
       ctx.lineWidth = lineWidth * 0.35
@@ -849,7 +704,7 @@ export function drawSlingshotBands(
 function bandColorForStyle(style: SlingshotStyle): string {
   switch (style) {
     case "classic":
-      return "#1d4fbf"
+      return slingBand("classic").color
     case "twig":
       return "#a16207"
     case "iron":
@@ -870,7 +725,7 @@ function bandColorForStyle(style: SlingshotStyle): string {
 export function slingshotAccentColor(style: SlingshotStyle, time: number): string {
   switch (style) {
     case "classic":
-      return "#2f6fed"
+      return slingBand("classic").accent
     case "twig":
       return "#a0622a"
     case "iron":

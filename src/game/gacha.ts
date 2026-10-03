@@ -167,6 +167,71 @@ function rollRareOrBetter(): CosmeticRarity {
   return Math.random() < 0.8 ? "rare" : "epic"
 }
 
+export interface GachaItemOdds {
+  id: string
+  name: string
+  rarity: CosmeticRarity
+  /** Percent chance on a non-pity pull. Legendary is never listed. */
+  percent: number
+}
+
+function weightTotal(): number {
+  return RARITY_WEIGHTS.reduce((s, r) => s + r.weight, 0)
+}
+
+function formatPct(percent: number): string {
+  const rounded = Math.round(percent * 100) / 100
+  return `${rounded}%`
+}
+
+/** Tier odds on the pull screen, from `RARITY_WEIGHTS`. */
+export function gachaTierLine(): string {
+  const total = weightTotal()
+  return RARITY_WEIGHTS.map((entry) => {
+    const pct = (entry.weight / total) * 100
+    return `${formatPct(pct)} ${entry.rarity[0]!.toUpperCase()}`
+  }).join(" · ")
+}
+
+/** Per-item odds for one pool. Empty tiers and legendary items are omitted. */
+export function gachaItemOdds(pool: GachaPool): GachaItemOdds[] {
+  const items = pool === "hat" ? HAT_VARIANTS : TRAIL_VARIANTS
+  const total = weightTotal()
+  const out: GachaItemOdds[] = []
+  for (const item of items) {
+    const tier = RARITY_WEIGHTS.find((entry) => entry.rarity === item.rarity)
+    if (!tier) continue
+    const count = items.filter((other) => other.rarity === item.rarity).length
+    if (count <= 0) continue
+    out.push({
+      id: item.id,
+      name: item.name,
+      rarity: item.rarity,
+      percent: (tier.weight / total) * 100 / count,
+    })
+  }
+  return out
+}
+
+/**
+ * Pull-screen copy: tier line, one line per tier naming each item's share,
+ * then the can't-be-bought line. Balls, slings, and legendaries are absent.
+ */
+export function gachaOddsLines(pool: GachaPool): string[] {
+  const odds = gachaItemOdds(pool)
+  const lines = [gachaTierLine()]
+  const order: CosmeticRarity[] = ["common", "uncommon", "rare", "epic"]
+  for (const rarity of order) {
+    const group = odds.filter((item) => item.rarity === rarity)
+    if (group.length === 0) continue
+    const share = formatPct(group[0]!.percent)
+    const names = group.map((item) => item.name).join(", ")
+    lines.push(`${share} ${names}`)
+  }
+  lines.push("These can't be bought.")
+  return lines
+}
+
 function pickItem(
   pool: GachaPool,
   rarity: CosmeticRarity,
