@@ -30,8 +30,8 @@ export const BACKGROUND_COLOR = SUNBAKED_CANYON.skyStops[2]
 export const NIGHT_RIM_CLIMB = 40_000
 
 /**
- * Sky colour for a climb height. Stage 2 replaces the body with the
- * 7-zone × 3-stop table. Stage 1 keeps today's repeating sky bands.
+ * Sky colour for the code-drawn bands (`?art=0` and the frame before
+ * sprites decode). The canyon backdrop uses the 7-zone table instead.
  */
 export function skyColorForClimb(climb: number): string {
   return skyZoneColor(climb)
