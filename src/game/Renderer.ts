@@ -1206,17 +1206,7 @@ export class Renderer {
       const tapY = tagY + 36 + (showBests ? 50 : 8) + 52 + 48 + 42
       const panelTop = tagY - 14
       const panelBottom = tapY + 16
-      const panelX = 12
-      const panelW = width - 24
-      ctx.save()
-      ctx.shadowColor = "rgba(43, 27, 23, 0.18)"
-      ctx.shadowBlur = 12
-      ctx.shadowOffsetY = 3
-      ctx.fillStyle = "rgba(255, 248, 236, 0.88)"
-      ctx.beginPath()
-      roundRect(ctx, panelX, panelTop, panelW, panelBottom - panelTop, 24)
-      ctx.fill()
-      ctx.restore()
+      fillCreamPanel(ctx, 12, panelTop, width - 24, panelBottom - panelTop)
     }
 
     if (logo && logoPlace) {
@@ -1871,6 +1861,18 @@ export class Renderer {
     drawLifetimeCoins(ctx, width, lifetimeCoins)
 
     const topPad = 36 + safeAreaInsetTop()
+    const previewY = topPad + 108
+    const equipY = previewY + 100
+    const pullH = 52
+    const pullY = equipY + 52
+    const backH = 44
+    const backY = Math.min(height - backH - 20, pullY + pullH + 40)
+    if (!revealing && this.useArt()) {
+      const panelTop = topPad - 22
+      const panelBottom = backY + backH + 18
+      fillCreamPanel(ctx, 12, panelTop, width - 24, panelBottom - panelTop)
+    }
+
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
     ctx.fillStyle = theme.ink
@@ -1886,7 +1888,6 @@ export class Renderer {
       topPad + 34,
     )
 
-    const previewY = topPad + 108
     if (!revealing) {
       ctx.save()
       ctx.translate(cx, previewY)
@@ -1919,7 +1920,6 @@ export class Renderer {
     }
 
     const arrowW = 40
-    const equipY = previewY + 100
     const equipPrev: ScreenRect = { x: cx - 100, y: equipY, w: arrowW, h: 36 }
     const equipNext: ScreenRect = { x: cx + 60, y: equipY, w: arrowW, h: 36 }
     if (!revealing) {
@@ -1941,10 +1941,9 @@ export class Renderer {
 
     const canAfford = lifetimeCoins >= GACHA_PULL_COST
     const pullW = 180
-    const pullH = 52
     const pull: ScreenRect = {
       x: cx - pullW / 2,
-      y: equipY + 52,
+      y: pullY,
       w: pullW,
       h: pullH,
     }
@@ -1963,10 +1962,9 @@ export class Renderer {
     }
 
     const backW = 140
-    const backH = 44
     const back: ScreenRect = {
       x: cx - backW / 2,
-      y: Math.min(height - backH - 20, pull.y + pullH + 40),
+      y: backY,
       w: backW,
       h: backH,
     }
@@ -2032,6 +2030,18 @@ export class Renderer {
     drawLifetimeCoins(ctx, width, lifetimeCoins)
 
     const topPad = 36 + safeAreaInsetTop()
+    const pickerH = 64
+    const rowGap = 56
+    const rowsTop = topPad + 56
+    const backH = 44
+    const ballPickerY = rowsTop + 2 * (pickerH + rowGap)
+    const backY = Math.min(height - backH - 20, ballPickerY + pickerH + 36)
+    if (this.useArt()) {
+      const panelTop = topPad - 22
+      const panelBottom = backY + backH + 18
+      fillCreamPanel(ctx, 12, panelTop, width - 24, panelBottom - panelTop)
+    }
+
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
     ctx.fillStyle = theme.ink
@@ -2041,10 +2051,7 @@ export class Renderer {
     const arrowW = 34
     const iconBox = 48
     const pickerW = arrowW + iconBox + arrowW
-    const pickerH = 64
-    const rowGap = 56
     const labelOffset = 22
-    const rowsTop = topPad + 56
     const rows = [
       {
         kind: "slingshot" as const,
@@ -2139,10 +2146,9 @@ export class Renderer {
     }
 
     const backW = 140
-    const backH = 44
     const back: ScreenRect = {
       x: cx - backW / 2,
-      y: Math.min(height - backH - 20, ballRow.picker.y + ballRow.picker.h + 36),
+      y: backY,
       w: backW,
       h: backH,
     }
@@ -2778,6 +2784,25 @@ function drawMenuCoinIcon(
   ctx.textAlign = "center"
   ctx.textBaseline = "middle"
   ctx.fillText("$", x, y + 0.5)
+  ctx.restore()
+}
+
+/** Title-screen card: cream fill, r24, soft ink shadow. */
+function fillCreamPanel(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): void {
+  ctx.save()
+  ctx.shadowColor = "rgba(43, 27, 23, 0.18)"
+  ctx.shadowBlur = 12
+  ctx.shadowOffsetY = 3
+  ctx.fillStyle = "rgba(255, 248, 236, 0.88)"
+  ctx.beginPath()
+  roundRect(ctx, x, y, w, h, 24)
+  ctx.fill()
   ctx.restore()
 }
 

@@ -1663,13 +1663,21 @@ export class Game implements BotGameApi {
     const bestHeight = this.score.bestMaxHeight
     const highScore = this.score.highScore
     const backgroundStyle = this.cosmetics.getEquippedBackgroundStyle(bestHeight, highScore)
-    const onTitle =
-      (this.menuDemo || this.state === "menu") && this.menuScreen === "title"
+    const inMenu = this.menuDemo || this.state === "menu"
+    const onTitle = inMenu && this.menuScreen === "title"
+    // Shop, Hats, and Trails share the title's hidden attract chrome.
+    // Caught! stays on the title; on these cards it paints through the buttons.
+    const onMenuCard =
+      inMenu &&
+      (this.menuScreen === "shop" ||
+        this.menuScreen === "hatGacha" ||
+        this.menuScreen === "trailGacha")
+    const hideRuler = onTitle || onMenuCard
     this.renderer.begin(cam, dt, this.score.startHeight, backgroundStyle, {
       portals: this.platforms.portals,
       turrets: this.platforms.turrets,
     })
-    if (!onTitle) this.renderer.drawAltitudeMarkers(cam, this.score.startHeight)
+    if (!hideRuler) this.renderer.drawAltitudeMarkers(cam, this.score.startHeight)
     this.renderer.drawMaxHeightLine(
       cam,
       this.score.heightLineWorldY,
@@ -1739,16 +1747,16 @@ export class Game implements BotGameApi {
       pulse,
       slingStyle,
       slingshotStyle,
-      !onTitle,
+      !hideRuler,
     )
-    if (this.catchBurst > 0) {
+    if (this.catchBurst > 0 && !onMenuCard) {
       this.renderer.drawCatchBurst(
         cam,
         this.slingshot,
         this.catchBurst / CATCH_BURST_DURATION,
       )
     }
-    if (!onTitle) this.renderer.drawScorePopups(cam, this.scorePopups)
+    if (!hideRuler) this.renderer.drawScorePopups(cam, this.scorePopups)
 
     if (trajOrigin && trajVel) {
       this.renderer.drawTrajectory(cam, trajOrigin, trajVel)

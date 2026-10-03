@@ -59,7 +59,8 @@ async function menuShot(name, x, y) {
   console.log("wrote", name)
 }
 
-// Title layout at 390×844: Daily / Hats / Trails row.
+// Title layout at 390×844: Shop sits above Daily / Hats / Trails.
+await menuShot("07-shop.png", 261, 388)
 await menuShot("05-hats.png", 195, 440)
 await menuShot("06-trails.png", 299, 440)
 

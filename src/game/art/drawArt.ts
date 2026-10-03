@@ -653,8 +653,13 @@ export function drawBallArt(
 
 /**
  * Shop and menu previews of the default ball. Same stage-1 sprites as play
- * (`ball_classic` + idle face). The headband is the default hat; callers that
- * draw another hat pass false. Code-drawn ball styles stay on drawBallStyle.
+ * (`ball_classic` + idle face + default headband) at the authored scale.
+ *
+ * Callers pass the old code-drawn circle radius (up to 36). That radius is
+ * not the gameplay radius: `ball_classic` is already the r14 ball at scale 1,
+ * and `hat_headband` bakes a solid ink restroke sized for that ball. Scaling
+ * the pair by radius/14 turns the restroke into a dark disc behind the face.
+ * Shrink only when the slot is smaller than the title ball.
  */
 export function drawClassicMenuBall(
   ctx: CanvasRenderingContext2D,
@@ -663,7 +668,7 @@ export function drawClassicMenuBall(
   withHeadband: boolean,
 ): boolean {
   if (!artReady()) return false
-  const scale = radius / 14
+  const scale = Math.min(1, radius / 14)
   if (!drawSprite(ctx, "character/ball_classic", 0, 0, { scale })) return false
   drawSprite(ctx, "character/face_9f", 0, 0, {
     scale,
