@@ -192,6 +192,9 @@ export const MAX_HEIGHT_KEY = "sling-climb-max-height"
 /** Persisted lifetime coin total across runs. */
 export const COIN_KEY = "sling-climb-coins"
 
+/** Cumulative climb distance across real runs (not the menu demo). */
+export const LIFETIME_CLIMBED_KEY = "sling-climb-lifetime-climbed"
+
 /** World-Y spacing between dashed altitude marker lines. */
 export const HEIGHT_MARKER_SPACING = 200
 

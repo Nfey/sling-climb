@@ -1,16 +1,19 @@
 import manifestJson from "../../assets/art/manifest.json" with { type: "json" }
 import bgManifestJson from "../../assets/art/ship-bg-manifest.json" with { type: "json" }
 import { preloadLogos } from "./brand"
+import { explicitAnchor, explicitFrames } from "./cosmeticsData"
 
 /**
- * Sling Bounce stage-1 sprites. Files are @2x; the engine caps DPR at 2.
+ * Sprite loader.
  *
- * Place by anchor: CSS offset = anchor_px3 / 3 (anchor_px3 / 1.5 is @2x file
- * pixels, and those pixels are drawn at half size). Never align a canvas
- * corner to an engine position.
+ * Stage-1 files are `@2x.png` (2 file px per CSS px). Cosmetics v2 adds
+ * `@1x` / `@half` / `@quarter` WebP (8 / 4 / 2 file px per CSS px). Each draw
+ * picks the smallest tier whose file pixels cover the on-screen size.
+ * `@1x` is fetched only when a draw needs it (menus and large previews).
  *
- * `character/ball_hero` (and its night rim) stay in the manifest but the PNGs
- * were left out on purpose. The loader skips them.
+ * Place by anchor. Legacy CSS anchor = anchor_px3 / 3. Hi-res CSS anchor =
+ * anchor_src / 8, or the centre (hats: brim line at 75% of the height,
+ * slings: base at 472/640) when the manifest has no measured anchor.
  */
 
 export interface NightRimMeta {
@@ -34,13 +37,49 @@ interface SpriteEntry {
   meta?: SpriteMeta
 }
 
-const artUrls = import.meta.glob("../../assets/art/**/*.png", {
+interface Raster {
+  img: HTMLImageElement
+  pxPerCss: number
+  lazy: boolean
+  ready: boolean
+  started: boolean
+  load?: () => Promise<string>
+}
+
+interface InternalSprite {
+  id: string
+  legacy: boolean
+  frames: number
+  fps: number
+  anchorSrc: [number, number] | null
+  rasters: Raster[]
+  publicMeta?: SpriteMeta
+}
+
+const pngUrls = import.meta.glob("../../assets/art/**/*.png", {
   eager: true,
   query: "?url",
   import: "default",
 }) as Record<string, string>
 
-const manifest = manifestJson as unknown as {
+const halfUrls = import.meta.glob("../../assets/art/**/*@half.webp", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>
+
+const quarterUrls = import.meta.glob("../../assets/art/**/*@quarter.webp", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>
+
+const lazy1x = import.meta.glob("../../assets/art/**/*@1x.webp", {
+  query: "?url",
+  import: "default",
+}) as Record<string, () => Promise<string>>
+
+const stageManifest = manifestJson as unknown as {
   sprites: Record<string, SpriteMeta>
 }
 
@@ -48,26 +87,96 @@ const bgManifest = bgManifestJson as unknown as {
   sprites: Record<string, SpriteMeta>
 }
 
-const entries = new Map<string, SpriteEntry>()
+const sprites = new Map<string, InternalSprite>()
 
-function spriteIdFromPath(path: string): string | null {
-  const match = path.match(/assets\/art\/(.+)@2x\.png$/)
-  if (!match?.[1]) return null
-  return match[1]
+function stageMeta(id: string): SpriteMeta | undefined {
+  return stageManifest.sprites[id] ?? bgManifest.sprites[id]
 }
 
-/** Hero Orange is not wired until the Design Director picks it. */
-export function isSkippedSprite(id: string): boolean {
-  return id === "character/ball_hero" || id === "character/night-rim/ball_hero"
+function parseAsset(path: string): { id: string; tier: "1x" | "half" | "quarter" | "2x" } | null {
+  const hires = path.match(/assets\/art\/(.+)@(1x|half|quarter)\.webp$/)
+  if (hires?.[1] && hires[2]) {
+    return { id: hires[1], tier: hires[2] as "1x" | "half" | "quarter" }
+  }
+  const legacy = path.match(/assets\/art\/(.+)@2x\.png$/)
+  if (legacy?.[1]) return { id: legacy[1], tier: "2x" }
+  return null
 }
 
-for (const [path, url] of Object.entries(artUrls)) {
-  const id = spriteIdFromPath(path)
-  if (!id || isSkippedSprite(id)) continue
+function pxPerCssFor(tier: "1x" | "half" | "quarter" | "2x"): number {
+  if (tier === "1x") return 8
+  if (tier === "half") return 4
+  return 2
+}
+
+function ensureRecord(id: string, legacy: boolean): InternalSprite {
+  let rec = sprites.get(id)
+  if (!rec) {
+    const frames = explicitFrames(id)
+    rec = {
+      id,
+      legacy,
+      frames: frames?.frames ?? 1,
+      fps: frames?.fps ?? 0,
+      anchorSrc: explicitAnchor(id),
+      rasters: [],
+      publicMeta: legacy ? stageMeta(id) : undefined,
+    }
+    sprites.set(id, rec)
+  } else if (legacy) {
+    rec.legacy = true
+    rec.publicMeta = stageMeta(id) ?? rec.publicMeta
+  }
+  return rec
+}
+
+function addRaster(id: string, legacy: boolean, raster: Raster): void {
+  const rec = ensureRecord(id, legacy)
+  rec.rasters.push(raster)
+  rec.rasters.sort((a, b) => a.pxPerCss - b.pxPerCss)
+}
+
+function makeEagerImage(url: string): HTMLImageElement {
   const img = new Image()
   img.src = url
-  const meta = manifest.sprites[id] ?? bgManifest.sprites[id]
-  entries.set(id, meta ? { img, meta } : { img })
+  return img
+}
+
+for (const [path, url] of Object.entries(pngUrls)) {
+  const parsed = parseAsset(path)
+  if (!parsed) continue
+  addRaster(parsed.id, true, {
+    img: makeEagerImage(url),
+    pxPerCss: pxPerCssFor(parsed.tier),
+    lazy: false,
+    ready: false,
+    started: true,
+  })
+}
+
+for (const [path, url] of Object.entries({ ...quarterUrls, ...halfUrls })) {
+  const parsed = parseAsset(path)
+  if (!parsed) continue
+  addRaster(parsed.id, false, {
+    img: makeEagerImage(url),
+    pxPerCss: pxPerCssFor(parsed.tier),
+    lazy: false,
+    ready: false,
+    started: true,
+  })
+}
+
+for (const [path, loader] of Object.entries(lazy1x)) {
+  const parsed = parseAsset(path)
+  if (!parsed) continue
+  addRaster(parsed.id, false, {
+    img: new Image(),
+    pxPerCss: pxPerCssFor(parsed.tier),
+    lazy: true,
+    ready: false,
+    started: false,
+    load: loader,
+  })
 }
 
 let ready = false
@@ -98,12 +207,41 @@ function decodeImage(img: HTMLImageElement): Promise<boolean> {
   })
 }
 
-/** Decode every shipped sprite. Rejects the ready flag if any file fails. */
+function startRaster(raster: Raster): void {
+  if (raster.started) return
+  raster.started = true
+  if (!raster.load) return
+  void raster.load().then(
+    (url) => {
+      raster.img.src = url
+      void decodeImage(raster.img).then((ok) => {
+        raster.ready = ok
+      })
+    },
+    () => {
+      raster.ready = false
+    },
+  )
+}
+
+/** Decode every eager sprite. `@1x` stays unloaded until a draw needs it. */
 export function preloadSprites(): Promise<void> {
   if (!preloadPromise) {
     preloadPromise = (async () => {
+      const rasters: Raster[] = []
+      for (const rec of sprites.values()) {
+        for (const raster of rec.rasters) {
+          if (!raster.lazy) rasters.push(raster)
+        }
+      }
       const [results] = await Promise.all([
-        Promise.all([...entries.values()].map((entry) => decodeImage(entry.img))),
+        Promise.all(
+          rasters.map(async (raster) => {
+            const ok = await decodeImage(raster.img)
+            raster.ready = ok
+            return ok
+          }),
+        ),
         preloadLogos(),
       ])
       ready = results.every(Boolean)
@@ -115,9 +253,77 @@ export function preloadSprites(): Promise<void> {
   return preloadPromise
 }
 
+function eagerRaster(rec: InternalSprite): Raster | undefined {
+  return rec.rasters.find((r) => r.ready && !r.lazy) ?? rec.rasters.find((r) => r.ready)
+}
+
 export function getSprite(id: string): SpriteEntry | undefined {
-  if (isSkippedSprite(id)) return undefined
-  return entries.get(id)
+  const rec = sprites.get(id)
+  if (!rec) return undefined
+  const raster = eagerRaster(rec)
+  if (!raster) return undefined
+  return { img: raster.img, meta: rec.publicMeta }
+}
+
+export function hasSprite(id: string): boolean {
+  return sprites.has(id)
+}
+
+function frameCss(rec: InternalSprite): { w: number; h: number } | null {
+  if (rec.legacy && rec.publicMeta) {
+    const meta = rec.publicMeta
+    const count = meta.frames && meta.frames > 1 ? meta.frames : 1
+    if (meta.frame_css) return { w: meta.frame_css[0], h: meta.frame_css[1] }
+    return { w: meta.css[0] / count, h: meta.css[1] }
+  }
+  const raster = rec.rasters.find((r) => r.ready && r.img.naturalWidth > 0)
+  if (!raster) return null
+  const count = rec.frames > 1 ? rec.frames : 1
+  return {
+    w: raster.img.naturalWidth / raster.pxPerCss / count,
+    h: raster.img.naturalHeight / raster.pxPerCss,
+  }
+}
+
+function anchorCss(rec: InternalSprite, frame: { w: number; h: number }): [number, number] {
+  if (rec.legacy && rec.publicMeta) {
+    return [rec.publicMeta.anchor_px3[0] / 3, rec.publicMeta.anchor_px3[1] / 3]
+  }
+  if (rec.anchorSrc) return [rec.anchorSrc[0] / 8, rec.anchorSrc[1] / 8]
+  if (rec.id.startsWith("hats/")) return [frame.w / 2, frame.h * (288 / 384)]
+  if (rec.id.startsWith("slings/")) return [frame.w / 2, frame.h * (472 / 640)]
+  return [frame.w / 2, frame.h / 2]
+}
+
+function transformScale(ctx: CanvasRenderingContext2D): number {
+  const t = ctx.getTransform()
+  const scale = Math.hypot(t.a, t.b)
+  return scale > 0 ? scale : 1
+}
+
+function chooseRaster(
+  rec: InternalSprite,
+  frame: { w: number; h: number },
+  neededPx: number,
+): Raster | null {
+  const sorted = rec.rasters
+  let chosen: Raster | null = null
+  for (const raster of sorted) {
+    chosen = raster
+    const filePx = Math.max(frame.w, frame.h) * raster.pxPerCss
+    if (filePx + 0.5 >= neededPx) break
+  }
+  if (!chosen) return null
+  if (!chosen.ready) startRaster(chosen)
+  if (chosen.ready) return chosen
+  let fallback: Raster | null = null
+  for (const raster of sorted) {
+    if (!raster.ready) continue
+    const filePx = Math.max(frame.w, frame.h) * raster.pxPerCss
+    if (filePx <= neededPx + 0.5) fallback = raster
+    else if (!fallback) fallback = raster
+  }
+  return fallback
 }
 
 export interface DrawSpriteOptions {
@@ -127,26 +333,23 @@ export interface DrawSpriteOptions {
   flipX?: boolean
   alpha?: number
   composite?: GlobalCompositeOperation
-  /** Draw the night-rim layer first. Ignored when the sprite has no rim. */
+  /** Draw the shipped night-rim layer first. Ignored when the sprite has no rim. */
   night?: boolean
   /** Replace the bitmap (tinted milestone cores). Anchor and frame stay. */
   source?: CanvasImageSource
+  /** White-core tint applied to the chosen tier. */
+  tint?: { color: string; alpha?: number }
 }
 
-function frameSize(meta: SpriteMeta): { w: number; h: number; count: number } {
-  const count = meta.frames && meta.frames > 1 ? meta.frames : 1
-  if (meta.frame_css) {
-    return { w: meta.frame_css[0], h: meta.frame_css[1], count }
+function frameCount(rec: InternalSprite): number {
+  if (rec.legacy && rec.publicMeta?.frames && rec.publicMeta.frames > 1) {
+    return rec.publicMeta.frames
   }
-  return {
-    w: meta.css[0] / count,
-    h: meta.css[1],
-    count,
-  }
+  return rec.frames > 1 ? rec.frames : 1
 }
 
 /**
- * Draw `id` so its manifest anchor sits on (x, y) in CSS pixels.
+ * Draw `id` so its anchor sits on (x, y) in CSS pixels.
  * Returns false when the sprite is missing or not decoded yet.
  */
 export function drawSprite(
@@ -156,35 +359,41 @@ export function drawSprite(
   y: number,
   options: DrawSpriteOptions = {},
 ): boolean {
-  const entry = getSprite(id)
-  if (!entry?.meta || !spritesReady()) return false
-  const meta = entry.meta
+  const rec = sprites.get(id)
+  if (!rec || !spritesReady()) return false
+  const frame = frameCss(rec)
+  if (!frame) return false
   const scale = options.scale ?? 1
-  const frame = frameSize(meta)
-  const index =
-    frame.count > 1 ? Math.abs(Math.floor(options.frame ?? 0)) % frame.count : 0
-  const anchorX = meta.anchor_px3[0] / 3
-  const anchorY = meta.anchor_px3[1] / 3
+  const needed = Math.max(frame.w, frame.h) * scale * transformScale(ctx)
+  const raster = chooseRaster(rec, frame, needed)
+  if (!raster) return false
+  const count = frameCount(rec)
+  const index = count > 1 ? Math.abs(Math.floor(options.frame ?? 0)) % count : 0
+  const [anchorX, anchorY] = anchorCss(rec, frame)
+  const tinted = options.tint ? tintRaster(raster, options.tint.color, options.tint.alpha ?? 1) : null
+  const source = options.source ?? tinted ?? raster.img
 
   ctx.save()
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = "high"
   ctx.translate(x, y)
   if (options.flipX) ctx.scale(-1, 1)
   if (options.rotate) ctx.rotate(options.rotate)
   if (scale !== 1) ctx.scale(scale, scale)
   if (options.alpha != null) ctx.globalAlpha *= options.alpha
 
-  if (options.night && meta.night_rim) {
-    drawNightRim(ctx, meta, index, frame.w, frame.h)
+  if (options.night && rec.publicMeta?.night_rim) {
+    drawNightRim(ctx, rec.publicMeta, index, frame.w, frame.h)
   }
 
   if (options.composite) ctx.globalCompositeOperation = options.composite
-  const source = options.source ?? entry.img
+  const srcScale = raster.pxPerCss
   ctx.drawImage(
     source,
-    index * frame.w * 2,
+    index * frame.w * srcScale,
     0,
-    frame.w * 2,
-    frame.h * 2,
+    frame.w * srcScale,
+    frame.h * srcScale,
     -anchorX,
     -anchorY,
     frame.w,
@@ -204,18 +413,20 @@ function drawNightRim(
 ): void {
   const rimMeta = meta.night_rim
   if (!rimMeta) return
-  const rim = getSprite(rimMeta.file)
-  if (!rim) return
+  const rim = sprites.get(rimMeta.file)
+  const raster = rim ? eagerRaster(rim) : undefined
+  if (!rim || !raster) return
   const rimW = frameCssW + 4
   const rimH = frameCssH + 4
   const anchorX = meta.anchor_px3[0] / 3
   const anchorY = meta.anchor_px3[1] / 3
+  const src = raster.pxPerCss
   ctx.drawImage(
-    rim.img,
-    frameIndex * rimW * 2,
+    raster.img,
+    frameIndex * rimW * src,
     0,
-    rimW * 2,
-    rimH * 2,
+    rimW * src,
+    rimH * src,
     -anchorX - 2,
     -anchorY - 2,
     rimW,
@@ -242,15 +453,25 @@ export function drawSpriteTile(
   anchorY: number,
   options: TileOptions = {},
 ): boolean {
-  const entry = getSprite(options.spriteId ?? id)
-  if (!entry?.meta || !spritesReady()) return false
+  const rec = sprites.get(options.spriteId ?? id)
+  if (!rec || !spritesReady()) return false
   if (x1 <= x0) return true
-  const meta = entry.meta
+  const frame = frameCss(rec)
+  if (!frame || !rec.publicMeta) return false
+  const meta = rec.publicMeta
+  const needed = Math.max(frame.w, frame.h) * transformScale(ctx)
+  const raster = chooseRaster(rec, frame, needed)
+  if (!raster) return false
   const tileW = meta.css[0]
   const tileH = meta.css[1]
   const anchorX = meta.anchor_px3[0] / 3
   const destY = anchorY - meta.anchor_px3[1] / 3
-  const source = options.source ?? entry.img
+  const source = options.source ?? raster.img
+  const src = raster.pxPerCss
+
+  ctx.save()
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = "high"
 
   if (options.night && meta.night_rim) {
     drawNightRimTiles(ctx, meta, x0, x1, destY, tileW, tileH)
@@ -259,10 +480,11 @@ export function drawSpriteTile(
   let x = x0 - anchorX
   while (x < x1 - 0.01) {
     const destW = Math.min(tileW, x1 - x)
-    const srcW = (destW / tileW) * tileW * 2
-    ctx.drawImage(source, 0, 0, srcW, tileH * 2, x, destY, destW, tileH)
+    const srcW = (destW / tileW) * tileW * src
+    ctx.drawImage(source, 0, 0, srcW, tileH * src, x, destY, destW, tileH)
     x += destW
   }
+  ctx.restore()
   return true
 }
 
@@ -277,8 +499,9 @@ function drawNightRimTiles(
 ): void {
   const rimMeta = meta.night_rim
   if (!rimMeta) return
-  const rim = getSprite(rimMeta.file)
-  if (!rim) return
+  const rim = sprites.get(rimMeta.file)
+  const raster = rim ? eagerRaster(rim) : undefined
+  if (!raster) return
   const rimW = tileW + 4
   const rimH = tileH + 4
   ctx.save()
@@ -288,7 +511,7 @@ function drawNightRimTiles(
   const anchorX = meta.anchor_px3[0] / 3
   let x = x0 - anchorX
   while (x < x1 - 0.01) {
-    ctx.drawImage(rim.img, x - 2, destY - 2, rimW, rimH)
+    ctx.drawImage(raster.img, x - 2, destY - 2, rimW, rimH)
     x += tileW
   }
   ctx.restore()
@@ -296,31 +519,208 @@ function drawNightRimTiles(
 
 const tintCache = new Map<string, HTMLCanvasElement>()
 
-/** White-core sprite tinted with `color` (source-in). Cached per colour. */
-export function tintedSprite(id: string, color: string): HTMLCanvasElement | null {
-  const key = `${id}|${color}`
+function tintRaster(raster: Raster, color: string, alpha: number): HTMLCanvasElement | null {
+  if (!raster.ready || raster.img.naturalWidth === 0) return null
+  const key = `${raster.img.src}|${raster.pxPerCss}|${color}|${alpha}`
   const cached = tintCache.get(key)
   if (cached) return cached
-  const entry = getSprite(id)
-  if (!entry || entry.img.naturalWidth === 0) return null
   const canvas = document.createElement("canvas")
-  canvas.width = entry.img.naturalWidth
-  canvas.height = entry.img.naturalHeight
+  canvas.width = raster.img.naturalWidth
+  canvas.height = raster.img.naturalHeight
   const g = canvas.getContext("2d")
   if (!g) return null
-  g.drawImage(entry.img, 0, 0)
+  g.drawImage(raster.img, 0, 0)
   g.globalCompositeOperation = "source-in"
+  g.globalAlpha = alpha
   g.fillStyle = color
   g.fillRect(0, 0, canvas.width, canvas.height)
   tintCache.set(key, canvas)
   return canvas
 }
 
+/** White-core sprite tinted with `color` (source-in). Cached per colour. */
+export function tintedSprite(id: string, color: string): HTMLCanvasElement | null {
+  const key = `${id}|${color}`
+  const cached = tintCache.get(key)
+  if (cached) return cached
+  const rec = sprites.get(id)
+  const raster = rec ? eagerRaster(rec) : undefined
+  if (!raster) return null
+  const tinted = tintRaster(raster, color, 1)
+  if (!tinted) return null
+  tintCache.set(key, tinted)
+  return tinted
+}
+
 export function spriteFrame(id: string, time: number): number {
-  const meta = getSprite(id)?.meta
-  if (!meta?.frames || !meta.fps || meta.frames < 2) return 0
-  const frame = Math.floor(time * meta.fps) % meta.frames
-  return frame < 0 ? frame + meta.frames : frame
+  const rec = sprites.get(id)
+  if (!rec) return 0
+  const fps = rec.legacy ? (rec.publicMeta?.fps ?? 0) : rec.fps
+  const frames = frameCount(rec)
+  if (frames < 2 || !fps) return 0
+  const frame = Math.floor(time * fps) % frames
+  return frame < 0 ? frame + frames : frame
+}
+
+/**
+ * Bitmap of `id` at `pxPerCss` (or the closest ready tier). Used to build
+ * the runtime night rim from skin + static alpha.
+ */
+export function spriteBitmap(
+  id: string,
+  pxPerCss: number,
+): { img: HTMLImageElement; pxPerCss: number } | null {
+  const rec = sprites.get(id)
+  if (!rec) return null
+  const sorted = rec.rasters
+  let chosen: Raster | null = null
+  for (const raster of sorted) {
+    if (raster.pxPerCss + 0.01 >= pxPerCss) {
+      chosen = raster
+      break
+    }
+    chosen = raster
+  }
+  if (!chosen) return null
+  if (!chosen.ready) startRaster(chosen)
+  if (!chosen.ready || chosen.img.naturalWidth === 0) {
+    const ready = [...sorted].reverse().find((r) => r.ready && r.img.naturalWidth > 0)
+    if (!ready) return null
+    return { img: ready.img, pxPerCss: ready.pxPerCss }
+  }
+  return { img: chosen.img, pxPerCss: chosen.pxPerCss }
+}
+
+const derivedCache = new Map<string, HTMLCanvasElement>()
+
+/**
+ * Silhouette of `id`, optionally dilated and punched out, filled with `color`.
+ * Placed on the same anchor as `drawSprite`. Night rims use padCss 2; the
+ * catch flash uses padCss 0 (solid silhouette).
+ */
+export function drawSpriteDerived(
+  ctx: CanvasRenderingContext2D,
+  id: string,
+  x: number,
+  y: number,
+  options: {
+    scale?: number
+    padCss?: number
+    color: string
+    alpha?: number
+    composite?: GlobalCompositeOperation
+  },
+): boolean {
+  const rec = sprites.get(id)
+  if (!rec || !spritesReady()) return false
+  const frame = frameCss(rec)
+  if (!frame) return false
+  const scale = options.scale ?? 1
+  const density = spriteDrawDensity(ctx, id, scale)
+  if (density == null) return false
+  const padCss = options.padCss ?? 0
+  const layer = derivedLayer(id, density, options.color, padCss)
+  if (!layer) return false
+  const [anchorX, anchorY] = anchorCss(rec, frame)
+  const cssW = frame.w + padCss * 2
+  const cssH = frame.h + padCss * 2
+  ctx.save()
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = "high"
+  ctx.translate(x, y)
+  if (scale !== 1) ctx.scale(scale, scale)
+  if (options.alpha != null) ctx.globalAlpha *= options.alpha
+  if (options.composite) ctx.globalCompositeOperation = options.composite
+  ctx.drawImage(layer.canvas, -anchorX - padCss, -anchorY - padCss, cssW, cssH)
+  ctx.restore()
+  return true
+}
+
+function derivedLayer(
+  id: string,
+  pxPerCss: number,
+  color: string,
+  padCss: number,
+): { canvas: HTMLCanvasElement } | null {
+  const key = `${id}|${pxPerCss}|${color}|${padCss}`
+  const cached = derivedCache.get(key)
+  if (cached) return { canvas: cached }
+  const bmp = spriteBitmap(id, pxPerCss)
+  if (!bmp || bmp.img.naturalWidth === 0) return null
+  const px = bmp.pxPerCss
+  const srcW = Math.max(1, Math.round((bmp.img.naturalWidth / px) * px))
+  const srcH = Math.max(1, Math.round((bmp.img.naturalHeight / px) * px))
+  const src = document.createElement("canvas")
+  src.width = srcW
+  src.height = srcH
+  const sg = src.getContext("2d")
+  if (!sg) return null
+  sg.drawImage(bmp.img, 0, 0, srcW, srcH)
+  const pad = Math.max(0, Math.round(padCss * px))
+  const out = document.createElement("canvas")
+  out.width = srcW + pad * 2
+  out.height = srcH + pad * 2
+  const g = out.getContext("2d")
+  if (!g) return null
+  if (pad > 0) {
+    const steps = 16
+    for (let i = 0; i < steps; i++) {
+      const a = (i / steps) * Math.PI * 2
+      g.drawImage(src, pad + Math.cos(a) * pad, pad + Math.sin(a) * pad)
+    }
+    g.globalCompositeOperation = "destination-out"
+    g.drawImage(src, pad, pad)
+  } else {
+    g.drawImage(src, 0, 0)
+  }
+  g.globalCompositeOperation = "source-in"
+  g.fillStyle = color
+  g.fillRect(0, 0, out.width, out.height)
+  derivedCache.set(key, out)
+  return { canvas: out }
+}
+
+/**
+ * Stretch `id` into a rectangle, ignoring the anchor. Used for the
+ * locked-card progress chip and its 3-slice fill.
+ */
+export function drawSpriteBox(
+  ctx: CanvasRenderingContext2D,
+  id: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): boolean {
+  const rec = sprites.get(id)
+  if (!rec || !spritesReady()) return false
+  const frame = frameCss(rec)
+  if (!frame || w <= 0 || h <= 0) return false
+  const needed = Math.max(w, h) * transformScale(ctx)
+  const raster = chooseRaster(rec, frame, needed)
+  if (!raster) return false
+  const src = raster.pxPerCss
+  ctx.save()
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = "high"
+  ctx.drawImage(raster.img, 0, 0, frame.w * src, frame.h * src, x, y, w, h)
+  ctx.restore()
+  return true
+}
+
+/** File px per CSS px the next draw of `id` would use, given the current transform. */
+export function spriteDrawDensity(
+  ctx: CanvasRenderingContext2D,
+  id: string,
+  scale = 1,
+): number | null {
+  const rec = sprites.get(id)
+  if (!rec) return null
+  const frame = frameCss(rec)
+  if (!frame) return null
+  const needed = Math.max(frame.w, frame.h) * scale * transformScale(ctx)
+  const raster = chooseRaster(rec, frame, needed)
+  return raster?.pxPerCss ?? null
 }
 
 void preloadSprites()

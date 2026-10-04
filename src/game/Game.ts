@@ -57,6 +57,8 @@ import { Renderer, hitRect } from "./Renderer"
 import { Score } from "./Score"
 import { Slingshot } from "./Slingshot"
 import {
+  activeBallUnlock,
+  activeSlingUnlock,
   CosmeticsStore,
   DEFAULT_COSMETIC_ID,
 } from "./cosmetics"
@@ -1310,6 +1312,7 @@ export class Game implements BotGameApi {
       this.score.observe(this.ball.y)
       this.recordTrailPoint()
       if (!this.menuDemo) {
+        this.score.bankClimb(this.score.climbHeight)
         this.achievements.onFlightFrame(this.ball.y, this.score.current)
         this.dailyMissions.onHeight(this.score.climbHeight)
         this.dailyMissions.onScore(this.score.current)
@@ -1662,6 +1665,7 @@ export class Game implements BotGameApi {
     const cam = this.camera
     const bestHeight = this.score.bestMaxHeight
     const highScore = this.score.highScore
+    const lifetimeClimbed = this.score.lifetimeClimbed
     const backgroundStyle = this.cosmetics.getEquippedBackgroundStyle(bestHeight, highScore)
     const inMenu = this.menuDemo || this.state === "menu"
     const onTitle = inMenu && this.menuScreen === "title"
@@ -1738,8 +1742,15 @@ export class Game implements BotGameApi {
           : 0
 
     const slingStyle = this.freeMoveActive ? "freeMove" : this.powActive ? "pow" : "normal"
-    const slingshotStyle = this.cosmetics.getEquippedSlingshotStyle()
-    const ballStyle = this.cosmetics.getEquippedBallStyle(bestHeight, highScore)
+    const slingshotStyle = this.cosmetics.getEquippedSlingshotStyle(
+      bestHeight,
+      lifetimeClimbed,
+    )
+    const ballStyle = this.cosmetics.getEquippedBallStyle(
+      bestHeight,
+      highScore,
+      lifetimeClimbed,
+    )
     this.renderer.drawSlingshot(
       cam,
       this.slingshot,
@@ -1774,7 +1785,10 @@ export class Game implements BotGameApi {
 
     if (this.menuDemo || this.state === "menu") {
       if (this.menuScreen === "shop") {
-        const slingshotLocked = this.cosmetics.isSlingshotSelectionLocked()
+        const slingshotLocked = this.cosmetics.isSlingshotSelectionLocked(
+          bestHeight,
+          lifetimeClimbed,
+        )
         const backgroundLocked = this.cosmetics.isBackgroundSelectionLocked(
           bestHeight,
           highScore,
@@ -1782,7 +1796,19 @@ export class Game implements BotGameApi {
         const ballLocked = this.cosmetics.isBallSelectionLocked(
           bestHeight,
           highScore,
+          lifetimeClimbed,
         )
+        const selectedBall = this.cosmetics.getSelectedBallVariant()
+        const ballProgress =
+          ballLocked && selectedBall && activeBallUnlock(selectedBall).kind === "climbed"
+            ? { current: lifetimeClimbed, goal: activeBallUnlock(selectedBall).value }
+            : null
+        const selectedSling = this.cosmetics.getSelectedSlingshotVariant()
+        const slingUnlock = selectedSling ? activeSlingUnlock(selectedSling) : null
+        const slingProgress =
+          slingshotLocked && slingUnlock?.kind === "climbed"
+            ? { current: lifetimeClimbed, goal: slingUnlock.value }
+            : null
         this.menuHitAreas = null
         this.dailyHitAreas = null
         this.gachaHitAreas = null
@@ -1801,7 +1827,9 @@ export class Game implements BotGameApi {
           backgroundLocked
             ? this.cosmetics.getSelectedBackgroundUnlockHint()
             : null,
-          ballLocked ? this.cosmetics.getSelectedBallUnlockHint() : null,
+          ballProgress ? null : ballLocked ? this.cosmetics.getSelectedBallUnlockHint() : null,
+          ballProgress,
+          slingProgress,
         )
       } else if (this.menuScreen === "daily") {
         this.menuHitAreas = null

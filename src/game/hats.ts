@@ -1,5 +1,6 @@
 /** Ball-top hats: gacha / login cosmetics (visual only). */
 
+import { hatPlacement } from "./art/cosmeticsData"
 import {
   DUPLICATE_REFUND,
   RARITY_COLOR,
@@ -12,22 +13,22 @@ export { RARITY_COLOR, RARITY_LABEL, DUPLICATE_REFUND as HAT_DUPLICATE_REFUND }
 
 export type HatStyle =
   | "none"
-  | "party"
   | "beanie"
+  | "cap"
   | "hardhat"
   | "paperboat"
+  | "party"
   | "cowboy"
   | "chef"
   | "propeller"
+  | "bloom"
   | "viking"
   | "tophat"
   | "crown"
   | "wizard"
-  | "santa"
-  | "flower"
   | "duck"
   | "halo"
-  | "rainbow"
+  | "thunderhead"
 
 export interface HatVariant {
   id: string
@@ -43,23 +44,28 @@ export const GACHA_PITY_KEY = "sling-climb-hat-gacha-pity"
 export const LEGACY_GACHA_PITY_KEY = "sling-climb-gacha-pity"
 
 export const HAT_VARIANTS: readonly HatVariant[] = [
-  { id: "party", name: "Party Cone", style: "party", rarity: "common" },
   { id: "beanie", name: "Beanie", style: "beanie", rarity: "common" },
+  { id: "cap", name: "Cap", style: "cap", rarity: "common" },
   { id: "hardhat", name: "Hard Hat", style: "hardhat", rarity: "common" },
   { id: "paperboat", name: "Paper Boat", style: "paperboat", rarity: "common" },
+  { id: "party", name: "Party Cone", style: "party", rarity: "uncommon" },
   { id: "cowboy", name: "Cowboy", style: "cowboy", rarity: "uncommon" },
   { id: "chef", name: "Chef", style: "chef", rarity: "uncommon" },
   { id: "propeller", name: "Propeller", style: "propeller", rarity: "uncommon" },
-  { id: "viking", name: "Viking", style: "viking", rarity: "uncommon" },
+  { id: "bloom", name: "Bloom", style: "bloom", rarity: "rare" },
+  { id: "viking", name: "Viking", style: "viking", rarity: "rare" },
   { id: "tophat", name: "Top Hat", style: "tophat", rarity: "rare" },
   { id: "crown", name: "Crown", style: "crown", rarity: "rare" },
   { id: "wizard", name: "Wizard", style: "wizard", rarity: "rare" },
-  { id: "santa", name: "Santa Cap", style: "santa", rarity: "rare" },
-  { id: "flower", name: "Flower", style: "flower", rarity: "rare" },
   { id: "duck", name: "Rubber Duck", style: "duck", rarity: "epic" },
   { id: "halo", name: "Halo", style: "halo", rarity: "epic" },
-  { id: "rainbow", name: "Rainbow Cap", style: "rainbow", rarity: "epic" },
+  { id: "thunderhead", name: "Thunderhead", style: "thunderhead", rarity: "epic" },
 ]
+
+/** Seat height from the cosmetics manifest, in pixels for a ball of radius `r`. */
+function seatY(style: Exclude<HatStyle, "none">, r: number): number {
+  return hatPlacement(style).seat_r[1] * r
+}
 
 export function findHatVariant(id: string): HatVariant | undefined {
   return HAT_VARIANTS.find((v) => v.id === id)
@@ -82,17 +88,20 @@ export function drawHatStyle(
   if (style === "none") return
   const r = radius
   switch (style) {
-    case "party":
-      drawPartyCone(ctx, r)
-      break
     case "beanie":
       drawBeanie(ctx, r, "#3b82f6", "#1d4ed8")
+      break
+    case "cap":
+      drawCap(ctx, r)
       break
     case "hardhat":
       drawHardHat(ctx, r)
       break
     case "paperboat":
       drawPaperBoat(ctx, r)
+      break
+    case "party":
+      drawPartyCone(ctx, r)
       break
     case "cowboy":
       drawCowboy(ctx, r)
@@ -102,6 +111,9 @@ export function drawHatStyle(
       break
     case "propeller":
       drawPropeller(ctx, r, time)
+      break
+    case "bloom":
+      drawBloom(ctx, r)
       break
     case "viking":
       drawViking(ctx, r)
@@ -115,31 +127,20 @@ export function drawHatStyle(
     case "wizard":
       drawWizard(ctx, r)
       break
-    case "santa":
-      drawSanta(ctx, r)
-      break
-    case "flower":
-      drawFlower(ctx, r)
-      break
     case "duck":
       drawDuck(ctx, r)
       break
     case "halo":
       drawHalo(ctx, r, time)
       break
-    case "rainbow":
-      drawBeanie(ctx, r, rainbowHatColor(time), rainbowHatColor(time + 0.4))
+    case "thunderhead":
+      drawThunderhead(ctx, r, time)
       break
   }
 }
 
-function rainbowHatColor(time: number): string {
-  const hue = ((time * 70) % 360 + 360) % 360
-  return `hsl(${hue}, 82%, 52%)`
-}
-
 function drawPartyCone(ctx: CanvasRenderingContext2D, r: number): void {
-  const baseY = -r * 0.72
+  const baseY = seatY("party", r)
   ctx.fillStyle = "#f97316"
   ctx.beginPath()
   ctx.moveTo(0, baseY - r * 1.15)
@@ -174,7 +175,7 @@ function drawBeanie(
   fill: string,
   brim: string,
 ): void {
-  const y = -r * 0.55
+  const y = seatY("beanie", r)
   ctx.fillStyle = fill
   ctx.beginPath()
   ctx.ellipse(0, y, r * 0.72, r * 0.48, 0, Math.PI, 0)
@@ -187,8 +188,20 @@ function drawBeanie(
   ctx.fill()
 }
 
+function drawCap(ctx: CanvasRenderingContext2D, r: number): void {
+  const y = seatY("cap", r)
+  ctx.fillStyle = "#8E3A22"
+  ctx.beginPath()
+  ctx.ellipse(0, y, r * 0.72, r * 0.4, 0, Math.PI, 0)
+  ctx.fill()
+  ctx.fillStyle = "#6B2C18"
+  ctx.beginPath()
+  ctx.ellipse(r * 0.62, y + r * 0.02, r * 0.36, r * 0.12, -0.25, 0, Math.PI * 2)
+  ctx.fill()
+}
+
 function drawHardHat(ctx: CanvasRenderingContext2D, r: number): void {
-  const y = -r * 0.55
+  const y = seatY("hardhat", r)
   ctx.fillStyle = "#eab308"
   ctx.beginPath()
   ctx.ellipse(0, y, r * 0.7, r * 0.42, 0, Math.PI, 0)
@@ -202,7 +215,7 @@ function drawHardHat(ctx: CanvasRenderingContext2D, r: number): void {
 }
 
 function drawPaperBoat(ctx: CanvasRenderingContext2D, r: number): void {
-  const y = -r * 0.7
+  const y = seatY("paperboat", r)
   ctx.fillStyle = "#e2e8f0"
   ctx.strokeStyle = "#94a3b8"
   ctx.lineWidth = 1
@@ -218,7 +231,7 @@ function drawPaperBoat(ctx: CanvasRenderingContext2D, r: number): void {
 }
 
 function drawCowboy(ctx: CanvasRenderingContext2D, r: number): void {
-  const y = -r * 0.55
+  const y = seatY("cowboy", r)
   ctx.fillStyle = "#92400e"
   ctx.beginPath()
   ctx.ellipse(0, y + r * 0.08, r * 1.05, r * 0.16, 0, 0, Math.PI * 2)
@@ -232,7 +245,7 @@ function drawCowboy(ctx: CanvasRenderingContext2D, r: number): void {
 }
 
 function drawChef(ctx: CanvasRenderingContext2D, r: number): void {
-  const y = -r * 0.5
+  const y = seatY("chef", r)
   ctx.fillStyle = "#fff"
   ctx.strokeStyle = "#cbd5e1"
   ctx.lineWidth = 1
@@ -267,8 +280,39 @@ function drawPropeller(ctx: CanvasRenderingContext2D, r: number, time: number): 
   ctx.restore()
 }
 
+function drawBloom(ctx: CanvasRenderingContext2D, r: number): void {
+  const y = seatY("bloom", r)
+  ctx.fillStyle = "#4FAE5A"
+  ctx.beginPath()
+  ctx.ellipse(-r * 0.22, y + r * 0.22, r * 0.28, r * 0.12, -0.7, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.beginPath()
+  ctx.ellipse(r * 0.22, y + r * 0.22, r * 0.28, r * 0.12, 0.7, 0, Math.PI * 2)
+  ctx.fill()
+  const petals = 6
+  for (let i = 0; i < petals; i++) {
+    const a = (i / petals) * Math.PI * 2
+    ctx.fillStyle = i % 2 === 0 ? "#fb7185" : "#f472b6"
+    ctx.beginPath()
+    ctx.ellipse(
+      Math.cos(a) * r * 0.22,
+      y + Math.sin(a) * r * 0.22,
+      r * 0.16,
+      r * 0.11,
+      a,
+      0,
+      Math.PI * 2,
+    )
+    ctx.fill()
+  }
+  ctx.fillStyle = "#fde047"
+  ctx.beginPath()
+  ctx.arc(0, y, r * 0.12, 0, Math.PI * 2)
+  ctx.fill()
+}
+
 function drawViking(ctx: CanvasRenderingContext2D, r: number): void {
-  const y = -r * 0.55
+  const y = seatY("viking", r)
   ctx.fillStyle = "#78716c"
   ctx.beginPath()
   ctx.ellipse(0, y, r * 0.7, r * 0.4, 0, Math.PI, 0)
@@ -291,7 +335,7 @@ function drawViking(ctx: CanvasRenderingContext2D, r: number): void {
 }
 
 function drawTopHat(ctx: CanvasRenderingContext2D, r: number): void {
-  const y = -r * 0.55
+  const y = seatY("tophat", r)
   ctx.fillStyle = "#1e293b"
   ctx.beginPath()
   ctx.ellipse(0, y + r * 0.05, r * 0.95, r * 0.14, 0, 0, Math.PI * 2)
@@ -302,7 +346,7 @@ function drawTopHat(ctx: CanvasRenderingContext2D, r: number): void {
 }
 
 function drawCrown(ctx: CanvasRenderingContext2D, r: number): void {
-  const y = -r * 0.65
+  const y = seatY("crown", r)
   ctx.fillStyle = "#fbbf24"
   ctx.strokeStyle = "#b45309"
   ctx.lineWidth = 1.2
@@ -331,7 +375,7 @@ function drawCrown(ctx: CanvasRenderingContext2D, r: number): void {
 }
 
 function drawWizard(ctx: CanvasRenderingContext2D, r: number): void {
-  const y = -r * 0.7
+  const y = seatY("wizard", r)
   ctx.fillStyle = "#6d28d9"
   ctx.beginPath()
   ctx.moveTo(0, y - r * 1.2)
@@ -352,48 +396,8 @@ function drawWizard(ctx: CanvasRenderingContext2D, r: number): void {
   ctx.fill()
 }
 
-function drawSanta(ctx: CanvasRenderingContext2D, r: number): void {
-  const y = -r * 0.55
-  ctx.fillStyle = "#dc2626"
-  ctx.beginPath()
-  ctx.moveTo(-r * 0.55, y + r * 0.1)
-  ctx.quadraticCurveTo(r * 0.1, y - r * 0.9, r * 0.75, y - r * 0.35)
-  ctx.quadraticCurveTo(r * 0.2, y - r * 0.15, r * 0.55, y + r * 0.15)
-  ctx.closePath()
-  ctx.fill()
-  ctx.fillStyle = "#f8fafc"
-  ctx.fillRect(-r * 0.6, y, r * 1.15, r * 0.22)
-  ctx.beginPath()
-  ctx.arc(r * 0.75, y - r * 0.35, r * 0.16, 0, Math.PI * 2)
-  ctx.fill()
-}
-
-function drawFlower(ctx: CanvasRenderingContext2D, r: number): void {
-  const y = -r * 0.95
-  const petals = 6
-  for (let i = 0; i < petals; i++) {
-    const a = (i / petals) * Math.PI * 2
-    ctx.fillStyle = i % 2 === 0 ? "#fb7185" : "#f472b6"
-    ctx.beginPath()
-    ctx.ellipse(
-      Math.cos(a) * r * 0.32,
-      y + Math.sin(a) * r * 0.32,
-      r * 0.22,
-      r * 0.16,
-      a,
-      0,
-      Math.PI * 2,
-    )
-    ctx.fill()
-  }
-  ctx.fillStyle = "#fde047"
-  ctx.beginPath()
-  ctx.arc(0, y, r * 0.18, 0, Math.PI * 2)
-  ctx.fill()
-}
-
 function drawDuck(ctx: CanvasRenderingContext2D, r: number): void {
-  const y = -r * 0.85
+  const y = seatY("duck", r)
   ctx.fillStyle = "#facc15"
   ctx.beginPath()
   ctx.ellipse(0, y, r * 0.55, r * 0.45, 0, 0, Math.PI * 2)
@@ -411,9 +415,39 @@ function drawDuck(ctx: CanvasRenderingContext2D, r: number): void {
   ctx.fill()
 }
 
+function drawThunderhead(ctx: CanvasRenderingContext2D, r: number, time: number): void {
+  const y = seatY("thunderhead", r)
+  const frame = Math.floor(time * 8) % 4
+  ctx.fillStyle = "#e2e8f0"
+  ctx.beginPath()
+  ctx.arc(-r * 0.28, y, r * 0.36, 0, Math.PI * 2)
+  ctx.arc(r * 0.24, y + r * 0.04, r * 0.4, 0, Math.PI * 2)
+  ctx.arc(0, y - r * 0.16, r * 0.34, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.fillStyle = "#cbd5e1"
+  ctx.beginPath()
+  ctx.ellipse(0, y + r * 0.16, r * 0.7, r * 0.16, 0, 0, Math.PI)
+  ctx.fill()
+  const j = (frame - 1.5) * r * 0.05
+  ctx.fillStyle = "#FFB547"
+  ctx.beginPath()
+  ctx.moveTo(j - r * 0.02, y - r * 0.05)
+  ctx.lineTo(j + r * 0.16, y + r * 0.16)
+  ctx.lineTo(j + r * 0.02, y + r * 0.14)
+  ctx.lineTo(j + r * 0.12, y + r * 0.42)
+  ctx.lineTo(j - r * 0.14, y + r * 0.1)
+  ctx.lineTo(j - r * 0.02, y + r * 0.14)
+  ctx.closePath()
+  ctx.fill()
+}
+
 function drawHalo(ctx: CanvasRenderingContext2D, r: number, time: number): void {
-  const y = -r * 1.15
-  const pulse = 0.85 + Math.sin(time * 4) * 0.15
+  const y = seatY("halo", r)
+  const pulseSpec = hatPlacement("halo").pulse
+  const a0 = pulseSpec?.alpha[0] ?? 0.7
+  const a1 = pulseSpec?.alpha[1] ?? 1
+  const hz = pulseSpec?.hz ?? 0.64
+  const pulse = (a0 + a1) / 2 + ((a1 - a0) / 2) * Math.sin(time * hz * Math.PI * 2)
   ctx.save()
   ctx.globalAlpha = pulse
   ctx.strokeStyle = "#fde047"

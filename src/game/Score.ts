@@ -4,6 +4,7 @@ import {
   COIN_KEY,
   COIN_VALUE,
   HIGH_SCORE_KEY,
+  LIFETIME_CLIMBED_KEY,
   MAX_HEIGHT_KEY,
 } from "./constants"
 
@@ -39,6 +40,13 @@ export class Score {
    * Saved immediately on collect when persistScores is enabled.
    */
   lifetimeCoins = 0
+  /**
+   * Cumulative climb across runs. Menu-demo flights must not call `bankClimb`.
+   * Saved when persistScores is enabled.
+   */
+  lifetimeClimbed = 0
+  /** Climb already added to `lifetimeClimbed` during the current run. */
+  private runClimbBanked = 0
   /** When false, skip localStorage load/save (playable / bot). */
   private persistScores: boolean
 
@@ -48,6 +56,7 @@ export class Score {
       this.highScore = this.loadNumber(HIGH_SCORE_KEY)
       this.bestMaxHeight = this.loadNumber(MAX_HEIGHT_KEY)
       this.lifetimeCoins = this.loadNumber(COIN_KEY)
+      this.lifetimeClimbed = this.loadNumber(LIFETIME_CLIMBED_KEY)
     }
   }
 
@@ -59,8 +68,23 @@ export class Score {
     this.isNewHighScore = false
     this.isNewBestHeight = false
     this.combo = 1
+    this.runClimbBanked = 0
     // Snapshot previous best so the indicator stays fixed for this run.
     this.runHeightLine = this.bestMaxHeight
+  }
+
+  /**
+   * Add newly climbed distance to the lifetime total.
+   * `climb` is the run's current climb height. Call once per flight frame
+   * outside the menu demo.
+   */
+  bankClimb(climb: number): void {
+    const next = Math.max(0, climb)
+    const delta = next - this.runClimbBanked
+    if (delta <= 0) return
+    this.runClimbBanked = next
+    this.lifetimeClimbed += delta
+    if (this.persistScores) this.saveNumber(LIFETIME_CLIMBED_KEY, this.lifetimeClimbed)
   }
 
   /** Climb above the run start (world px). */

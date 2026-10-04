@@ -41,11 +41,11 @@ import type {
   SlingshotStyle,
   TrailStyle,
 } from "./cosmetics"
-import { RARITY_COLOR, RARITY_LABEL, RARITY_GLOW } from "./rarity"
+import { RARITY_COLOR, RARITY_LABEL, RARITY_GLOW, rarityLabelColor } from "./rarity"
 import { drawHatStyle } from "./hats"
 import { drawTrailStyle, previewTrailPoints } from "./trails"
 import { DAILY_REWARDS, type DailyClaimResult, type PendingBoosts } from "./dailyLogin"
-import { GACHA_PULL_COST, type GachaPool, type GachaPullResult } from "./gacha"
+import { GACHA_PULL_COST, gachaOddsLines, type GachaPool, type GachaPullResult } from "./gacha"
 import {
   STRIP_SLOT_GAP,
   STRIP_SLOT_HEIGHT,
@@ -71,8 +71,6 @@ import { getBackgroundTheme } from "./backgrounds"
 import { logoForTheme } from "./art/brand"
 import {
   drawArrowPadsArt,
-  drawBallArt,
-  drawClassicMenuBall,
   drawBestArt,
   drawBumpersArt,
   drawCatchFlashArt,
@@ -85,7 +83,11 @@ import {
   drawTurretShotsArt,
   drawTurretsArt,
   drawUpgradeArt,
+  nightAt,
 } from "./art/drawArt"
+import { drawCharacter } from "./art/character"
+import { drawSprite, drawSpriteBox, hasSprite } from "./art/sprites"
+import { formatUnlockThreshold } from "./cosmetics"
 import { drawCanyonBackdrop, drawCanyonWalls, type CanyonScenery } from "./art/canyon"
 import { skyColorForClimb } from "./art/palette"
 import { spritesReady } from "./art/sprites"
@@ -102,8 +104,9 @@ export class Renderer {
   private bestFlash = 0
   private bestGlow = 0
   private sawBestPassed = false
-  /** Classic slingshot body was drawn from art this frame (catch flash matches it). */
+  /** Slingshot body drawn from art this frame (catch flash matches it). */
   private slingUsesArt = false
+  private slingBodyId = "slings/classic"
   /** Portals and turrets props must avoid. Updated each frame before the backdrop. */
   private scenery: CanyonScenery = { portals: [], turrets: [] }
 
@@ -742,9 +745,9 @@ export class Renderer {
       rest: { x: rest.x, y: rest.y },
     }
 
-    const classicBody = !freeMove && (pow || cosmeticStyle === "classic")
+    const artStyle = pow || freeMove ? "classic" : cosmeticStyle
+    const bodyId = pow ? "slings/classic_pow" : `slings/${artStyle}`
     this.slingUsesArt =
-      classicBody &&
       this.useArt() &&
       drawSlingshotArt(
         ctx,
@@ -752,43 +755,24 @@ export class Renderer {
         sling,
         pouchScreen.x,
         pouchScreen.y,
+        artStyle,
         pow,
         this.runStartHeight,
       )
+    if (this.slingUsesArt) this.slingBodyId = bodyId
     if (!this.slingUsesArt) {
-      if (pow) {
-        drawSlingshotFork(ctx, geom, "crimson", this.time, 10, 8)
-      } else {
-        drawSlingshotFork(ctx, geom, slingStyle, this.time, 10, 8)
-      }
+      drawSlingshotFork(ctx, geom, slingStyle, this.time, 10, 8)
     }
 
-    if (!pow) {
-      drawSlingshotBands(
-        ctx,
-        left,
-        right,
-        pouchScreen,
-        slingStyle,
-        this.time,
-        3.5,
-      )
-    } else {
-      ctx.strokeStyle = "#991b1b"
-      ctx.lineWidth = 3.5
-      ctx.lineCap = "round"
-      for (const tip of [left, right]) {
-        ctx.beginPath()
-        ctx.moveTo(tip.x, tip.y)
-        ctx.quadraticCurveTo(
-          (tip.x + pouchScreen.x) * 0.5,
-          (tip.y + pouchScreen.y) * 0.5 + 6,
-          pouchScreen.x,
-          pouchScreen.y,
-        )
-        ctx.stroke()
-      }
-    }
+    drawSlingshotBands(
+      ctx,
+      left,
+      right,
+      pouchScreen,
+      slingStyle,
+      this.time,
+      3.5,
+    )
 
     // Faint rest dash. Hidden on the title, where it reads as an unlabeled
     // height mark sitting on the launch line. Gameplay still draws it.
@@ -819,7 +803,7 @@ export class Renderer {
 
     ctx.save()
     if (this.slingUsesArt) {
-      drawCatchFlashArt(ctx, camera, sling, alpha)
+      drawCatchFlashArt(ctx, camera, sling, alpha, this.slingBodyId)
     }
     // Bright core flash
     ctx.globalAlpha = 0.35 * alpha
@@ -917,19 +901,26 @@ export class Renderer {
   ): void {
     const ctx = this.ctx
     const s = camera.worldToScreen({ x: ball.x, y: ball.y })
+    const speed = Math.hypot(ball.vx, ball.vy)
+    const lookLen = Math.min(1, speed / 280)
+    const lookX = speed > 1 ? (ball.vx / speed) * lookLen : 0
+    const lookY = speed > 1 ? (-ball.vy / speed) * lookLen : 0
     if (
       this.useArt() &&
-      drawBallArt(
-        ctx,
-        ball,
-        s.x,
-        s.y,
-        ballStyle === "classic",
-        hatStyle === "none",
-        this.runStartHeight,
-        this.time,
-        (hatCtx) => drawHatStyle(hatCtx, hatStyle, ball.radius, this.time),
-      )
+      drawCharacter(ctx, s.x, s.y, ball.radius, {
+        ballId: ball.isBonus ? "bonus" : ballStyle,
+        hatId: hatStyle === "none" ? null : hatStyle,
+        headband: !ball.isBonus && ballStyle === "classic" && hatStyle === "none",
+        spin: ball.spin,
+        squashX: 1 + ball.squash * 0.25,
+        squashY: 1 - ball.squash * 0.2,
+        squash: ball.squash,
+        speed,
+        lookX,
+        lookY,
+        night: nightAt(ball.y, this.runStartHeight),
+        time: this.time,
+      })
     ) {
       return
     }
@@ -1046,8 +1037,10 @@ export class Renderer {
     )
 
     if (tip) {
+      const tipWorld = camera.screenToWorld(0, camera.slingshotScreenY)
+      const nightHint = nightAt(tipWorld.y, this.runStartHeight)
       ctx.textAlign = "center"
-      ctx.fillStyle = theme.inkDim
+      ctx.fillStyle = nightHint ? "#f8fafc" : theme.inkDim
       ctx.font = "500 14px 'DM Sans', sans-serif"
       const y = camera.slingshotScreenY - 56
       ctx.fillText(tip, camera.width / 2, y)
@@ -1183,8 +1176,6 @@ export class Renderer {
 
     ctx.fillStyle = theme.menuOverlay
     ctx.fillRect(0, 0, width, camera.killScreenY)
-
-    drawLifetimeCoins(ctx, width, lifetimeCoins)
 
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
@@ -1336,6 +1327,8 @@ export class Renderer {
     ctx.fillStyle = theme.inkDim
     ctx.font = "500 13px 'DM Sans', sans-serif"
     ctx.fillText("or tap anywhere to start", cx, y)
+
+    drawLifetimeCoins(ctx, width, lifetimeCoins)
 
     ctx.textBaseline = "alphabetic"
     return { play, shop, daily, hats, trails, achievements }
@@ -1858,15 +1851,15 @@ export class Renderer {
     ctx.fillStyle = theme.menuOverlay
     ctx.fillRect(0, 0, width, height)
 
-    drawLifetimeCoins(ctx, width, lifetimeCoins)
-
     const topPad = 36 + safeAreaInsetTop()
     const previewY = topPad + 108
+    const oddsLines = gachaOddsLines(pool)
+    const oddsBlock = 14 + oddsLines.length * 13
     const equipY = previewY + 100
     const pullH = 52
     const pullY = equipY + 52
     const backH = 44
-    const backY = Math.min(height - backH - 20, pullY + pullH + 40)
+    const backY = Math.min(height - backH - 20, pullY + pullH + oddsBlock + 28)
     if (!revealing && this.useArt()) {
       const panelTop = topPad - 22
       const panelBottom = backY + backH + 18
@@ -1892,13 +1885,11 @@ export class Renderer {
       ctx.save()
       ctx.translate(cx, previewY)
       if (pool === "hat") {
-        drawMenuBall(ctx, ballStyle, 36, this.time, this.useArt(), hatStyle === "none")
-        drawHatStyle(ctx, hatStyle, 36, this.time)
+        drawMenuBall(ctx, ballStyle, 40, this.time, this.useArt(), hatStyle)
       } else {
-        const local = previewTrailPoints(0, 8, 54)
+        const local = previewTrailPoints(0, 10, 62)
         drawTrailStyle(ctx, trailStyle, local, this.time)
-        drawMenuBall(ctx, ballStyle, 28, this.time, this.useArt(), hatStyle === "none")
-        drawHatStyle(ctx, hatStyle, 28, this.time)
+        drawMenuBall(ctx, ballStyle, 33, this.time, this.useArt(), hatStyle)
       }
       ctx.restore()
 
@@ -1907,7 +1898,7 @@ export class Renderer {
       ctx.fillText(equippedName, cx, previewY + 58)
 
       if (lastPull && lastPull.pool === pool) {
-        const col = RARITY_COLOR[lastPull.rarity]
+        const col = rarityLabelColor(lastPull.rarity, true)
         ctx.fillStyle = col
         ctx.font = "800 14px 'Bricolage Grotesque', sans-serif"
         const tag = lastPull.isNew ? "NEW" : `Dupe +${lastPull.duplicateRefund}¢`
@@ -1958,7 +1949,11 @@ export class Renderer {
 
       ctx.fillStyle = theme.inkDim
       ctx.font = "500 11px 'DM Sans', sans-serif"
-      ctx.fillText("60% C · 25% U · 12% R · 3% E", cx, pull.y + pullH + 18)
+      let oddsY = pull.y + pullH + 16
+      for (const line of oddsLines) {
+        oddsY = wrapMenuText(ctx, line, cx, oddsY, width - 48, 13, 3)
+        oddsY += 13
+      }
     }
 
     const backW = 140
@@ -1977,6 +1972,8 @@ export class Renderer {
       ctx.font = "800 18px 'Bricolage Grotesque', sans-serif"
       ctx.fillText("Back", cx, back.y + backH / 2 + 1)
     }
+
+    drawLifetimeCoins(ctx, width, lifetimeCoins)
 
     let revealHit: ScreenRect | null = null
     if (revealing && reveal.result) {
@@ -2018,6 +2015,8 @@ export class Renderer {
     backgroundPrice: number | null,
     backgroundUnlockHint: string | null,
     ballUnlockHint: string | null,
+    ballProgress: { current: number; goal: number } | null = null,
+    slingProgress: { current: number; goal: number } | null = null,
   ): ShopHitAreas {
     const ctx = this.ctx
     const { width, height } = camera
@@ -2027,15 +2026,15 @@ export class Renderer {
     ctx.fillStyle = theme.menuOverlay
     ctx.fillRect(0, 0, width, height)
 
-    drawLifetimeCoins(ctx, width, lifetimeCoins)
-
     const topPad = 36 + safeAreaInsetTop()
-    const pickerH = 64
-    const rowGap = 56
+    const rowGap = 64
     const rowsTop = topPad + 56
     const backH = 44
-    const ballPickerY = rowsTop + 2 * (pickerH + rowGap)
-    const backY = Math.min(height - backH - 20, ballPickerY + pickerH + 36)
+    const slingH = 64
+    const bgH = 64
+    const ballH = 128
+    const ballPickerY = rowsTop + slingH + rowGap + bgH + rowGap
+    const backY = Math.min(height - backH - 20, ballPickerY + ballH + 36)
     if (this.useArt()) {
       const panelTop = topPad - 22
       const panelBottom = backY + backH + 18
@@ -2049,8 +2048,6 @@ export class Renderer {
     ctx.fillText("Shop", cx, topPad + 8)
 
     const arrowW = 34
-    const iconBox = 48
-    const pickerW = arrowW + iconBox + arrowW
     const labelOffset = 22
     const rows = [
       {
@@ -2060,6 +2057,8 @@ export class Renderer {
         locked: slingshotLocked,
         hint: null as string | null,
         price: slingshotPrice,
+        h: slingH,
+        iconBox: 48,
       },
       {
         kind: "background" as const,
@@ -2068,6 +2067,8 @@ export class Renderer {
         locked: backgroundLocked,
         hint: backgroundLocked ? backgroundUnlockHint : null,
         price: backgroundPrice,
+        h: bgH,
+        iconBox: 48,
       },
       {
         kind: "ball" as const,
@@ -2076,6 +2077,8 @@ export class Renderer {
         locked: ballLocked,
         hint: ballLocked ? ballUnlockHint : null,
         price: null as number | null,
+        h: ballH,
+        iconBox: 128,
       },
     ]
 
@@ -2088,9 +2091,9 @@ export class Renderer {
       locked: boolean
     }> = []
 
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i]!
-      const pickerY = rowsTop + i * (pickerH + rowGap)
+    let pickerY = rowsTop
+    for (const row of rows) {
+      const pickerW = arrowW + row.iconBox + arrowW
       ctx.fillStyle = theme.inkDim
       ctx.font = "700 12px 'DM Sans', sans-serif"
       ctx.textAlign = "center"
@@ -2101,9 +2104,9 @@ export class Renderer {
         cx - pickerW / 2,
         pickerY,
         pickerW,
-        pickerH,
+        row.h,
         arrowW,
-        iconBox,
+        row.iconBox,
         row.kind,
         row.style,
         row.locked,
@@ -2114,11 +2117,12 @@ export class Renderer {
       pickers.push({
         prev: drawn.prev,
         next: drawn.next,
-        picker: { x: cx - pickerW / 2, y: pickerY, w: pickerW, h: pickerH },
+        picker: { x: cx - pickerW / 2, y: pickerY, w: pickerW, h: row.h },
         icon: drawn.icon,
         price: row.price,
         locked: row.locked,
       })
+      pickerY += row.h + rowGap
     }
 
     const slingshotRow = pickers[0]!
@@ -2145,6 +2149,19 @@ export class Renderer {
       )
     }
 
+    if (slingProgress && slingshotRow.locked) {
+      drawClimbedProgressChip(
+        ctx,
+        slingshotRow.icon,
+        slingProgress.current,
+        slingProgress.goal,
+      )
+    }
+
+    if (ballProgress && ballRow.locked) {
+      drawClimbedProgressChip(ctx, ballRow.icon, ballProgress.current, ballProgress.goal)
+    }
+
     const backW = 140
     const back: ScreenRect = {
       x: cx - backW / 2,
@@ -2161,6 +2178,8 @@ export class Renderer {
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
     ctx.fillText("Back", cx, back.y + back.h / 2 + 1)
+
+    drawLifetimeCoins(ctx, width, lifetimeCoins)
 
     ctx.textBaseline = "alphabetic"
     return {
@@ -2354,23 +2373,36 @@ function formatHeightLabel(climb: number): string {
   return String(Math.round(climb))
 }
 
-/** Default ball in menus uses the stage-1 sprite. Other ball styles stay code-drawn. */
+/** Menu ball. Sprite path includes the face, blush, and hat. Procedural is the fallback. */
 function drawMenuBall(
   ctx: CanvasRenderingContext2D,
   ballStyle: BallStyle,
   radius: number,
   time: number,
   spriteArt: boolean,
-  withHeadband: boolean,
+  hatStyle: HatStyle,
 ): void {
   if (
     spriteArt &&
-    ballStyle === "classic" &&
-    drawClassicMenuBall(ctx, radius, time, withHeadband)
+    drawCharacter(ctx, 0, 0, radius, {
+      ballId: ballStyle,
+      hatId: hatStyle === "none" ? null : hatStyle,
+      headband: ballStyle === "classic" && hatStyle === "none",
+      spin: 0,
+      squashX: 1,
+      squashY: 1,
+      squash: 0,
+      speed: 0,
+      lookX: 0,
+      lookY: 0,
+      night: false,
+      time,
+    })
   ) {
     return
   }
   drawBallStyle(ctx, ballStyle, radius, time)
+  if (hatStyle !== "none") drawHatStyle(ctx, hatStyle, radius, time)
 }
 
 function drawCornerVariantPicker(
@@ -2413,11 +2445,21 @@ function drawCornerVariantPicker(
   ctx.save()
   ctx.translate(iconCx, iconCy)
   if (kind === "slingshot") {
-    drawSlingshotIconStyle(ctx, 0, 0, iconBox * 0.72, style as SlingshotStyle, time)
+    const slingStyle = style as SlingshotStyle
+    const slingId = `slings/${slingStyle}`
+    if (spriteArt && hasSprite(slingId)) {
+      // Centre the 64×80 CSS canvas in the icon. The pivot sits 19 CSS below that centre.
+      const scale = 0.62
+      drawSprite(ctx, slingId, 0, 19 * scale, { scale })
+    } else {
+      drawSlingshotIconStyle(ctx, 0, 0, iconBox * 0.72, slingStyle, time)
+    }
   } else if (kind === "background") {
     drawBackgroundPreview(ctx, iconBox, style as BackgroundStyle, time)
   } else {
-    drawMenuBall(ctx, style as BallStyle, iconBox * 0.32, time, spriteArt, true)
+    // Static layers are 56 CSS at ball radius 14. Keep the whole layer inside the icon.
+    const ballR = ((iconBox - 8) / 56) * 14
+    drawMenuBall(ctx, style as BallStyle, ballR, time, spriteArt, "none")
   }
   ctx.restore()
 
@@ -2710,12 +2752,11 @@ function drawStripSlot(
   ctx.clip()
   ctx.translate(x + w / 2, y + h / 2 - 6)
   if (slot.pool === "hat" && slot.hatStyle) {
-    drawMenuBall(ctx, ballStyle, 22, time, spriteArt, slot.hatStyle === "none")
-    drawHatStyle(ctx, slot.hatStyle, 22, time)
+    drawMenuBall(ctx, ballStyle, 24, time, spriteArt, slot.hatStyle)
   } else if (slot.pool === "trail" && slot.trailStyle) {
     const local = previewTrailPoints(0, 4, 28)
     drawTrailStyle(ctx, slot.trailStyle, local, time)
-    drawMenuBall(ctx, ballStyle, 16, time, spriteArt, true)
+    drawMenuBall(ctx, ballStyle, 20, time, spriteArt, "none")
   }
   ctx.restore()
 
@@ -2725,6 +2766,46 @@ function drawStripSlot(
   ctx.beginPath()
   roundRect(ctx, x + 3, y + h - barH - 3, w - 6, barH, 3)
   ctx.fill()
+  if (highlight && slot.rarity === "common") {
+    ctx.strokeStyle = "#2B1B17"
+    ctx.lineWidth = 1
+    ctx.stroke()
+  }
+}
+
+/** Climbed-unlock progress under a locked ball icon. The chip sprite is the empty track. */
+function drawClimbedProgressChip(
+  ctx: CanvasRenderingContext2D,
+  icon: ScreenRect,
+  current: number,
+  goal: number,
+): void {
+  const chipW = 112
+  const chipH = 28
+  const chipX = icon.x + (icon.w - chipW) / 2
+  const chipY = icon.y + icon.h + 4
+  drawSpriteBox(ctx, "ui/ball-card_progress-chip", chipX, chipY, chipW, chipH)
+  const p = goal > 0 ? Math.max(0, Math.min(1, current / goal)) : 0
+  const fw = p > 0 ? Math.max(5, Math.round(92 * p)) : 0
+  if (fw > 0) {
+    const y = chipY + 19
+    drawSpriteBox(ctx, "ui/ball-card_progress-fill_left", chipX + 10, y, 2.5, 5)
+    const midW = fw - 5
+    if (midW > 0) {
+      drawSpriteBox(ctx, "ui/ball-card_progress-fill_mid", chipX + 12.5, y, midW, 5)
+    }
+    drawSpriteBox(ctx, "ui/ball-card_progress-fill_right", chipX + 10 + fw - 2.5, y, 2.5, 5)
+  }
+  const shown = Math.min(current, goal)
+  ctx.fillStyle = COLORS.inkDim
+  ctx.font = "700 10px 'DM Sans', sans-serif"
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  ctx.fillText(
+    `${formatUnlockThreshold(shown)} / ${formatUnlockThreshold(goal)} climbed`,
+    chipX + 56,
+    chipY + 10,
+  )
 }
 
 /** Coin-price buy chip under a locked picker icon. */

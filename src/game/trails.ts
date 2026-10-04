@@ -1,5 +1,7 @@
 /** Launch trails: separate gacha cosmetics (visual only). */
 
+import { trailStamp } from "./art/cosmeticsData"
+import { drawSprite, getSprite, spriteFrame } from "./art/sprites"
 import type { CosmeticRarity } from "./rarity"
 import type { Vec2 } from "./types"
 
@@ -7,15 +9,15 @@ export type TrailStyle =
   | "none"
   | "dust"
   | "sparkle"
-  | "smoke"
   | "bubbles"
-  | "leaves"
+  | "sage"
   | "hearts"
   | "confetti"
   | "ribbon"
+  | "feathers"
   | "stars"
   | "flame"
-  | "pixel"
+  | "blooms"
   | "rainbow"
   | "lightning"
 
@@ -31,17 +33,17 @@ export const EQUIPPED_TRAIL_KEY = "sling-climb-equipped-trail"
 export const TRAIL_GACHA_PITY_KEY = "sling-climb-trail-gacha-pity"
 
 export const TRAIL_VARIANTS: readonly TrailVariant[] = [
-  { id: "dust", name: "Dust", style: "dust", rarity: "common" },
-  { id: "sparkle", name: "Sparkle", style: "sparkle", rarity: "common" },
-  { id: "smoke", name: "Smoke", style: "smoke", rarity: "common" },
+  { id: "dust", name: "Canyon Dust", style: "dust", rarity: "common" },
+  { id: "sparkle", name: "Glint", style: "sparkle", rarity: "common" },
   { id: "bubbles", name: "Bubbles", style: "bubbles", rarity: "common" },
-  { id: "leaves", name: "Leaves", style: "leaves", rarity: "uncommon" },
+  { id: "sage", name: "Sage", style: "sage", rarity: "common" },
   { id: "hearts", name: "Hearts", style: "hearts", rarity: "uncommon" },
   { id: "confetti", name: "Confetti", style: "confetti", rarity: "uncommon" },
   { id: "ribbon", name: "Ribbon", style: "ribbon", rarity: "uncommon" },
+  { id: "feathers", name: "Feathers", style: "feathers", rarity: "uncommon" },
   { id: "stars", name: "Stars", style: "stars", rarity: "rare" },
-  { id: "flame", name: "Flame", style: "flame", rarity: "rare" },
-  { id: "pixel", name: "Pixel", style: "pixel", rarity: "rare" },
+  { id: "flame", name: "Ember", style: "flame", rarity: "rare" },
+  { id: "blooms", name: "Blooms", style: "blooms", rarity: "rare" },
   { id: "rainbow", name: "Rainbow", style: "rainbow", rarity: "epic" },
   { id: "lightning", name: "Lightning", style: "lightning", rarity: "epic" },
 ]
@@ -65,6 +67,11 @@ export function drawTrailStyle(
   time: number,
 ): void {
   if (style === "none" || points.length < 2) return
+  const stamp = trailStamp(style)
+  if (getSprite(stamp.sprite)) {
+    drawTrailStamps(ctx, stamp.sprite, points, time)
+    return
+  }
   switch (style) {
     case "dust":
       drawDust(ctx, points)
@@ -72,14 +79,11 @@ export function drawTrailStyle(
     case "sparkle":
       drawSparkle(ctx, points, time)
       break
-    case "smoke":
-      drawSmoke(ctx, points)
-      break
     case "bubbles":
       drawBubbles(ctx, points, time)
       break
-    case "leaves":
-      drawLeaves(ctx, points, time)
+    case "sage":
+      drawSage(ctx, points, time)
       break
     case "hearts":
       drawHearts(ctx, points, time)
@@ -88,7 +92,10 @@ export function drawTrailStyle(
       drawConfetti(ctx, points, time)
       break
     case "ribbon":
-      drawRibbon(ctx, points, "#38bdf8", "#0284c7")
+      drawRibbon(ctx, points, "#E8443A", "#FFF1D6")
+      break
+    case "feathers":
+      drawFeathers(ctx, points, time)
       break
     case "stars":
       drawStars(ctx, points, time)
@@ -96,8 +103,8 @@ export function drawTrailStyle(
     case "flame":
       drawFlame(ctx, points, time)
       break
-    case "pixel":
-      drawPixel(ctx, points)
+    case "blooms":
+      drawBlooms(ctx, points, time)
       break
     case "rainbow":
       drawRainbowRibbon(ctx, points, time)
@@ -105,6 +112,24 @@ export function drawTrailStyle(
     case "lightning":
       drawLightning(ctx, points, time)
       break
+  }
+}
+
+function drawTrailStamps(
+  ctx: CanvasRenderingContext2D,
+  id: string,
+  points: readonly Vec2[],
+  time: number,
+): void {
+  const frame = spriteFrame(id, time)
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i]!
+    const a = fade(i, points.length)
+    const scale = 0.35 + (i / points.length) * 0.45
+    ctx.save()
+    ctx.globalAlpha *= a
+    drawSprite(ctx, id, p.x, p.y, { scale, frame })
+    ctx.restore()
   }
 }
 
@@ -129,7 +154,7 @@ function drawDust(ctx: CanvasRenderingContext2D, points: readonly Vec2[]): void 
   for (let i = 0; i < points.length; i++) {
     const p = points[i]!
     const a = fade(i, points.length) * 0.45
-    ctx.fillStyle = `rgba(148, 163, 184, ${a})`
+    ctx.fillStyle = `rgba(168, 132, 90, ${a})`
     ctx.beginPath()
     ctx.arc(p.x, p.y, 2 + (i / points.length) * 3, 0, Math.PI * 2)
     ctx.fill()
@@ -152,18 +177,6 @@ function drawSparkle(
   }
 }
 
-function drawSmoke(ctx: CanvasRenderingContext2D, points: readonly Vec2[]): void {
-  for (let i = 0; i < points.length; i++) {
-    const p = points[i]!
-    const a = fade(i, points.length) * 0.35
-    const r = 4 + (1 - i / points.length) * 10
-    ctx.fillStyle = `rgba(100, 116, 139, ${a})`
-    ctx.beginPath()
-    ctx.arc(p.x, p.y - (1 - i / points.length) * 6, r, 0, Math.PI * 2)
-    ctx.fill()
-  }
-}
-
 function drawBubbles(
   ctx: CanvasRenderingContext2D,
   points: readonly Vec2[],
@@ -181,7 +194,7 @@ function drawBubbles(
   }
 }
 
-function drawLeaves(
+function drawSage(
   ctx: CanvasRenderingContext2D,
   points: readonly Vec2[],
   time: number,
@@ -192,9 +205,63 @@ function drawLeaves(
     ctx.save()
     ctx.translate(p.x, p.y)
     ctx.rotate(time * 2 + i)
-    ctx.fillStyle = `rgba(34, 197, 94, ${a})`
+    ctx.fillStyle = `rgba(79, 174, 90, ${a})`
     ctx.beginPath()
     ctx.ellipse(0, 0, 5, 2.5, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }
+}
+
+function drawFeathers(
+  ctx: CanvasRenderingContext2D,
+  points: readonly Vec2[],
+  time: number,
+): void {
+  for (let i = 0; i < points.length; i += 2) {
+    const p = points[i]!
+    const a = fade(i, points.length)
+    ctx.save()
+    ctx.translate(p.x, p.y)
+    ctx.rotate(time * 1.4 + i * 0.4)
+    ctx.globalAlpha *= a
+    ctx.fillStyle = "#FFF1D6"
+    ctx.beginPath()
+    ctx.ellipse(0, 0, 6, 2.2, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = "#8A6A4A"
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(-5, 0)
+    ctx.lineTo(5, 0)
+    ctx.stroke()
+    ctx.restore()
+  }
+}
+
+function drawBlooms(
+  ctx: CanvasRenderingContext2D,
+  points: readonly Vec2[],
+  time: number,
+): void {
+  for (let i = 0; i < points.length; i += 2) {
+    const p = points[i]!
+    const a = fade(i, points.length)
+    const spin = time * 2 + i
+    ctx.save()
+    ctx.translate(p.x, p.y)
+    ctx.rotate(spin)
+    ctx.globalAlpha *= a
+    ctx.fillStyle = i % 4 === 0 ? "#E8443A" : "#fb7185"
+    for (let petal = 0; petal < 5; petal++) {
+      const ang = (petal / 5) * Math.PI * 2
+      ctx.beginPath()
+      ctx.ellipse(Math.cos(ang) * 3, Math.sin(ang) * 3, 2.2, 1.4, ang, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    ctx.fillStyle = "#fde047"
+    ctx.beginPath()
+    ctx.arc(0, 0, 1.6, 0, Math.PI * 2)
     ctx.fill()
     ctx.restore()
   }
@@ -319,19 +386,6 @@ function drawFlame(
     ctx.ellipse(p.x, p.y, r * 0.35, r * 0.55, 0, 0, Math.PI * 2)
     ctx.fill()
   }
-}
-
-function drawPixel(ctx: CanvasRenderingContext2D, points: readonly Vec2[]): void {
-  const colors = ["#22d3ee", "#a78bfa", "#f472b6"]
-  for (let i = 0; i < points.length; i++) {
-    const p = points[i]!
-    const a = fade(i, points.length)
-    ctx.globalAlpha = a
-    ctx.fillStyle = colors[i % colors.length]!
-    const s = 4
-    ctx.fillRect(Math.round(p.x / s) * s - s / 2, Math.round(p.y / s) * s - s / 2, s, s)
-  }
-  ctx.globalAlpha = 1
 }
 
 function drawRainbowRibbon(
