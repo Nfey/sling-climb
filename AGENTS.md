@@ -13,7 +13,8 @@ is a stripped-down "playable ad" build.
 - Run the dev server with `npm run dev -- --host` (serves on port 5173). Two pages exist:
   `/` (main game) and `/playable.html` (playable ad). The main game also accepts URL params
   documented in `README.md`, e.g. `/?bot=perfect-seek` for an autopilot bot.
-- There is no separate lint step and no automated test suite. `npm run build`
-  (`tsc && vite build`) is the type-check/lint gate — run it to validate changes.
+- There is no separate lint step. `npm run build` (`tsc && vite build`) is the type-check gate,
+  and `npm test` (Vitest, `src/**/*.test.ts`) covers pure game logic such as `Score`. Run both to
+  validate changes.
 - The game is canvas-based with pointer/drag controls; there is no DOM UI to assert against,
   so verify changes by loading the page in a browser and interacting with the canvas.
